@@ -1,0 +1,13 @@
+{
+    "great vibes": {
+        "normal": "great_vibes_400_normal"
+    },
+    "parisienne": {
+        "normal": "parisienne_400_normal",
+        "bold": "parisienne_700_normal"
+    },
+    "montserrat": {
+        "bold": "montserrat_700_normal",
+        "normal": "montserrat_400_normal"
+    }
+}
