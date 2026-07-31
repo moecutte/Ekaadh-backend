@@ -1,0 +1,3 @@
+[providers.php]
+# This tells Nixpacks explicitly to treat it as a Laravel app, preventing the duplicate Nginx blocks
+isLaravel = true 
