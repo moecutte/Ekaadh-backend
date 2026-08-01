@@ -16,12 +16,18 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('invitation_designs', function (Blueprint $table) {
-            $table->foreignId('private_event_category_id')
-                ->nullable()
-                ->after('id')
-                ->constrained('private_event_categories')
-                ->nullOnDelete();
+        $hasLegacyCategories = Schema::hasTable('private_event_categories');
+
+        Schema::table('invitation_designs', function (Blueprint $table) use ($hasLegacyCategories) {
+            if ($hasLegacyCategories) {
+                $table->foreignId('private_event_category_id')
+                    ->nullable()
+                    ->after('id')
+                    ->constrained('private_event_categories')
+                    ->nullOnDelete();
+            } else {
+                $table->unsignedBigInteger('private_event_category_id')->nullable()->after('id');
+            }
         });
     }
 
@@ -36,7 +42,7 @@ return new class extends Migration
         }
 
         Schema::table('invitation_designs', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('private_event_category_id');
+            $table->dropColumn('private_event_category_id');
         });
     }
 };

@@ -62,20 +62,47 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('events') && ! Schema::hasColumn('events', 'invitation_design_id')) {
-            Schema::table('events', function (Blueprint $table) {
-                $table->foreignId('invitation_design_id')
-                    ->nullable()
-                    ->after('ticket_design')
-                    ->constrained('invitation_designs')
-                    ->nullOnDelete();
-            });
-        }
+        if (Schema::hasTable('events')) {
+            if (! Schema::hasColumn('events', 'couple_name_1')) {
+                Schema::table('events', function (Blueprint $table) {
+                    $table->string('couple_name_1')->nullable();
+                });
+            }
 
-        if (Schema::hasTable('events') && ! Schema::hasColumn('events', 'invitation_field_values')) {
-            Schema::table('events', function (Blueprint $table) {
-                $table->json('invitation_field_values')->nullable()->after('couple_name_2');
-            });
+            if (! Schema::hasColumn('events', 'couple_name_2')) {
+                Schema::table('events', function (Blueprint $table) {
+                    $table->string('couple_name_2')->nullable();
+                });
+            }
+
+            if (! Schema::hasColumn('events', 'invitation_design_id')) {
+                $afterTicketDesign = Schema::hasColumn('events', 'ticket_design');
+
+                Schema::table('events', function (Blueprint $table) use ($afterTicketDesign) {
+                    $column = $table->foreignId('invitation_design_id')->nullable();
+                    if ($afterTicketDesign) {
+                        $column->after('ticket_design');
+                    }
+                    $column->constrained('invitation_designs')->nullOnDelete();
+                });
+            }
+
+            if (! Schema::hasColumn('events', 'invitation_field_values')) {
+                $afterCoupleName2 = Schema::hasColumn('events', 'couple_name_2');
+
+                Schema::table('events', function (Blueprint $table) use ($afterCoupleName2) {
+                    $column = $table->json('invitation_field_values')->nullable();
+                    if ($afterCoupleName2) {
+                        $column->after('couple_name_2');
+                    }
+                });
+            }
+
+            if (! Schema::hasColumn('events', 'private_event_category_id')) {
+                Schema::table('events', function (Blueprint $table) {
+                    $table->unsignedBigInteger('private_event_category_id')->nullable();
+                });
+            }
         }
     }
 
