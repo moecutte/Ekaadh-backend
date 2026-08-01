@@ -8,16 +8,43 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('invitation_designs', function (Blueprint $table) {
-            $table->decimal('ticket_price', 8, 2)->nullable()->after('tier');
-            $table->decimal('premium_surcharge', 8, 2)->nullable()->after('ticket_price');
-        });
+        if (! Schema::hasTable('invitation_designs')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('invitation_designs', 'ticket_price')) {
+            Schema::table('invitation_designs', function (Blueprint $table) {
+                $table->decimal('ticket_price', 8, 2)->nullable()->after('tier');
+            });
+        }
+
+        if (! Schema::hasColumn('invitation_designs', 'premium_surcharge')) {
+            Schema::table('invitation_designs', function (Blueprint $table) {
+                $table->decimal('premium_surcharge', 8, 2)->nullable()->after('ticket_price');
+            });
+        }
     }
 
     public function down(): void
     {
+        if (! Schema::hasTable('invitation_designs')) {
+            return;
+        }
+
         Schema::table('invitation_designs', function (Blueprint $table) {
-            $table->dropColumn(['ticket_price', 'premium_surcharge']);
+            $columns = [];
+
+            if (Schema::hasColumn('invitation_designs', 'ticket_price')) {
+                $columns[] = 'ticket_price';
+            }
+
+            if (Schema::hasColumn('invitation_designs', 'premium_surcharge')) {
+                $columns[] = 'premium_surcharge';
+            }
+
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };
