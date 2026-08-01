@@ -1,4 +1,0 @@
-providers = ["php"]
-
-[variables]
-IS_LARAVEL = "true"
