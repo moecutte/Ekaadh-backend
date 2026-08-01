@@ -51,6 +51,10 @@ class DatabaseSeeder extends Seeder
         Setting::setValue('private_ticket_max', '500');
         Setting::setValue('private_premium_design_surcharge', '2');
 
-        $this->call(EventSeeder::class);
+        $this->call([
+            CategorySeeder::class,
+            InvitationDesignSeeder::class,
+            EventSeeder::class,
+        ]);
     }
 }
