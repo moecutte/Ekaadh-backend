@@ -85,11 +85,14 @@ php artisan key:generate
 
 ```bash
 php artisan migrate --force
+php artisan db:seed --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
+
+`db:seed` creates admin/demo users, settings, private categories (Aroos / Meher / Xaflad / Casho), built-in invitation designs, and sample public events. Change seeded passwords immediately on production.
 
 Ensure `storage/` and `bootstrap/cache/` are writable by the web user (`755`/`775` as required by Bluehost).
 
