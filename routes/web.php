@@ -153,11 +153,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/invitation-designs/create', [AdminInvitationDesignController::class, 'create'])->name('invitation-designs.create');
         Route::post('/invitation-designs', [AdminInvitationDesignController::class, 'store'])->name('invitation-designs.store');
         Route::get('/invitation-designs/{invitationDesign}/edit', [AdminInvitationDesignController::class, 'edit'])->name('invitation-designs.edit');
-        Route::put('/invitation-designs/{invitationDesign}', [AdminInvitationDesignController::class, 'update'])->name('invitation-designs.update');
+        // POST (not PUT): multipart design saves fail with method-spoofed PUT behind some reverse proxies.
+        Route::post('/invitation-designs/{invitationDesign}', [AdminInvitationDesignController::class, 'update'])->name('invitation-designs.update');
+        Route::get('/invitation-designs/{invitationDesign}', function (\App\Models\InvitationDesign $invitationDesign) {
+            return redirect()->route('admin.invitation-designs.edit', $invitationDesign);
+        })->name('invitation-designs.show');
         Route::post('/invitation-designs/{invitationDesign}/toggle', [AdminInvitationDesignController::class, 'toggle'])->name('invitation-designs.toggle');
         Route::delete('/invitation-designs/{invitationDesign}', [AdminInvitationDesignController::class, 'destroy'])->name('invitation-designs.destroy');
         Route::post('/invitation-designs/{invitationDesign}/fields', [AdminInvitationDesignController::class, 'storeField'])->name('invitation-designs.fields.store');
-        Route::put('/invitation-designs/{invitationDesign}/fields/{field}', [AdminInvitationDesignController::class, 'updateField'])->name('invitation-designs.fields.update');
+        Route::match(['put', 'post'], '/invitation-designs/{invitationDesign}/fields/{field}', [AdminInvitationDesignController::class, 'updateField'])->name('invitation-designs.fields.update');
         Route::delete('/invitation-designs/{invitationDesign}/fields/{field}', [AdminInvitationDesignController::class, 'destroyField'])->name('invitation-designs.fields.destroy');
 
         Route::get('/packages', [AdminOrganizerPackageController::class, 'index'])->name('packages.index');
