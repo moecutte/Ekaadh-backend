@@ -9,10 +9,10 @@ use App\Models\Event;
 use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
+use App\Support\PublicUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -230,12 +230,8 @@ class PrivateEventController extends Controller
             return null;
         }
 
-        $directory = public_path('images/events');
-        File::ensureDirectoryExists($directory);
-
         $filename = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
-        $file->move($directory, $filename);
 
-        return 'images/events/'.$filename;
+        return PublicUpload::store($file, 'images/events', $filename);
     }
 }

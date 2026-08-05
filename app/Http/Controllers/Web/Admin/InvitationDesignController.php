@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\InvitationDesign;
 use App\Models\InvitationDesignField;
+use App\Support\PublicUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -103,9 +103,7 @@ class InvitationDesignController extends Controller
 
         $invitationDesign->update($data);
 
-        return redirect()
-            ->route('admin.invitation-designs.edit', $invitationDesign)
-            ->with('success', 'Design updated.');
+        return back()->with('success', 'Design updated.');
     }
 
     public function destroy(InvitationDesign $invitationDesign): RedirectResponse
@@ -296,9 +294,6 @@ class InvitationDesignController extends Controller
             ]);
         }
 
-        $dir = public_path('images/invitations'.($subdir ? '/'.$subdir : ''));
-        File::ensureDirectoryExists($dir);
-
         $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'png');
         if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
             $ext = match ($file->getMimeType()) {
@@ -310,8 +305,14 @@ class InvitationDesignController extends Controller
 
         $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'design';
         $name = $base.'-'.Str::random(6).'.'.$ext;
-        $file->move($dir, $name);
+        $directory = 'images/invitations'.($subdir ? '/'.$subdir : '');
 
-        return 'images/invitations'.($subdir ? '/'.$subdir : '').'/'.$name;
+        try {
+            return PublicUpload::store($file, $directory, $name);
+        } catch (\Throwable $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'graphic' => ['The image could not be saved on the server. '.$e->getMessage()],
+            ]);
+        }
     }
 }

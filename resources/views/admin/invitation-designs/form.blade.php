@@ -68,6 +68,7 @@
       enctype="multipart/form-data"
       class="lg:col-span-5 space-y-5">
     @csrf
+    @if($design->exists) @method('PUT') @endif
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
             <h3 class="text-sm font-bold">Design details</h3>
