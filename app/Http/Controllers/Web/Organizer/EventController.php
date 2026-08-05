@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Order;
 use App\Models\OrganizerProfile;
 use App\Models\TicketType;
+use App\Support\PublicUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -288,13 +289,9 @@ class EventController extends Controller
             return null;
         }
 
-        $directory = public_path('images/events');
-        File::ensureDirectoryExists($directory);
-
         $filename = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
-        $file->move($directory, $filename);
 
-        return 'images/events/'.$filename;
+        return PublicUpload::store($file, 'images/events', $filename);
     }
 
     private function deleteLocalCoverImage(?string $path): void
