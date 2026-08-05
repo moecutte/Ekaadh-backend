@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Create Private Event')
+@section('title', __('ui.create_private_event'))
 
 @section('content')
 @php
@@ -8,6 +8,22 @@
     $designsById = collect($allDesigns)->keyBy('id');
     $premiumIds = collect($allDesigns)->where('category', 'premium')->pluck('id')->values()->all();
     $oldFields = old('invitation_field_values', []);
+    $wizardI18n = [
+        'stepOf' => __('ui.step_of', ['current' => '{current}', 'total' => '{total}']),
+        'stepLabels' => [__('ui.event_info'), __('ui.design'), __('ui.invitation_text'), __('ui.payment')],
+        'standard' => __('ui.standard'),
+        'premium' => __('ui.premium'),
+        'continuePayment' => __('ui.continue_to_payment'),
+        'valid' => __('ui.valid'),
+        'chooseCategory' => __('ui.choose_category'),
+        'enterDescription' => __('ui.enter_description'),
+        'chooseEventDate' => __('ui.choose_event_date'),
+        'chooseEventTime' => __('ui.choose_event_time'),
+        'enterVenue' => __('ui.enter_venue'),
+        'chooseInvitationDesign' => __('ui.choose_invitation_design'),
+        'fieldRequired' => __('ui.field_required', ['field' => '{field}']),
+        'chooseValidQuantity' => __('ui.choose_valid_quantity'),
+    ];
 @endphp
 <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Dancing+Script:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Great+Vibes&family=Italianno&family=Josefin+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;500;600;700&family=Mr+De+Haviland&family=Parisienne&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&family=Rouge+Script&family=Sacramento&family=Satisfy&family=Source+Sans+3:wght@400;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
 <style>[x-cloak]{display:none!important}</style>
@@ -27,18 +43,19 @@
         designs: @js($designsById),
         initialFieldValues: @js($oldFields),
         initialStep: {{ $errors->any() ? 0 : 0 }},
+        i18n: @js($wizardI18n),
      })">
     <a href="{{ route('private-events.index') }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-mute hover:text-brand transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        My private events
+        {{ __('ui.my_private_events') }}
     </a>
     <div class="mt-4 mb-1">
-        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">New invitation</p>
+        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">{{ __('ui.new_invitation') }}</p>
         <div class="flex items-end justify-between gap-3">
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">Create private event</h1>
-            <span class="text-xs font-bold text-mute shrink-0 px-2.5 py-1 rounded-full bg-white border border-slate-100" x-text="'Step ' + (step + 1) + ' of 4'"></span>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">{{ __('ui.create_private_event') }}</h1>
+            <span class="text-xs font-bold text-mute shrink-0 px-2.5 py-1 rounded-full bg-white border border-slate-100" x-text="stepOfLabel"></span>
         </div>
-        <p class="text-sm text-mute mt-2">Four short steps — event details, design, invitation text, then payment.</p>
+        <p class="text-sm text-mute mt-2">{{ __('ui.create_wizard_sub') }}</p>
     </div>
 
     {{-- Step indicator --}}
@@ -72,10 +89,10 @@
 
         {{-- Step 1: Event info --}}
         <div x-show="step === 0" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">Tell us about your event. Date and venue will be applied to your invitation design.</p>
+            <p class="text-sm text-mute">{{ __('ui.create_step1_hint') }}</p>
             <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-5">
                 <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">Category *</label>
+                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.category') }} *</label>
                     <select name="private_event_category_id" x-model.number="categoryId"
                             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                         @foreach($categories as $cat)
@@ -84,18 +101,18 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">Description *</label>
+                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.description') }} *</label>
                     <textarea name="description" x-model="description" rows="4"
                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 resize-none transition">{{ old('description') }}</textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">Date *</label>
+                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.date') }} *</label>
                         <input type="date" x-model="eventDate" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()"
                                class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">Time *</label>
+                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.time') }} *</label>
                         <input type="time" x-model="eventTime" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()"
                                class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                     </div>
@@ -103,15 +120,15 @@
                 <input type="hidden" name="event_date" :value="eventDate">
                 <input type="hidden" name="event_time" :value="eventTime">
                 <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">Venue *</label>
-                    <input type="text" x-model="venue" placeholder="Venue name"
+                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.venue') }} *</label>
+                    <input type="text" x-model="venue" placeholder="{{ __('ui.venue_name_placeholder') }}"
                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">Cover image <span class="font-medium text-mute/70">(optional)</span></label>
+                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.cover_image') }} <span class="font-medium text-mute/70">{{ __('ui.optional') }}</span></label>
                     <label class="flex flex-col items-center justify-center gap-2 w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-6 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/30 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        <span class="text-xs font-semibold text-mute">PNG, JPG or WebP · max 5MB</span>
+                        <span class="text-xs font-semibold text-mute">{{ __('ui.cover_image_hint') }}</span>
                         <input type="file" name="cover_image" accept="image/png,image/jpeg,image/jpg,image/webp" class="sr-only">
                     </label>
                 </div>
@@ -120,15 +137,15 @@
 
         {{-- Step 2: Design --}}
         <div x-show="step === 1" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">Choose an invitation design for your category. Premium adds ${{ number_format($premiumSurcharge, 2) }}/ticket.</p>
+            <p class="text-sm text-mute">{{ __('ui.create_step2_hint', ['amount' => number_format($premiumSurcharge, 2)]) }}</p>
 
             <div x-show="!categoryDesigns.length" class="rounded-xl border border-amber-100 bg-amber-50 text-amber-900 text-sm p-4">
-                No invitation designs for this category yet. Go back and pick another category, or ask an admin to upload designs.
+                {{ __('ui.no_designs_for_category') }}
             </div>
 
             <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-6" x-show="categoryDesigns.length">
                 <div x-show="standardForCategory.length">
-                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">Standard</h4>
+                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.standard') }}</h4>
                     <div class="grid grid-cols-3 gap-3">
                         <template x-for="d in standardForCategory" :key="d.id">
                             <button type="button"
@@ -138,7 +155,7 @@
                                 <img :src="d.thumbnail_url || d.graphic_url"
                                      x-show="d.thumbnail_url || d.graphic_url"
                                      class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                     alt="Invitation design"
+                                     alt="{{ __('ui.invitation_design_alt') }}"
                                      loading="lazy">
                                 <div x-show="!(d.thumbnail_url || d.graphic_url)"
                                      class="w-full aspect-[3/4]"
@@ -151,7 +168,7 @@
                 </div>
 
                 <div x-show="premiumForCategory.length">
-                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">Premium</h4>
+                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.premium') }}</h4>
                     <div class="grid grid-cols-3 gap-3">
                         <template x-for="d in premiumForCategory" :key="'p-'+d.id">
                             <button type="button"
@@ -161,7 +178,7 @@
                                 <img :src="d.thumbnail_url || d.graphic_url"
                                      x-show="d.thumbnail_url || d.graphic_url"
                                      class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                     alt="Invitation design"
+                                     alt="{{ __('ui.invitation_design_alt') }}"
                                      loading="lazy">
                                 <div x-show="!(d.thumbnail_url || d.graphic_url)"
                                      class="w-full aspect-[3/4]"
@@ -178,12 +195,12 @@
 
         {{-- Step 3: Preview + invitation text --}}
         <div x-show="step === 2" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">Preview your invitation and edit the text shown on the design.</p>
+            <p class="text-sm text-mute">{{ __('ui.create_step3_hint') }}</p>
 
             <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-5 sm:p-6" x-show="selectedDesign">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-sm font-bold">Live preview</h3>
-                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background: #eef0f8; color: #323891;" x-text="isPremium ? 'Premium' : 'Standard'"></span>
+                    <h3 class="text-sm font-bold">{{ __('ui.live_preview') }}</h3>
+                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background: #eef0f8; color: #323891;" x-text="isPremium ? i18n.premium : i18n.standard"></span>
                 </div>
                 {{-- Same 420px design canvas as admin editor + ticket overlay so text positions match --}}
                 <div class="mx-auto overflow-hidden shadow-2xl shadow-slate-300/40 rounded-xl border relative"
@@ -202,7 +219,7 @@
                                          alt="Sample QR"
                                          class="w-full aspect-square object-contain bg-white">
                                     <p class="mt-0.5 text-[7px] leading-tight text-slate-600 w-full">
-                                        Scan at entry · Status: <span class="font-semibold" style="color: #323891;">Valid</span>
+                                        {{ __('ui.scan_at_entry') }} <span class="font-semibold" style="color: #323891;" x-text="i18n.valid"></span>
                                     </p>
                                 </div>
                             </template>
@@ -216,8 +233,8 @@
 
             <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-4" x-show="buyerDesignFields.length">
                 <div>
-                    <h3 class="text-sm font-bold">Invitation text</h3>
-                    <p class="text-[11px] text-mute mt-1">Change sample text for each field on the card. Date and time parts fill automatically from step 1.</p>
+                    <h3 class="text-sm font-bold">{{ __('ui.invitation_text') }}</h3>
+                    <p class="text-[11px] text-mute mt-1">{{ __('ui.invitation_text_hint') }}</p>
                 </div>
                 <template x-for="field in buyerDesignFields" :key="'edit-'+field.field_key">
                     <div>
@@ -238,31 +255,31 @@
                 <input type="hidden" :name="'invitation_field_values[' + field.field_key + ']'" :value="fieldValues[field.field_key] || ''">
             </template>
             <div x-show="selectedDesign && !buyerDesignFields.length" class="rounded-xl border border-slate-100 bg-white p-4 text-sm text-mute">
-                Date and time on the card update from the event date/time you chose. Continue to pricing.
+                {{ __('ui.auto_datetime_note') }}
             </div>
         </div>
 
         {{-- Step 4: Quantity + payment --}}
         <div x-show="step === 3" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">Set how many tickets to buy and review pricing before payment.</p>
+            <p class="text-sm text-mute">{{ __('ui.create_step4_hint') }}</p>
             <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-5">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">Quantity *</label>
+                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.quantity') }} *</label>
                         <input type="number" name="quantity" x-model.number="qty" min="1" max="{{ $maxTickets }}"
                                class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">Ticket label</label>
-                        <input name="ticket_label" value="{{ old('ticket_label', 'Invitation') }}"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition" placeholder="Invitation">
+                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.ticket_label') }}</label>
+                        <input name="ticket_label" value="{{ old('ticket_label', __('ui.invitation')) }}"
+                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition" placeholder="{{ __('ui.invitation') }}">
                     </div>
                 </div>
                 <div class="rounded-2xl bg-gradient-to-br from-brand-soft to-white border border-brand/10 px-5 py-4 text-sm space-y-2">
-                    <div class="flex justify-between"><span class="text-mute">Price / ticket</span><span class="font-bold" x-text="'$' + unitNow.toFixed(2)"></span></div>
-                    <div class="flex justify-between"><span class="text-mute">Subtotal</span><span class="font-bold" x-text="'$' + subtotal.toFixed(2)"></span></div>
-                    <div class="flex justify-between"><span class="text-mute">Service fee</span><span class="font-bold">${{ number_format($serviceFee, 2) }}</span></div>
-                    <div class="flex justify-between pt-2 mt-1 border-t border-brand/10"><span class="font-extrabold text-ink">Total due</span><span class="font-extrabold text-brand text-base" x-text="'$' + total.toFixed(2)"></span></div>
+                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.price_per_ticket') }}</span><span class="font-bold" x-text="'$' + unitNow.toFixed(2)"></span></div>
+                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.subtotal') }}</span><span class="font-bold" x-text="'$' + subtotal.toFixed(2)"></span></div>
+                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.service_fee') }}</span><span class="font-bold">${{ number_format($serviceFee, 2) }}</span></div>
+                    <div class="flex justify-between pt-2 mt-1 border-t border-brand/10"><span class="font-extrabold text-ink">{{ __('ui.total_due') }}</span><span class="font-extrabold text-brand text-base" x-text="'$' + total.toFixed(2)"></span></div>
                 </div>
             </div>
         </div>
@@ -272,16 +289,16 @@
             <button type="button" x-show="step > 0" x-cloak
                     @click="backStep()"
                     class="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white text-sm font-extrabold text-ink hover:bg-slate-50 transition-colors">
-                Back
+                {{ __('ui.back') }}
             </button>
             <button type="button" x-show="step < 3" x-cloak
                     @click="nextStep()"
                     class="flex-1 py-3.5 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark hover:-translate-y-0.5 transition-all">
-                Continue
+                {{ __('ui.continue') }}
             </button>
             <button type="submit" x-show="step === 3" x-cloak
                     class="flex-1 py-3.5 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark hover:-translate-y-0.5 transition-all"
-                    x-text="'Continue to payment · $' + total.toFixed(2)">
+                    x-text="i18n.continuePayment + ' · $' + total.toFixed(2)">
             </button>
         </div>
     </form>
@@ -292,9 +309,11 @@
 <script>
 function privateEventForm(cfg) {
     const designs = cfg.designs || {};
+    const i18n = cfg.i18n || {};
     return {
         step: 0,
-        stepLabels: ['Event info', 'Design', 'Invitation text', 'Payment'],
+        i18n,
+        stepLabels: i18n.stepLabels || ['Event info', 'Design', 'Invitation text', 'Payment'],
         stepError: '',
         qty: {{ (int) old('quantity', 20) }},
         design: cfg.initialDesign || '',
@@ -312,6 +331,10 @@ function privateEventForm(cfg) {
         premiumExtra: cfg.premiumExtra,
         fee: cfg.fee,
         maxTickets: cfg.maxTickets || 500,
+        get stepOfLabel() {
+            const tpl = this.i18n.stepOf || 'Step {current} of {total}';
+            return tpl.replace('{current}', this.step + 1).replace('{total}', '4');
+        },
         init() {
             if (this.design && this.designs[this.design]) {
                 this.invitationDesignId = this.designs[this.design].invitation_design_id || null;
@@ -371,7 +394,7 @@ function privateEventForm(cfg) {
         applyBasicsToFieldValues() {
             const fields = this.selectedDesign?.fields || [];
             if (!fields.length) return;
-            const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             let monthName = '', day = '', year = '';
             const timeLabel = this.formatTimeLabel(this.eventTime);
             if (this.eventDate) {
@@ -414,16 +437,16 @@ function privateEventForm(cfg) {
         validateStep(step) {
             this.stepError = '';
             if (step === 0) {
-                if (!this.categoryId) { this.stepError = 'Choose a category.'; return false; }
-                if (!String(this.description || '').trim()) { this.stepError = 'Enter a description.'; return false; }
-                if (!this.eventDate) { this.stepError = 'Choose an event date.'; return false; }
-                if (!this.eventTime) { this.stepError = 'Choose an event time.'; return false; }
-                if (!String(this.venue || '').trim()) { this.stepError = 'Enter a venue.'; return false; }
+                if (!this.categoryId) { this.stepError = this.i18n.chooseCategory || 'Choose a category.'; return false; }
+                if (!String(this.description || '').trim()) { this.stepError = this.i18n.enterDescription || 'Enter a description.'; return false; }
+                if (!this.eventDate) { this.stepError = this.i18n.chooseEventDate || 'Choose an event date.'; return false; }
+                if (!this.eventTime) { this.stepError = this.i18n.chooseEventTime || 'Choose an event time.'; return false; }
+                if (!String(this.venue || '').trim()) { this.stepError = this.i18n.enterVenue || 'Enter a venue.'; return false; }
                 return true;
             }
             if (step === 1) {
                 if (!this.design || !this.selectedDesign || !this.invitationDesignId) {
-                    this.stepError = 'Choose an invitation design.';
+                    this.stepError = this.i18n.chooseInvitationDesign || 'Choose an invitation design.';
                     return false;
                 }
                 this.seedFieldDefaults();
@@ -432,13 +455,14 @@ function privateEventForm(cfg) {
             }
             if (step === 2) {
                 if (!this.selectedDesign) {
-                    this.stepError = 'Choose an invitation design.';
+                    this.stepError = this.i18n.chooseInvitationDesign || 'Choose an invitation design.';
                     return false;
                 }
                 for (const f of this.buyerDesignFields) {
                     const value = String(this.fieldValues[f.field_key] || '').trim();
                     if (f.is_required && !value) {
-                        this.stepError = (f.label || 'A field') + ' is required.';
+                        const fieldName = f.label || 'Field';
+                        this.stepError = (this.i18n.fieldRequired || '{field} is required.').replace('{field}', fieldName);
                         return false;
                     }
                 }
@@ -447,7 +471,7 @@ function privateEventForm(cfg) {
             if (step === 3) {
                 const q = Number(this.qty) || 0;
                 if (q < 1 || q > this.maxTickets) {
-                    this.stepError = 'Choose a valid ticket quantity.';
+                    this.stepError = this.i18n.chooseValidQuantity || 'Choose a valid ticket quantity.';
                     return false;
                 }
                 return true;

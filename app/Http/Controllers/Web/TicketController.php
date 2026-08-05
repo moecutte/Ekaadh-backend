@@ -84,7 +84,7 @@ class TicketController extends Controller
     public function show(string $code): View
     {
         $ticket = Ticket::query()
-            ->with(['event', 'orderItem.order', 'invitation'])
+            ->with(['event.invitationDesign.fields', 'orderItem.order', 'invitation'])
             ->where('ticket_code', strtoupper($code))
             ->firstOrFail();
 
@@ -92,7 +92,15 @@ class TicketController extends Controller
         $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='.urlencode($payload);
         $invitationUrl = $ticket->invitation?->publicUrl();
 
-        return view('tickets.show', compact('ticket', 'payload', 'qrImage', 'invitationUrl'));
+        $design = \App\Support\TicketDesigns::resolveForEvent($ticket->event);
+        $design['field_values'] = \App\Support\InvitationDateFields::applyToValues(
+            $design['fields'] ?? [],
+            $ticket->event?->invitation_field_values ?? ($design['field_values'] ?? []),
+            $ticket->event?->event_date,
+            $ticket->event?->event_time,
+        );
+
+        return view('tickets.show', compact('ticket', 'payload', 'qrImage', 'invitationUrl', 'design'));
     }
 
     public function pdf(string $code): Response
@@ -107,9 +115,15 @@ class TicketController extends Controller
         $qrDataUri = $this->imageDataUri($qrUrl) ?? $qrUrl;
 
         $design = \App\Support\TicketDesigns::resolveForEvent($ticket->event);
-        $design['field_values'] = $ticket->event?->invitation_field_values ?? [];
+        $design['field_values'] = \App\Support\InvitationDateFields::applyToValues(
+            $design['fields'] ?? [],
+            $ticket->event?->invitation_field_values ?? ($design['field_values'] ?? []),
+            $ticket->event?->event_date,
+            $ticket->event?->event_time,
+        );
 
-        $isOverlay = ($design['render_mode'] ?? '') === 'overlay' && ! empty($design['graphic_url']);
+        $isOverlay = ! empty($design['graphic_url']) || ! empty($design['graphic_path'])
+            || (($design['render_mode'] ?? '') === 'overlay');
 
         if ($isOverlay) {
             $fields = collect($design['fields'] ?? [])->where('show_on_card', true)->values()->all();

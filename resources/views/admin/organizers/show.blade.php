@@ -56,8 +56,16 @@
                     <dd>{{ $organizer->business_phone ?: '—' }}</dd>
                 </div>
                 <div>
+                    <dt class="text-xs font-bold text-mute mb-1">City</dt>
+                    <dd>{{ $organizer->city ?: '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-xs font-bold text-mute mb-1">Pricing package</dt>
                     <dd class="font-semibold">{{ $organizer->package?->name ?: '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-bold text-mute mb-1">About the business</dt>
+                    <dd class="text-sm leading-relaxed whitespace-pre-line">{{ $organizer->business_description ?: '—' }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-bold text-mute mb-1">Commission rate</dt>
@@ -73,13 +81,28 @@
                     </dd>
                 </div>
                 <div>
-                    <dt class="text-xs font-bold text-mute mb-1">Documents</dt>
-                    <dd>
-                        @if($organizer->documents)
-                            <a href="{{ asset('storage/'.$organizer->documents) }}" target="_blank" class="text-brand font-semibold hover:underline">View document</a>
-                        @else
-                            —
+                    <dt class="text-xs font-bold text-mute mb-1">ID type</dt>
+                    <dd>{{ $organizer->idTypeLabel() ?: '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-bold text-mute mb-1">ID number</dt>
+                    <dd class="font-mono text-xs">{{ $organizer->id_number ?: '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-bold text-mute mb-1">Identity documents</dt>
+                    <dd class="flex flex-wrap gap-2 mt-1">
+                        @if($organizer->documentUrl('id_front'))
+                            <a href="{{ $organizer->documentUrl('id_front') }}" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand/10 text-brand text-xs font-bold hover:bg-brand/20">ID front</a>
                         @endif
+                        @if($organizer->documentUrl('id_back'))
+                            <a href="{{ $organizer->documentUrl('id_back') }}" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand/10 text-brand text-xs font-bold hover:bg-brand/20">ID back</a>
+                        @endif
+                        @if($organizer->documentUrl('business_license'))
+                            <a href="{{ $organizer->documentUrl('business_license') }}" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 text-ink text-xs font-bold hover:bg-slate-200">Business license</a>
+                        @endif
+                        @unless($organizer->hasIdentityDocuments())
+                            <span class="text-mute">No documents uploaded</span>
+                        @endunless
                     </dd>
                 </div>
                 @if($organizer->approval_status === 'approved')

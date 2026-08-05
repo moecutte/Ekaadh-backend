@@ -1,18 +1,18 @@
 @extends('layouts.customer-auth')
-@section('title', 'Create account')
-@section('subtitle', 'Create a free account to keep your tickets')
+@section('title', __('ui.create_account'))
+@section('subtitle', __('ui.create_account_subtitle'))
 
 @section('content')
 <form method="POST" action="{{ route('customer.register') }}" class="space-y-3" x-data="registerOtp()" @submit="onSubmit">
     @csrf
     <input type="hidden" name="otp_token" x-model="otpToken">
     <div>
-        <label class="text-xs font-bold text-mute block mb-1.5">Your name</label>
+        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.your_name') }}</label>
         <input name="name" value="{{ old('name') }}" required x-model="name"
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
     </div>
     <div>
-        <label class="text-xs font-bold text-mute block mb-1.5">Phone</label>
+        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone') }}</label>
         <div class="flex">
             <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
             <input type="tel" x-model="phoneLocal" required placeholder="61 234 5678"
@@ -21,24 +21,24 @@
         <input type="hidden" name="phone" :value="fullPhone">
     </div>
     <div>
-        <label class="text-xs font-bold text-mute block mb-1.5">Email <span class="font-medium text-slate-400">(optional)</span></label>
+        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.email') }} <span class="font-medium text-slate-400">{{ __('ui.optional') }}</span></label>
         <input type="email" name="email" value="{{ old('email') }}"
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
     </div>
     <div>
-        <label class="text-xs font-bold text-mute block mb-1.5">Password</label>
+        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.password') }}</label>
         <input type="password" name="password" required
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
     </div>
     <div>
-        <label class="text-xs font-bold text-mute block mb-1.5">Confirm password</label>
+        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.confirm_password') }}</label>
         <input type="password" name="password_confirmation" required
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
     </div>
 
     <div x-show="otpSent" x-cloak class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
         <p class="text-xs text-mute">
-            Enter the confirmation code sent to your phone.
+            {{ __('ui.confirmation_code') }}
             <span class="block text-brand font-semibold mt-1" x-show="otpHint" x-text="otpHint"></span>
         </p>
         <input
@@ -49,7 +49,7 @@
             placeholder="123456"
             class="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm tracking-[0.35em] text-center font-bold outline-none focus:border-brand"
         >
-        <button type="button" @click="resend" :disabled="busy" class="text-xs font-bold text-brand hover:underline">Resend code</button>
+        <button type="button" @click="resend" :disabled="busy" class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend_code') }}</button>
     </div>
 
     <p x-show="error" x-cloak class="text-sm text-red-600 font-semibold" x-text="error"></p>
@@ -68,12 +68,12 @@
         :disabled="busy"
         class="w-full rounded-xl bg-brand text-white font-extrabold py-3.5 text-sm hover:bg-brand-dark mt-2 disabled:opacity-60"
     >
-        <span x-text="busy ? 'Please wait…' : (otpSent ? 'Verify & create account' : 'Send confirmation code')"></span>
+        <span x-text="busy ? i18n.sendingCode : (otpSent ? i18n.verifyCreate : i18n.sendCode)"></span>
     </button>
 </form>
 <p class="text-center text-sm text-mute mt-5">
-    Already have an account?
-    <a href="{{ route('customer.login') }}" class="font-bold text-brand">Sign in</a>
+    {{ __('ui.already_have_account') }}
+    <a href="{{ route('customer.login') }}" class="font-bold text-brand">{{ __('ui.sign_in') }}</a>
 </p>
 
 <style>[x-cloak]{display:none!important}</style>
@@ -85,6 +85,13 @@ function registerOtp() {
     const otpVerifyUrl = @json(url('/api/v1/otp/verify'));
     const oldPhone = @json(old('phone', ''));
     const localFromOld = String(oldPhone || '').replace(/^\+?252/, '').replace(/\D/g, '');
+    const i18n = {
+        sendCode: @json(__('ui.send_confirmation_code')),
+        verifyCreate: @json(__('ui.verify_create_account')),
+        sendingCode: @json(__('ui.sending_code')),
+        couldNotSendCode: @json(__('ui.could_not_send_code')),
+        namePhoneRequired: @json(__('ui.name_phone_required')),
+    };
 
     return {
         name: @json(old('name', '')),
@@ -95,6 +102,7 @@ function registerOtp() {
         otpHint: '',
         error: '',
         busy: false,
+        i18n,
         get fullPhone() {
             const local = String(this.phoneLocal || '').replace(/\D/g, '');
             return local ? '+252' + local : '';
@@ -114,11 +122,11 @@ function registerOtp() {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.error = 'Could not send confirmation code (' + res.status + '). Refresh and try again.';
+                    this.error = i18n.couldNotSendCode + ' (' + res.status + ')';
                     return false;
                 }
                 if (!res.ok) {
-                    this.error = body.errors?.phone?.[0] || body.message || 'Could not send code.';
+                    this.error = body.errors?.phone?.[0] || body.message || i18n.couldNotSendCode;
                     return false;
                 }
                 this.otpSent = true;
@@ -127,7 +135,7 @@ function registerOtp() {
                     : (body.message || 'Code sent.');
                 return true;
             } catch (e) {
-                this.error = e.message || 'Could not send confirmation code.';
+                this.error = e.message || i18n.couldNotSendCode;
                 return false;
             } finally {
                 this.busy = false;
@@ -174,7 +182,7 @@ function registerOtp() {
         async onSubmit(e) {
             if (!this.fullPhone) {
                 e.preventDefault();
-                this.error = 'Enter your phone number.';
+                this.error = i18n.namePhoneRequired;
                 return;
             }
             if (!this.otpSent) {

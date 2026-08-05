@@ -196,8 +196,14 @@ class InvitationDesignController extends Controller
             'muted_color' => ['nullable', 'string', 'max:20'],
             'border_color' => ['nullable', 'string', 'max:20'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'graphic' => [$design ? 'nullable' : 'required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:8192'],
-            'thumbnail' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'graphic' => [$design ? 'nullable' : 'required', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:10240'],
+            'thumbnail' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:4096'],
+        ], [
+            'graphic.uploaded' => 'The graphic failed to upload. Use a PNG/JPG/WebP under 10MB and try again.',
+            'graphic.mimetypes' => 'The graphic must be a PNG, JPG, or WebP image.',
+            'graphic.max' => 'The graphic may not be greater than 10MB.',
+            'thumbnail.uploaded' => 'The thumbnail failed to upload. Use a PNG/JPG/WebP under 4MB.',
+            'thumbnail.mimetypes' => 'The thumbnail must be a PNG, JPG, or WebP image.',
         ]);
     }
 
@@ -282,9 +288,26 @@ class InvitationDesignController extends Controller
             return null;
         }
 
+        if (! $file->isValid()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'graphic' => ['The graphic failed to upload ('.$file->getErrorMessage().'). Try a smaller PNG/JPG under 10MB.'],
+            ]);
+        }
+
         $dir = public_path('images/invitations'.($subdir ? '/'.$subdir : ''));
         File::ensureDirectoryExists($dir);
-        $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'-'.Str::random(6).'.'.$file->getClientOriginalExtension();
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'png');
+        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $ext = match ($file->getMimeType()) {
+                'image/jpeg' => 'jpg',
+                'image/webp' => 'webp',
+                default => 'png',
+            };
+        }
+
+        $base = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'design';
+        $name = $base.'-'.Str::random(6).'.'.$ext;
         $file->move($dir, $name);
 
         return 'images/invitations'.($subdir ? '/'.$subdir : '').'/'.$name;

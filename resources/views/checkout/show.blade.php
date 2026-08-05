@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Checkout — '.$event->title)
+@section('title', __('ui.checkout').' — '.$event->title)
 
 @section('content')
 @php
@@ -77,7 +77,7 @@
 
         {{-- Step 1: Select Tickets --}}
         <div x-show="step === 1" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">Order Summary</h2>
+            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.order_summary') }}</h2>
 
             <div class="bg-white rounded-2xl border border-slate-100 p-5">
                 <div class="flex gap-4 pb-5 mb-5 border-b border-slate-100">
@@ -105,7 +105,7 @@
                         <div class="flex items-center justify-between gap-3 text-sm">
                             <div class="min-w-0">
                                 <p class="font-semibold text-ink">{{ $type->name }}</p>
-                                <p class="text-xs text-mute">${{ number_format((float) $type->price, 0) }} · {{ $type->remaining() }} left</p>
+                                <p class="text-xs text-mute">${{ number_format((float) $type->price, 0) }} · {{ __('ui.left', ['count' => $type->remaining()]) }}</p>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" @click="dec({{ $type->id }})" class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center font-bold text-ink hover:bg-page leading-none">−</button>
@@ -118,11 +118,11 @@
 
                 <div class="border-t border-slate-100 pt-4 space-y-2">
                     <div class="flex items-center justify-between text-sm" x-show="ticketCount > 0">
-                        <span class="text-mute">Service fee</span>
+                        <span class="text-mute">{{ __('ui.service_fee') }}</span>
                         <span class="font-bold">${{ number_format($serviceFee, 0) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="font-bold text-ink">Total</span>
+                        <span class="font-bold text-ink">{{ __('ui.total') }}</span>
                         <span class="text-2xl font-extrabold text-ink" x-text="'$' + total.toFixed(0)"></span>
                     </div>
                 </div>
@@ -134,28 +134,28 @@
                 :disabled="ticketCount < 1"
                 class="w-full bg-brand hover:bg-brand-dark disabled:bg-slate-100 disabled:text-mute text-white font-bold py-4 rounded-xl transition-colors"
             >
-                Continue to Your Details
+                {{ __('ui.continue_to_details') }}
             </button>
         </div>
 
         {{-- Step 2: Your Details --}}
         <div x-show="step === 2" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">Your Details</h2>
+            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.step_your_details') }}</h2>
             @if($signedIn)
                 <div class="rounded-2xl bg-brand/5 border border-brand/20 px-4 py-3 flex items-start gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                     <p class="text-sm text-ink leading-relaxed">
-                        Signed in as <strong>{{ $customer->name }}</strong>.
-                        Payment and tickets will use your account details.
+                        {{ __('ui.signed_in_as', ['name' => $customer->name]) }}.
+                        {{ __('ui.checkout_account_note') }}
                     </p>
                 </div>
             @else
-                <p class="text-sm text-mute">Guest checkout — no account needed. We'll confirm your phone, then send tickets via SMS and WhatsApp.</p>
+                <p class="text-sm text-mute">{{ __('ui.guest_checkout_note') }}</p>
             @endif
 
             <div class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-ink mb-1.5">Full Name</label>
+                    <label class="block text-sm font-bold text-ink mb-1.5">{{ __('ui.full_name') }}</label>
                     <input
                         type="text"
                         name="buyer_name"
@@ -168,8 +168,8 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-ink mb-1.5">
-                        Phone Number
-                        <span class="text-brand text-xs font-semibold">(Required for payment)</span>
+                        {{ __('ui.phone_number') }}
+                        <span class="text-brand text-xs font-semibold">{{ __('ui.phone_required_payment') }}</span>
                     </label>
                     <div class="flex">
                         <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
@@ -185,8 +185,8 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-ink mb-1.5">
-                        Email Address
-                        <span class="text-mute text-xs font-normal">(Optional)</span>
+                        {{ __('ui.email_address') }}
+                        <span class="text-mute text-xs font-normal">{{ __('ui.optional') }}</span>
                     </label>
                     <input
                         type="email"
@@ -203,7 +203,7 @@
 
             <div class="flex gap-3">
                 <button type="button" @click="step = 1" class="flex-1 border border-slate-200 text-ink font-bold py-3.5 rounded-xl hover:bg-page transition-colors">
-                    Back
+                    {{ __('ui.back') }}
                 </button>
                 <button
                     type="button"
@@ -211,22 +211,22 @@
                     :disabled="otpBusy"
                     class="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors"
                 >
-                    <span x-text="signedIn ? 'Continue to Payment' : (otpBusy ? 'Sending code…' : 'Continue')"></span>
+                    <span x-text="signedIn ? i18n.continueToPayment : (otpBusy ? i18n.sendingCode : i18n.continue)"></span>
                 </button>
             </div>
         </div>
 
         {{-- Step 3: Confirm OTP (guests only) --}}
         <div x-show="step === 3 && !signedIn" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">Confirm phone</h2>
+            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.confirm_phone') }}</h2>
             <p class="text-sm text-mute">
-                Enter the 6-digit code sent to <span class="font-bold text-ink" x-text="fullPhone"></span>.
+                {{ __('ui.enter_code_sent_to') }} <span class="font-bold text-ink" x-text="fullPhone"></span>.
                 <span class="block mt-1 text-brand font-semibold" x-show="otpHint" x-text="otpHint"></span>
             </p>
 
             <div class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-ink mb-1.5">Confirmation code</label>
+                    <label class="block text-sm font-bold text-ink mb-1.5">{{ __('ui.confirmation_code') }}</label>
                     <input
                         type="text"
                         inputmode="numeric"
@@ -243,22 +243,22 @@
                     :disabled="otpBusy"
                     class="w-full bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-bold py-4 rounded-xl"
                 >
-                    <span x-text="otpBusy ? 'Checking…' : 'Confirm & continue to payment'"></span>
+                    <span x-text="otpBusy ? i18n.checking : i18n.confirmContinuePayment"></span>
                 </button>
                 <button type="button" @click="resendCheckoutOtp" :disabled="otpBusy" class="w-full text-sm font-bold text-brand hover:underline py-2">
-                    Resend code
+                    {{ __('ui.resend_code') }}
                 </button>
             </div>
 
             <button type="button" @click="step = 2; otpToken = ''; otpCode = ''" class="w-full border border-slate-200 text-ink font-bold py-3 rounded-xl hover:bg-page transition-colors text-sm">
-                Back to Details
+                {{ __('ui.back_to_details') }}
             </button>
         </div>
 
         {{-- Payment step (3 signed-in / 4 guest) --}}
         <div x-show="step === paymentStep" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">Payment</h2>
-            <p class="text-sm text-mute">Choose your preferred mobile money method</p>
+            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.step_payment') }}</h2>
+            <p class="text-sm text-mute">{{ __('ui.choose_mobile_money') }}</p>
 
             <div class="grid grid-cols-2 gap-4">
                 <button
@@ -274,7 +274,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                     </div>
                     <p class="font-extrabold text-ink text-lg">Zaad</p>
-                    <p class="text-xs text-mute mt-0.5">Telesom mobile money</p>
+                    <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_telesom') }}</p>
                 </button>
 
                 <button
@@ -290,22 +290,14 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                     </div>
                     <p class="font-extrabold text-ink text-lg">eDahab</p>
-                    <p class="text-xs text-mute mt-0.5">Somtel mobile money</p>
+                    <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_somtel') }}</p>
                 </button>
             </div>
 
             <div x-show="payment" x-cloak class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
-                <p class="text-sm font-bold text-ink">
-                    @if($signedIn)
-                        Charge
-                        <span x-text="payment === 'zaad' ? 'Zaad (Telesom)' : 'eDahab (Somtel)'"></span>
-                        on your account phone
-                    @else
-                        Enter your
-                        <span x-text="payment === 'zaad' ? 'Zaad (Telesom)' : 'eDahab (Somtel)'"></span>
-                        number to charge
-                    @endif
-                </p>
+                <p class="text-sm font-bold text-ink"
+                   x-text="(signedIn ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', payment === 'zaad' ? 'Zaad (Telesom)' : 'eDahab (Somtel)')"
+                ></p>
                 <div class="flex">
                     <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
                     <input
@@ -317,14 +309,14 @@
                     >
                 </div>
                 <div class="flex items-center justify-between bg-page rounded-xl p-4">
-                    <span class="text-sm font-semibold text-mute">Total to charge</span>
+                    <span class="text-sm font-semibold text-mute">{{ __('ui.total_to_charge') }}</span>
                     <span class="text-xl font-extrabold text-ink" x-text="'$' + total.toFixed(0)"></span>
                 </div>
 
                 @if($allowForceFail ?? false)
                 <label class="flex items-center gap-2 text-xs text-mute cursor-pointer">
                     <input type="checkbox" name="force_fail" value="1" class="rounded border-slate-300">
-                    Simulate failed payment (local testing only)
+                    {{ __('ui.simulate_failed_payment') }}
                 </label>
                 @endif
 
@@ -333,16 +325,16 @@
                     :disabled="submitting || !payment || ticketCount < 1 || (!signedIn && !otpToken)"
                     class="w-full bg-brand hover:bg-brand-dark disabled:bg-slate-100 disabled:text-mute text-white font-extrabold py-4 rounded-xl transition-colors text-base"
                 >
-                    <span x-text="'Pay $' + total.toFixed(0) + ' with ' + (payment === 'zaad' ? 'Zaad' : 'eDahab')"></span>
+                    <span x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', payment === 'zaad' ? 'Zaad' : 'eDahab')"></span>
                 </button>
                 <div class="flex items-center justify-center gap-2 text-xs text-mute pt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    Your payment is encrypted and secure. A confirmation SMS will be sent immediately.
+                    {{ __('ui.encryption_sms_note') }}
                 </div>
             </div>
 
             <button type="button" @click="step = signedIn ? 2 : 3" class="w-full border border-slate-200 text-ink font-bold py-3 rounded-xl hover:bg-page transition-colors text-sm">
-                Back
+                {{ __('ui.back') }}
             </button>
         </div>
     </form>
@@ -372,14 +364,37 @@ function checkoutWizard() {
     const otpSendUrl = @json($otpSendUrl);
     const otpVerifyUrl = @json($otpVerifyUrl);
     const initialStep = {{ $errors->any() ? ($signedIn ? 3 : 4) : 1 }};
+    const i18n = {
+        stepSelectTickets: @json(__('ui.step_select_tickets')),
+        stepYourDetails: @json(__('ui.step_your_details')),
+        stepConfirm: @json(__('ui.step_confirm')),
+        stepPayment: @json(__('ui.step_payment')),
+        continueToPayment: @json(__('ui.continue_to_payment')),
+        sendingCode: @json(__('ui.sending_code')),
+        continue: @json(__('ui.continue')),
+        checking: @json(__('ui.checking')),
+        confirmContinuePayment: @json(__('ui.confirm_continue_payment')),
+        chargeAccountPhone: @json(__('ui.charge_account_phone')),
+        enterNumberToCharge: @json(__('ui.enter_number_to_charge')),
+        payWithMethod: @json(__('ui.pay_with_method')),
+        namePhoneRequired: @json(__('ui.name_phone_required')),
+        couldNotSendCode: @json(__('ui.could_not_send_code')),
+        codeSent: @json(__('ui.code_sent')),
+        testingCode: @json(__('ui.testing_code')),
+        enterConfirmationCode: @json(__('ui.enter_confirmation_code')),
+        couldNotVerifyCode: @json(__('ui.could_not_verify_code')),
+        invalidCode: @json(__('ui.invalid_code')),
+        confirmPhoneFirst: @json(__('ui.confirm_phone_first')),
+    };
 
     return {
         step: hasQty && initialStep === 1 ? 1 : initialStep,
         signedIn,
+        i18n,
         get stepLabels() {
             return this.signedIn
-                ? ['Select Tickets', 'Your Details', 'Payment']
-                : ['Select Tickets', 'Your Details', 'Confirm', 'Payment'];
+                ? [i18n.stepSelectTickets, i18n.stepYourDetails, i18n.stepPayment]
+                : [i18n.stepSelectTickets, i18n.stepYourDetails, i18n.stepConfirm, i18n.stepPayment];
         },
         get paymentStep() {
             return this.signedIn ? 3 : 4;
@@ -423,7 +438,7 @@ function checkoutWizard() {
         },
         async continueFromDetails() {
             if (!String(this.name || '').trim() || !String(this.phoneLocal || '').replace(/\D/g, '')) {
-                this.otpError = 'Name and phone are required';
+                this.otpError = i18n.namePhoneRequired;
                 return;
             }
             this.otpError = '';
@@ -449,19 +464,19 @@ function checkoutWizard() {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.otpError = 'Could not send confirmation code (' + res.status + '). Refresh and try again.';
+                    this.otpError = i18n.couldNotSendCode + ' (' + res.status + ')';
                     return false;
                 }
                 if (!res.ok) {
-                    this.otpError = body.errors?.phone?.[0] || body.errors?.buyer_phone?.[0] || body.message || 'Could not send code.';
+                    this.otpError = body.errors?.phone?.[0] || body.errors?.buyer_phone?.[0] || body.message || i18n.couldNotSendCode;
                     return false;
                 }
                 this.otpHint = body.debug_code
-                    ? ('Testing code: ' + body.debug_code)
-                    : (body.message || 'Code sent.');
+                    ? i18n.testingCode.replace(':code', body.debug_code)
+                    : (body.message || i18n.codeSent);
                 return true;
             } catch (e) {
-                this.otpError = e.message || 'Could not send confirmation code.';
+                this.otpError = e.message || i18n.couldNotSendCode;
                 return false;
             } finally {
                 this.otpBusy = false;
@@ -472,7 +487,7 @@ function checkoutWizard() {
         },
         async verifyCheckoutOtp() {
             if (!String(this.otpCode || '').trim()) {
-                this.otpError = 'Enter the confirmation code.';
+                this.otpError = i18n.enterConfirmationCode;
                 return;
             }
             this.otpBusy = true;
@@ -493,17 +508,17 @@ function checkoutWizard() {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.otpError = 'Could not verify code (' + res.status + ').';
+                    this.otpError = i18n.couldNotVerifyCode + ' (' + res.status + ')';
                     return;
                 }
                 if (!res.ok) {
-                    this.otpError = body.errors?.otp?.[0] || body.message || 'Invalid code.';
+                    this.otpError = body.errors?.otp?.[0] || body.message || i18n.invalidCode;
                     return;
                 }
                 this.otpToken = body.otp_token;
                 this.goStep(4);
             } catch (e) {
-                this.otpError = e.message || 'Could not verify code.';
+                this.otpError = e.message || i18n.couldNotVerifyCode;
             } finally {
                 this.otpBusy = false;
             }
@@ -515,7 +530,7 @@ function checkoutWizard() {
             }
             if (!this.signedIn && !this.otpToken) {
                 e.preventDefault();
-                this.otpError = 'Confirm your phone number first.';
+                this.otpError = i18n.confirmPhoneFirst;
                 this.step = 3;
                 return;
             }

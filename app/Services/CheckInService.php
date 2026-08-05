@@ -53,6 +53,14 @@ class CheckInService
                 ];
             }
 
+            if (! $ticket->event || $ticket->event->status !== 'published') {
+                return [
+                    'result' => 'invalid',
+                    'message' => 'This event is not open for check-in.',
+                    'ticket' => $ticket,
+                ];
+            }
+
             if ($ticket->status === 'cancelled') {
                 return [
                     'result' => 'invalid',
@@ -65,7 +73,7 @@ class CheckInService
                 return [
                     'result' => 'used',
                     'message' => 'Already checked in'
-                        .($ticket->checked_in_at ? ' at '.$ticket->checked_in_at->format('g:i A') : '.')
+                        .($ticket->checked_in_at ? ' at '.$ticket->checked_in_at->format('g:i A') : '')
                         .'.',
                     'ticket' => $ticket,
                 ];

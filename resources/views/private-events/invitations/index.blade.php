@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Invitations — '.$event->title)
+@section('title', __('ui.invitations').' — '.$event->title)
 
 @section('content')
 @php
@@ -23,16 +23,16 @@
                 <div class="min-w-0">
                     <a href="{{ route('private-events.show', $event) }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-mute hover:text-brand transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                        Event details
+                        {{ __('ui.event_details') }}
                     </a>
                     <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-2 truncate">{{ $event->title }}</h1>
-                    <p class="text-sm text-mute mt-1.5">{{ $remaining }} seats remaining · {{ $sold }}/{{ $capacity }} assigned</p>
+                    <p class="text-sm text-mute mt-1.5">{{ __('ui.seats_remaining_assigned', ['remaining' => $remaining, 'sold' => $sold, 'capacity' => $capacity]) }}</p>
                 </div>
             </div>
             <a href="{{ route('private-events.invitations.create', $event) }}"
                class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-brand text-white text-sm font-bold shadow-lg shadow-brand/25 hover:bg-brand-dark hover:-translate-y-0.5 transition-all shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                Send invitations
+                {{ __('ui.send_invitations') }}
             </a>
         </div>
 
@@ -48,27 +48,27 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-[10px] uppercase tracking-[0.14em] text-mute bg-slate-50/90 border-b border-slate-100">
-                        <th class="text-left px-5 py-3.5 font-bold">Guest</th>
-                        <th class="text-left px-5 py-3.5 font-bold">Tickets</th>
-                        <th class="text-left px-5 py-3.5 font-bold">Delivery</th>
-                        <th class="text-left px-5 py-3.5 font-bold">Status</th>
-                        <th class="text-left px-5 py-3.5 font-bold">Actions</th>
+                        <th class="text-left px-5 py-3.5 font-bold">{{ __('ui.guest') }}</th>
+                        <th class="text-left px-5 py-3.5 font-bold">{{ __('ui.tickets') }}</th>
+                        <th class="text-left px-5 py-3.5 font-bold">{{ __('ui.delivery') }}</th>
+                        <th class="text-left px-5 py-3.5 font-bold">{{ __('ui.status') }}</th>
+                        <th class="text-left px-5 py-3.5 font-bold">{{ __('ui.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($invitations as $invite)
                         <tr class="border-t border-slate-50 align-top hover:bg-brand-soft/30 transition-colors">
                             <td class="px-5 py-4">
-                                <div class="font-bold text-ink">{{ $invite->guest_name ?: 'Guest' }}</div>
+                                <div class="font-bold text-ink">{{ $invite->guest_name ?: __('ui.guest') }}</div>
                                 <div class="text-xs text-mute mt-0.5">{{ $invite->guest_phone }}</div>
                                 @if($invite->opened_at)
-                                    <div class="text-[11px] text-brand mt-1.5 font-semibold">Opened {{ $invite->opened_at->diffForHumans() }}</div>
+                                    <div class="text-[11px] text-brand mt-1.5 font-semibold">{{ __('ui.opened_ago', ['time' => $invite->opened_at->diffForHumans()]) }}</div>
                                 @endif
                             </td>
                             <td class="px-5 py-4">
                                 <div class="font-semibold text-ink">{{ $invite->quantity }} × {{ $invite->ticketType?->name }}</div>
                                 <a href="{{ $invite->publicUrl() }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-brand mt-1 hover:underline">
-                                    Open guest link
+                                    {{ __('ui.open_guest_link') }}
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                 </a>
                             </td>
@@ -88,7 +88,7 @@
                             <td class="px-5 py-4">
                                 <span class="text-[11px] font-bold px-2.5 py-1 rounded-full border
                                     {{ $invite->status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100' }}">
-                                    {{ ucfirst($invite->status) }}
+                                    {{ $invite->status === 'active' ? __('ui.active') : __('ui.revoked') }}
                                 </span>
                             </td>
                             <td class="px-5 py-4">
@@ -96,16 +96,16 @@
                                     <div class="flex flex-col gap-2.5 items-start">
                                         <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
                                             @csrf
-                                            <button class="text-xs font-bold text-brand hover:underline">Resend</button>
+                                            <button class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend') }}</button>
                                         </form>
                                         <form method="POST" action="{{ route('private-events.invitations.phone', [$event, $invite]) }}" class="flex gap-1.5 items-center">
                                             @csrf
                                             <input name="phone" value="{{ $invite->guest_phone }}" class="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-brand">
-                                            <button class="text-xs font-bold text-mute hover:text-brand">Update</button>
+                                            <button class="text-xs font-bold text-mute hover:text-brand">{{ __('ui.update') }}</button>
                                         </form>
-                                        <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm('Revoke this invitation?')">
+                                        <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm(@js(__('ui.revoke_confirm')))">
                                             @csrf
-                                            <button class="text-xs font-bold text-red-400 hover:text-red-600">Revoke</button>
+                                            <button class="text-xs font-bold text-red-400 hover:text-red-600">{{ __('ui.revoke') }}</button>
                                         </form>
                                     </div>
                                 @else
@@ -119,8 +119,8 @@
                                 <div class="mx-auto w-12 h-12 rounded-2xl bg-brand-soft flex items-center justify-center mb-3">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                 </div>
-                                <p class="text-sm text-mute">No invitations yet.</p>
-                                <a href="{{ route('private-events.invitations.create', $event) }}" class="inline-block mt-2 text-sm font-bold text-brand hover:underline">Send the first batch</a>
+                                <p class="text-sm text-mute">{{ __('ui.no_invitations_yet') }}</p>
+                                <a href="{{ route('private-events.invitations.create', $event) }}" class="inline-block mt-2 text-sm font-bold text-brand hover:underline">{{ __('ui.send_first_batch') }}</a>
                             </td>
                         </tr>
                     @endforelse
@@ -133,12 +133,12 @@
                 <article class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="font-bold text-ink truncate">{{ $invite->guest_name ?: 'Guest' }}</p>
+                            <p class="font-bold text-ink truncate">{{ $invite->guest_name ?: __('ui.guest') }}</p>
                             <p class="text-xs text-mute mt-0.5">{{ $invite->guest_phone }}</p>
                         </div>
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0
                             {{ $invite->status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100' }}">
-                            {{ ucfirst($invite->status) }}
+                            {{ $invite->status === 'active' ? __('ui.active') : __('ui.revoked') }}
                         </span>
                     </div>
                     <div class="flex items-center justify-between text-xs">
@@ -147,22 +147,22 @@
                     </div>
                     @if($invite->status === 'active')
                         <div class="flex flex-wrap gap-3 pt-1 border-t border-slate-50">
-                            <a href="{{ $invite->publicUrl() }}" target="_blank" class="text-xs font-bold text-brand">Open link</a>
+                            <a href="{{ $invite->publicUrl() }}" target="_blank" class="text-xs font-bold text-brand">{{ __('ui.open_link') }}</a>
                             <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
                                 @csrf
-                                <button class="text-xs font-bold text-brand">Resend</button>
+                                <button class="text-xs font-bold text-brand">{{ __('ui.resend') }}</button>
                             </form>
-                            <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm('Revoke this invitation?')">
+                            <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm(@js(__('ui.revoke_confirm')))">
                                 @csrf
-                                <button class="text-xs font-bold text-red-400">Revoke</button>
+                                <button class="text-xs font-bold text-red-400">{{ __('ui.revoke') }}</button>
                             </form>
                         </div>
                     @endif
                 </article>
             @empty
                 <div class="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-mute">
-                    No invitations yet.
-                    <a href="{{ route('private-events.invitations.create', $event) }}" class="block mt-2 font-bold text-brand">Send the first batch</a>
+                    {{ __('ui.no_invitations_yet') }}
+                    <a href="{{ route('private-events.invitations.create', $event) }}" class="block mt-2 font-bold text-brand">{{ __('ui.send_first_batch') }}</a>
                 </div>
             @endforelse
         </div>

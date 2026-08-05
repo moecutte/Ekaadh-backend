@@ -139,7 +139,13 @@ class TicketDesigns
 
     public static function templateView(array $design): string
     {
-        if (($design['render_mode'] ?? '') === 'overlay' && ! empty($design['graphic_url'])) {
+        // Prefer uploaded graphic + field overlays whenever a design image exists,
+        // even if render_mode was left as "blade" in older rows.
+        if (! empty($design['graphic_url']) || ! empty($design['graphic_path'])) {
+            return 'tickets.templates.overlay';
+        }
+
+        if (($design['render_mode'] ?? '') === 'overlay') {
             return 'tickets.templates.overlay';
         }
 

@@ -59,7 +59,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/{event}/invitations/{invitation}/revoke', [PrivateEventController::class, 'revokeInvitation']);
         });
 
-        Route::middleware('role:staff,admin')->prefix('staff')->group(function () {
+        Route::middleware(['active', 'role:staff,admin'])->prefix('staff')->group(function () {
             Route::get('/events', [CheckInController::class, 'events']);
             Route::get('/events/{event}/stats', [CheckInController::class, 'stats']);
             Route::post('/check-in', [CheckInController::class, 'scan'])->middleware('throttle:check-in');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrganizerPackage;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,8 @@ use Illuminate\View\View;
 
 class OrganizerPackageController extends Controller
 {
+    public const FRONT_VISIBILITY_KEY = 'show_organizer_packages_on_front';
+
     public function index(Request $request): View
     {
         $query = OrganizerPackage::query()->ordered();
@@ -27,8 +30,25 @@ class OrganizerPackageController extends Controller
         }
 
         $packages = $query->withCount('organizers')->paginate(20)->withQueryString();
+        $showOnFront = filter_var(
+            Setting::getValue(self::FRONT_VISIBILITY_KEY, '0'),
+            FILTER_VALIDATE_BOOLEAN
+        );
 
-        return view('admin.packages.index', compact('packages'));
+        return view('admin.packages.index', compact('packages', 'showOnFront'));
+    }
+
+    public function updateFrontVisibility(Request $request): RedirectResponse
+    {
+        $show = $request->boolean('show_on_front');
+        Setting::setValue(self::FRONT_VISIBILITY_KEY, $show ? '1' : '0');
+
+        return back()->with(
+            'success',
+            $show
+                ? 'Pricing packages are now visible on the Create Event web page.'
+                : 'Pricing packages are hidden from the Create Event web page.'
+        );
     }
 
     public function store(Request $request): RedirectResponse

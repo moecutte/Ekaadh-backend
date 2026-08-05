@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Ekaadh') — Find & Book Events</title>
+    <title>@yield('title', 'Ekaadh') — {{ __('ui.find_book_events') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
@@ -33,6 +33,14 @@
     @livewireStyles
 </head>
 <body class="bg-page text-ink antialiased min-h-screen flex flex-col">
+    @php
+        $locale = app()->getLocale();
+        $onOrganizers = request()->routeIs('organizers');
+        $onCreateTicket = request()->routeIs('create-ticket') || request()->routeIs('private-events.*');
+        $authUser = auth()->user();
+        $isCustomer = $authUser && $authUser->isCustomer();
+        $isPortalUser = $authUser && ($authUser->isAdmin() || $authUser->isOrganizer());
+    @endphp
     <nav class="sticky top-0 z-50 bg-ink shadow-xl">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -40,27 +48,23 @@
                     <img src="{{ asset('images/ekaadh-logo-white.png') }}" alt="ekaadh" class="h-8 w-auto">
                 </a>
 
-                @php
-                    $onOrganizers = request()->routeIs('organizers');
-                    $onCreateTicket = request()->routeIs('create-ticket') || request()->routeIs('private-events.*');
-                    $authUser = auth()->user();
-                    $isCustomer = $authUser && $authUser->isCustomer();
-                    $isPortalUser = $authUser && ($authUser->isAdmin() || $authUser->isOrganizer());
-                @endphp
-
                 <div class="hidden md:flex items-center gap-7">
-                    <a href="{{ route('events.index') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ request()->routeIs('events.index') ? 'text-white' : '' }}">Browse Events</a>
+                    <a href="{{ route('events.index') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ request()->routeIs('events.index') ? 'text-white' : '' }}">{{ __('ui.browse_events') }}</a>
                     @unless($isCustomer)
-                        <a href="{{ route('organizers') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onOrganizers ? 'text-white' : '' }}">Create Event</a>
-                        <a href="{{ route('create-ticket') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onCreateTicket ? 'text-white' : '' }}">Create Ticket</a>
+                        <a href="{{ route('organizers') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onOrganizers ? 'text-white' : '' }}">{{ __('ui.create_event') }}</a>
+                        <a href="{{ route('create-ticket') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onCreateTicket ? 'text-white' : '' }}">{{ __('ui.create_ticket') }}</a>
                     @endunless
                 </div>
 
                 <div class="hidden md:flex items-center gap-3">
+                    <div class="flex items-center rounded-lg bg-white/10 p-0.5 text-xs font-bold" role="group" aria-label="{{ __('ui.language') }}">
+                        <a href="{{ route('locale.switch', 'en') }}" class="px-2.5 py-1 rounded-md transition-colors {{ $locale === 'en' ? 'bg-white text-ink' : 'text-slate-300 hover:text-white' }}">{{ __('ui.english') }}</a>
+                        <a href="{{ route('locale.switch', 'so') }}" class="px-2.5 py-1 rounded-md transition-colors {{ $locale === 'so' ? 'bg-white text-ink' : 'text-slate-300 hover:text-white' }}">{{ __('ui.somali') }}</a>
+                    </div>
                     @if(! $onOrganizers)
                         <a href="{{ route('tickets.index') }}" class="flex items-center gap-1.5 text-slate-300 hover:text-white text-sm font-medium transition-colors px-1 {{ request()->routeIs('tickets.*') ? 'text-white' : '' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            Booked Events
+                            {{ __('ui.booked_events') }}
                         </a>
                         @if($isCustomer)
                             @php $firstName = explode(' ', trim($authUser->name))[0]; @endphp
@@ -80,76 +84,80 @@
                                     <a href="{{ route('private-events.index') }}" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-ink hover:bg-page transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                                         <span>
-                                            <span class="block font-semibold">Tickets</span>
-                                            <span class="block text-[11px] text-mute">Private invitations you created</span>
+                                            <span class="block font-semibold">{{ __('ui.tickets') }}</span>
+                                            <span class="block text-[11px] text-mute">{{ __('ui.tickets_subtitle') }}</span>
                                         </span>
                                     </a>
                                     <a href="{{ route('tickets.index') }}" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-ink hover:bg-page transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                         <span>
-                                            <span class="block font-semibold">Events</span>
-                                            <span class="block text-[11px] text-mute">Events you booked</span>
+                                            <span class="block font-semibold">{{ __('ui.events') }}</span>
+                                            <span class="block text-[11px] text-mute">{{ __('ui.events_subtitle') }}</span>
                                         </span>
                                     </a>
                                     <form method="POST" action="{{ route('customer.logout') }}">
                                         @csrf
                                         <button type="submit" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                            Sign Out
+                                            {{ __('ui.sign_out') }}
                                         </button>
                                     </form>
                                 </div>
                             </div>
                         @elseif($isPortalUser)
-                            <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="bg-white/10 hover:bg-white/15 text-white text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors">Dashboard</a>
+                            <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="bg-white/10 hover:bg-white/15 text-white text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors">{{ __('ui.dashboard') }}</a>
                         @else
-                            <a href="{{ route('customer.login') }}" class="bg-brand hover:bg-brand-dark text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors">Sign In</a>
+                            <a href="{{ route('customer.login') }}" class="bg-brand hover:bg-brand-dark text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors">{{ __('ui.sign_in') }}</a>
                         @endif
                     @elseif($isPortalUser)
-                        <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="bg-white/10 hover:bg-white/15 text-white text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors">Dashboard</a>
+                        <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="bg-white/10 hover:bg-white/15 text-white text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors">{{ __('ui.dashboard') }}</a>
                     @endif
                 </div>
 
-                <div class="flex md:hidden items-center gap-2">
+                <div class="flex md:hidden items-center gap-1">
+                    <div class="flex items-center rounded-lg bg-white/10 p-0.5 text-[11px] font-bold" role="group" aria-label="{{ __('ui.language') }}">
+                        <a href="{{ route('locale.switch', 'en') }}" class="px-2 py-1 rounded-md transition-colors {{ $locale === 'en' ? 'bg-white text-ink' : 'text-slate-300' }}">{{ __('ui.english') }}</a>
+                        <a href="{{ route('locale.switch', 'so') }}" class="px-2 py-1 rounded-md transition-colors {{ $locale === 'so' ? 'bg-white text-ink' : 'text-slate-300' }}">{{ __('ui.somali') }}</a>
+                    </div>
                     @if(! $onOrganizers)
-                        <a href="{{ route('tickets.index') }}" class="text-slate-300 p-2" aria-label="Booked Events">
+                        <a href="{{ route('tickets.index') }}" class="text-slate-300 p-2" aria-label="{{ __('ui.booked_events') }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         </a>
                     @endif
-                    <button type="button" id="mobile-nav-toggle" class="text-white p-2" aria-label="Open menu">
+                    <button type="button" id="mobile-nav-toggle" class="text-white p-2" aria-label="{{ __('ui.open_menu') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
                 </div>
             </div>
         </div>
         <div id="mobile-nav" class="hidden md:hidden bg-[#0a1220] border-t border-white/10 px-4 pb-4 pt-2 space-y-1">
-            <a href="{{ route('events.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Browse Events</a>
+            <a href="{{ route('events.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.browse_events') }}</a>
             @unless($isCustomer)
-                <a href="{{ route('organizers') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Create Event</a>
-                <a href="{{ route('create-ticket') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Create Ticket</a>
+                <a href="{{ route('organizers') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.create_event') }}</a>
+                <a href="{{ route('create-ticket') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.create_ticket') }}</a>
             @endunless
             @if(! $onOrganizers)
-                <a href="{{ route('tickets.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Booked Events</a>
+                <a href="{{ route('tickets.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.booked_events') }}</a>
                 @if($isCustomer)
                     <div class="pt-2 border-t border-white/10 mt-1">
-                        <a href="{{ route('private-events.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Tickets</a>
-                        <a href="{{ route('tickets.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">Events</a>
-                        <p class="text-slate-400 text-xs px-0.5 mb-2">Signed in as {{ $authUser->name }}</p>
+                        <a href="{{ route('private-events.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.tickets') }}</a>
+                        <a href="{{ route('tickets.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.events') }}</a>
+                        <p class="text-slate-400 text-xs px-0.5 mb-2">{{ __('ui.signed_in_as', ['name' => $authUser->name]) }}</p>
                         <form method="POST" action="{{ route('customer.logout') }}">
                             @csrf
                             <button type="submit" class="w-full flex items-center justify-center gap-2 border border-white/20 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                Sign Out
+                                {{ __('ui.sign_out') }}
                             </button>
                         </form>
                     </div>
                 @elseif($isPortalUser)
-                    <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="block text-brand hover:text-white py-2.5 text-sm font-bold">Dashboard</a>
+                    <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="block text-brand hover:text-white py-2.5 text-sm font-bold">{{ __('ui.dashboard') }}</a>
                 @else
-                    <a href="{{ route('customer.login') }}" class="w-full mt-2 block text-center bg-brand text-white font-bold py-3 rounded-xl text-sm">Sign In</a>
+                    <a href="{{ route('customer.login') }}" class="w-full mt-2 block text-center bg-brand text-white font-bold py-3 rounded-xl text-sm">{{ __('ui.sign_in') }}</a>
                 @endif
             @elseif($isPortalUser)
-                <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="block text-brand hover:text-white py-2.5 text-sm font-bold">Dashboard</a>
+                <a href="{{ $authUser->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="block text-brand hover:text-white py-2.5 text-sm font-bold">{{ __('ui.dashboard') }}</a>
             @endif
         </div>
     </nav>
@@ -193,41 +201,41 @@
                     <div class="mb-3">
                         <img src="{{ asset('images/ekaadh-logo-white.png') }}" alt="ekaadh" class="h-8 w-auto">
                     </div>
-                    <p class="text-sm leading-relaxed">Discover events across Somalia &amp; Somaliland. Buy tickets with Zaad or eDahab.</p>
+                    <p class="text-sm leading-relaxed">{{ __('ui.footer_tagline') }}</p>
                 </div>
                 <div>
-                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">Explore</p>
+                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">{{ __('ui.explore') }}</p>
                     <div class="flex flex-col gap-2 text-sm">
-                        <a href="{{ route('events.index') }}" class="hover:text-white transition">All events</a>
-                        <a href="{{ route('events.index', ['category' => 'Music']) }}" class="hover:text-white transition">Music</a>
-                        <a href="{{ route('events.index', ['category' => 'Sports']) }}" class="hover:text-white transition">Sports</a>
+                        <a href="{{ route('events.index') }}" class="hover:text-white transition">{{ __('ui.all_events') }}</a>
+                        <a href="{{ route('events.index', ['category' => 'Music']) }}" class="hover:text-white transition">{{ __('ui.music') }}</a>
+                        <a href="{{ route('events.index', ['category' => 'Sports']) }}" class="hover:text-white transition">{{ __('ui.sports') }}</a>
                     </div>
                 </div>
                 <div>
-                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">Host &amp; organize</p>
+                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">{{ __('ui.host_organize') }}</p>
                     <div class="flex flex-col gap-2 text-sm">
                         @unless($isCustomer)
-                            <a href="{{ route('organizers') }}" class="hover:text-white transition">Create Event</a>
-                            <a href="{{ route('create-ticket') }}" class="hover:text-white transition">Create Ticket</a>
+                            <a href="{{ route('organizers') }}" class="hover:text-white transition">{{ __('ui.create_event') }}</a>
+                            <a href="{{ route('create-ticket') }}" class="hover:text-white transition">{{ __('ui.create_ticket') }}</a>
                         @endunless
-                        <a href="{{ route('tickets.index') }}" class="hover:text-white transition">Booked Events</a>
+                        <a href="{{ route('tickets.index') }}" class="hover:text-white transition">{{ __('ui.booked_events') }}</a>
                         @guest
-                            <a href="{{ route('organizer.register') }}" class="hover:text-white transition">Organizer account</a>
-                            <a href="{{ route('organizer.login') }}" class="hover:text-white transition">Organizer login</a>
+                            <a href="{{ route('organizer.register') }}" class="hover:text-white transition">{{ __('ui.organizer_account') }}</a>
+                            <a href="{{ route('organizer.login') }}" class="hover:text-white transition">{{ __('ui.organizer_login') }}</a>
                         @else
                             @if(auth()->user()->isAdmin() || auth()->user()->isOrganizer())
-                                <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="hover:text-white transition">Go to dashboard</a>
+                                <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('organizer.dashboard') }}" class="hover:text-white transition">{{ __('ui.go_to_dashboard') }}</a>
                             @endif
                         @endguest
                     </div>
                 </div>
                 <div>
-                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">Pay with</p>
+                    <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">{{ __('ui.pay_with') }}</p>
                     <p class="text-sm">Zaad · eDahab</p>
-                    <p class="text-xs mt-2 text-slate-500">Your Event · Your Ticket</p>
+                    <p class="text-xs mt-2 text-slate-500">{{ __('ui.your_event_ticket') }}</p>
                 </div>
             </div>
-            <div class="border-t border-white/10 pt-6 text-center text-xs text-slate-500">&copy; {{ date('Y') }} Ekaadh. All rights reserved.</div>
+            <div class="border-t border-white/10 pt-6 text-center text-xs text-slate-500">&copy; {{ date('Y') }} Ekaadh. {{ __('ui.all_rights') }}</div>
         </div>
     </footer>
     @livewireScripts

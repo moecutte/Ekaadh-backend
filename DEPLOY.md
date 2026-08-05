@@ -1,48 +1,39 @@
-# Ekaadh — Bluehost deploy guide
+# Ekaadh — production deploy (Coolify + Nixpacks)
 
-Ekaadh is a Laravel (Blade + Livewire) + Flutter e-ticketing app. Bluehost **shared hosting** has no Redis — use database drivers for session, cache, and queue.
+Ekaadh is a Laravel (Blade + Livewire) + Flutter e-ticketing app. This guide targets **Coolify on Hetzner** with the **Nixpacks** build pack.
+
+GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
 
 ## Requirements
 
-- PHP 8.2+ with extensions: `bcmath`, `ctype`, `curl`, `dom`, `fileinfo`, `json`, `mbstring`, `openssl`, `pdo_mysql`, `tokenizer`, `xml`
-- MySQL 8 / MariaDB
-- Composer (local build, then upload — or SSH Composer if available)
-- Cron access
+- Coolify on a Hetzner VPS
+- Domain DNS A/AAAA pointing at the server
+- MySQL 8 / MariaDB (Coolify database resource)
+- PHP 8.3+ via Nixpacks (extensions: `bcmath`, `ctype`, `curl`, `dom`, `fileinfo`, `gd`, `json`, `mbstring`, `openssl`, `pdo_mysql`, `tokenizer`, `xml`, `zip`)
 
-## 1. Prepare the release locally
+## 1. Coolify application
 
-```bash
-cd Ekaadh-backend
-composer install --no-dev --optimize-autoloader
-php artisan config:clear
-# Do NOT commit .env
-```
+1. New **Application** → connect `moecutte/Ekaadh-backend`.
+2. Build pack: **Nixpacks** (leave Dockerfile unused).
+3. Base directory: `/` (repo root is the Laravel app).
+4. Attach a **MySQL** resource and link it (or paste DB env vars manually).
+5. Persistent storage for uploads: mount a volume on `storage/app` (and keep `storage/logs` writable).
+6. Set the domain + enable HTTPS (Let’s Encrypt).
 
-Upload the project (FTP/SFTP or Git) **excluding** `.env`, `node_modules`, and local `storage/logs`.
+## 2. Environment variables
 
-## 2. Document root
-
-Point the domain (or subdomain) document root to:
-
-```text
-/path/to/Ekaadh-backend/public
-```
-
-Keep `vendor/`, `.env`, `storage/`, and `app/` **outside** the public web root (standard Laravel layout).
-
-## 3. Production `.env`
-
-Copy `.env.example` → `.env` on the server and set:
+Set these in Coolify (do **not** commit `.env`):
 
 ```env
 APP_NAME=Ekaadh
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://your-domain.com
-APP_KEY=base64:...   # php artisan key:generate --show  (once)
+APP_URL=https://YOUR_DOMAIN
+APP_KEY=                    # generate once (see below)
 
 DB_CONNECTION=mysql
-DB_HOST=localhost
+DB_HOST=...                 # Coolify MySQL hostname
+DB_PORT=3306
 DB_DATABASE=...
 DB_USERNAME=...
 DB_PASSWORD=...
@@ -52,36 +43,36 @@ SESSION_ENCRYPT=true
 SESSION_SECURE_COOKIE=true
 QUEUE_CONNECTION=database
 CACHE_STORE=database
+FILESYSTEM_DISK=local
 
 PAYMENT_GATEWAY=mock
-# When Zaad/eDahab credentials arrive:
-# PAYMENT_GATEWAY=zaad   (or edahab)
-# ZAAD_ENABLED=true
-# ZAAD_MERCHANT_ID=...
-# ZAAD_API_KEY=...
-
-TICKET_QR_SECRET=long-random-string-here
-CORS_ALLOWED_ORIGINS=https://your-domain.com
+DEFAULT_COMMISSION_RATE=10
+SERVICE_FEE=1
+TICKET_QR_SECRET=           # long random string; keep stable after tickets exist
+CORS_ALLOWED_ORIGINS=https://YOUR_DOMAIN
 SANCTUM_TOKEN_EXPIRATION=43200
 
-MAIL_MAILER=smtp
-MAIL_HOST=...
-MAIL_PORT=587
-MAIL_USERNAME=...
-MAIL_PASSWORD=...
-MAIL_FROM_ADDRESS=tickets@your-domain.com
-MAIL_FROM_NAME=Ekaadh
+MAIL_MAILER=log
+# MAIL_MAILER=smtp
+# MAIL_HOST=...
+# MAIL_PORT=587
+# MAIL_USERNAME=...
+# MAIL_PASSWORD=...
+# MAIL_FROM_ADDRESS=tickets@YOUR_DOMAIN
+# MAIL_FROM_NAME=Ekaadh
 ```
 
-Generate key if empty:
+Generate `APP_KEY` once (local or Coolify terminal):
 
 ```bash
-php artisan key:generate
+php artisan key:generate --show
 ```
 
-> Rotating `APP_KEY` or `TICKET_QR_SECRET` invalidates existing ticket QR signatures — issue new tickets or keep the old secret.
+Paste the value into Coolify env. Rotating `APP_KEY` or `TICKET_QR_SECRET` invalidates existing ticket QR signatures.
 
-## 4. Database & caches
+## 3. First deploy — migrate + seed (once)
+
+After the first successful Nixpacks deploy, open the Coolify **terminal** for the app (or a one-shot post-deploy command) and run:
 
 ```bash
 php artisan migrate --force
@@ -92,70 +83,80 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-`db:seed` creates admin/demo users, settings, private categories (Aroos / Meher / Xaflad / Casho), built-in invitation designs, and sample public events. Change seeded passwords immediately on production.
-
-Ensure `storage/` and `bootstrap/cache/` are writable by the web user (`755`/`775` as required by Bluehost).
-
-## 5. Cron (queue + schedule)
-
-In cPanel → Cron Jobs, every minute:
+Or use the helper script (first deploy only — it includes seed):
 
 ```bash
-cd /home/USER/path/to/Ekaadh-backend && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+bash scripts/prepare-production.sh
 ```
 
-`routes/console.php` runs `queue:work --stop-when-empty` each minute so ticket emails / jobs process without a long-lived daemon.
+`db:seed` creates:
 
-## 6. SSL
+| Data | Source |
+|------|--------|
+| Admin / customer / staff users | `DatabaseSeeder` |
+| Organizer packages (Free / Pro / Enterprise) | `OrganizerPackageSeeder` |
+| Public + private categories | `CategorySeeder` |
+| Invitation designs | `InvitationDesignSeeder` |
+| Approved organizer + sample published events | `EventSeeder` |
+| Platform settings (fees, packages hidden on front, etc.) | `DatabaseSeeder` |
 
-Enable HTTPS in Bluehost and force HTTPS (cPanel “Force HTTPS Redirect” or `.htaccess` in `public/`). The app trusts proxies for TLS termination.
-
-## 7. Flutter app
-
-Point the mobile API base URL at production:
+**Do not re-run `db:seed` on every deploy.** Later releases should only run:
 
 ```bash
-flutter build apk --dart-define=API_BASE_URL=https://your-domain.com/api/v1
+php artisan migrate --force
+php artisan storage:link
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 ```
 
-Android emulator local default remains `http://10.0.2.2:8000/api/v1`.
-
-## 8. Post-deploy smoke checklist
-
-- [ ] `GET /up` health OK  
-- [ ] Home / browse / event detail load  
-- [ ] Checkout mock payment succeeds (local `force_fail` is **disabled** in production)  
-- [ ] Confirmation + `/t/{code}` ticket QR  
-- [ ] My Tickets with **phone + order number**  
-- [ ] Organizer login + dashboard  
-- [ ] Admin login + approvals  
-- [ ] Staff API login + check-in (`POST /api/v1/staff/check-in`)  
-- [ ] Rate limit: rapid login attempts return 429  
-
-## 9. Payment gateways
-
-| Mode | Env | Behavior |
-|------|-----|----------|
-| Mock (MVP) | `PAYMENT_GATEWAY=mock` | Instant success; `force_fail` only when `APP_ENV=local` + `APP_DEBUG=true` |
-| Zaad stub | `PAYMENT_GATEWAY=zaad` + `ZAAD_ENABLED=true` + keys | Ready to plug merchant API |
-| eDahab stub | `PAYMENT_GATEWAY=edahab` + `EDAHAB_ENABLED=true` + keys | Ready to plug merchant API |
-
-Both web and Flutter use the same checkout API — swapping the gateway does not require an app rebuild.
-
-## 10. Rollback
-
-1. Restore previous release folder / Git tag  
-2. Restore DB dump if migrations changed  
-3. `php artisan config:cache`  
-4. Re-run smoke checklist  
-
-## Seed accounts (local / staging only)
+### Seed accounts (change immediately on production)
 
 | Role | Login | Password |
 |------|-------|----------|
-| Customer | `customer@ekaadh.com` / `+252612345678` | `password` |
 | Admin | `admin@ekaadh.com` | `password` |
 | Staff | `staff@ekaadh.com` | `password` |
 | Organizer | `organizer@ekaadh.com` | `password` |
+| Customer | `customer@ekaadh.com` / `+252612345678` | `password` |
 
-**Never** leave these passwords on production — change or disable after first deploy.
+## 4. Cron (queue + schedule)
+
+In Coolify, add a scheduled command **every minute**:
+
+```bash
+php artisan schedule:run
+```
+
+`routes/console.php` runs `queue:work --stop-when-empty` each minute so ticket emails / jobs process without a long-lived worker.
+
+## 5. Flutter app
+
+Point the mobile API at production:
+
+```bash
+flutter build apk --dart-define=API_BASE_URL=https://YOUR_DOMAIN/api/v1
+```
+
+## 6. Post-deploy smoke checklist
+
+- [ ] `GET /up` health OK
+- [ ] Home / browse / event detail load (seeded events + cover images under `public/images/events`)
+- [ ] Checkout mock payment succeeds
+- [ ] Confirmation + `/t/{code}` ticket QR
+- [ ] My Tickets with phone + order number
+- [ ] Organizer login + dashboard
+- [ ] Admin login + approvals + packages screen
+- [ ] Staff API login + check-in
+- [ ] Seeded passwords changed
+
+## 7. Payment gateways
+
+| Mode | Env | Behavior |
+|------|-----|----------|
+| Mock (MVP) | `PAYMENT_GATEWAY=mock` | Instant success |
+| Zaad stub | `PAYMENT_GATEWAY=zaad` + `ZAAD_ENABLED=true` + keys | Ready when merchant API is plugged in |
+| eDahab stub | `PAYMENT_GATEWAY=edahab` + `EDAHAB_ENABLED=true` + keys | Ready when merchant API is plugged in |
+
+## Bluehost / shared hosting (legacy)
+
+Shared hosting without Redis: use database drivers for session, cache, and queue (same as above). Point the document root at `public/`. Use cPanel cron every minute for `php artisan schedule:run`. Prefer Coolify/Nixpacks for new production hosts.
