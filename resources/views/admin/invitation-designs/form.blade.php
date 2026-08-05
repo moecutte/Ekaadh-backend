@@ -16,7 +16,7 @@
 @endif
 @if ($errors->any())
     <div class="mt-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-3">
-        <p class="font-bold mb-1">Could not save field</p>
+        <p class="font-bold mb-1">Could not save</p>
         <ul class="list-disc pl-5 space-y-0.5">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
@@ -62,15 +62,15 @@
         storeFieldUrl: @js($design->exists ? route('admin.invitation-designs.fields.store', $design) : null),
      })">
 
+<div class="grid lg:grid-cols-12 gap-5">
 <form method="POST"
       action="{{ $design->exists ? route('admin.invitation-designs.update', $design) : route('admin.invitation-designs.store') }}"
       enctype="multipart/form-data"
-      class="grid lg:grid-cols-12 gap-5">
+      class="lg:col-span-5 space-y-5">
     @csrf
     @if($design->exists) @method('PUT') @endif
 
-    <div class="lg:col-span-5 space-y-5">
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
             <h3 class="text-sm font-bold">Design details</h3>
             <div>
                 <label class="text-xs font-bold text-mute block mb-1">Event category *</label>
@@ -120,40 +120,18 @@
                 <label class="text-xs font-bold text-mute block mb-1">Blade key</label>
                 <input name="blade_key" value="{{ old('blade_key', $design->blade_key) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="optional">
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                @foreach([
-                    'accent' => ['Accent', '#705898'],
-                    'accent_soft' => ['Accent soft', '#f3eef8'],
-                    'card_bg' => ['Card BG', '#faf7fc'],
-                    'text_color' => ['Text', '#3d3348'],
-                    'muted_color' => ['Muted', '#6b6280'],
-                    'border_color' => ['Border', '#c5a059'],
-                    'header_from' => ['Header from', '#4b3664'],
-                    'header_to' => ['Header to', '#9b84b6'],
-                ] as $key => [$label, $fallback])
-                    @php $val = old($key, $design->{$key}) ?: $fallback; @endphp
-                    <div>
-                        <label class="text-xs font-bold text-mute block mb-1">{{ $label }}</label>
-                        <div class="flex items-center gap-2">
-                            @if($key === 'card_bg')
-                                <input type="color" x-model="cardBg"
-                                       class="h-10 w-12 shrink-0 rounded-lg border border-slate-200 bg-white p-1 cursor-pointer">
-                                <input type="text" name="card_bg" x-model="cardBg"
-                                       pattern="^#([A-Fa-f0-9]{6})$" maxlength="7"
-                                       class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono">
-                            @else
-                                <input type="color" value="{{ $val }}"
-                                       class="h-10 w-12 shrink-0 rounded-lg border border-slate-200 bg-white p-1 cursor-pointer"
-                                       oninput="this.nextElementSibling.value = this.value">
-                                <input type="text" name="{{ $key }}" value="{{ $val }}"
-                                       pattern="^#([A-Fa-f0-9]{6})$" maxlength="7"
-                                       class="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono"
-                                       oninput="if(/^#[A-Fa-f0-9]{6}$/.test(this.value)) this.previousElementSibling.value = this.value">
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            @foreach([
+                'accent' => '#705898',
+                'accent_soft' => '#f3eef8',
+                'card_bg' => '#faf7fc',
+                'text_color' => '#3d3348',
+                'muted_color' => '#6b6280',
+                'border_color' => '#c5a059',
+                'header_from' => '#4b3664',
+                'header_to' => '#9b84b6',
+            ] as $key => $fallback)
+                <input type="hidden" name="{{ $key }}" value="{{ old($key, $design->{$key}) ?: $fallback }}">
+            @endforeach
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-xs font-bold text-mute block mb-1">Sort order</label>
@@ -169,19 +147,128 @@
 
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
             <h3 class="text-sm font-bold">Upload graphic</h3>
-            <p class="text-xs text-mute">Upload PNG/JPG artwork. Preview updates instantly on the right.</p>
-            <input type="file" name="graphic" accept="image/*" class="w-full text-sm"
-                   @change="onGraphicPicked($event)">
-            <input type="file" name="thumbnail" accept="image/*" class="w-full text-sm">
-            <p class="text-[11px] text-mute">Thumbnail optional.</p>
+            <p class="text-xs text-mute">PNG, JPG, or WebP — max 10MB. Preview updates on the right.</p>
+            <div class="flex gap-3 items-start">
+                <div class="w-20 h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center"
+                     x-show="previewSrc" x-cloak>
+                    <img :src="previewSrc" alt="Uploaded graphic" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 min-w-0 space-y-2">
+                    <input type="file" name="graphic" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="w-full text-sm"
+                           @change="onGraphicPicked($event)">
+                    <p class="text-[11px] text-emerald-700 font-semibold" x-show="previewSrc" x-cloak>Image already uploaded — choose a new file only to replace it.</p>
+                    <p class="text-[11px] text-red-600" x-show="graphicError" x-text="graphicError" x-cloak></p>
+                    <input type="file" name="thumbnail" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="w-full text-sm">
+                    <p class="text-[11px] text-mute">Thumbnail optional.</p>
+                </div>
+            </div>
         </div>
 
         <button class="w-full py-3 rounded-2xl bg-brand text-white font-extrabold text-sm">{{ $design->exists ? 'Save design settings' : 'Create design & continue' }}</button>
         @unless($design->exists)
             <p class="text-xs text-mute text-center">After creating, you’ll place text fields on the preview by dragging.</p>
         @endunless
-    </div>
+</form>
 
+    @if($design->exists)
+    <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
+        <button type="button" class="w-full flex items-center justify-between gap-2 text-left"
+                @click="addFieldOpen = !addFieldOpen">
+            <h3 class="text-sm font-bold">Add text field</h3>
+            <span class="text-mute text-xs" x-text="addFieldOpen ? '▾' : '▸'"></span>
+        </button>
+        <div x-show="addFieldOpen" x-cloak>
+        <p class="text-xs text-mute mb-3 mt-2">Creates a box in the center of the preview. Drag it into place, type the sample text, then save.</p>
+        <form method="POST" action="{{ route('admin.invitation-designs.fields.store', $design) }}" class="space-y-3"
+              @submit.prevent="submitNewField($event)">
+            @csrf
+            <div>
+                <label class="text-xs font-bold text-mute block mb-1">Key *</label>
+                <input name="field_key" x-model="newField.field_key" required
+                       pattern="[a-z0-9_]+"
+                       title="Lowercase letters, numbers, and underscores only"
+                       placeholder="invite_line"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono"
+                       @input="newField._keyTouched = true"
+                       @blur="newField.field_key = slugKey(newField.field_key)">
+                <p class="text-[10px] text-mute mt-1">Use snake_case, e.g. <code>guest_name</code>. Auto-filled from the label if left blank.</p>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-mute block mb-1">Customer label *</label>
+                <input name="label" x-model="newField.label" required placeholder="Invite line"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                       @input="if (!newField._keyTouched) newField.field_key = slugKey(newField.label)">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-mute block mb-1">Default / sample text</label>
+                <input name="default_text" x-model="newField.default_text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Type what appears on the card">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-xs font-bold text-mute block mb-1">Font size</label>
+                    <input type="number" name="font_size" x-model.number="newField.font_size" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-mute block mb-1">Color</label>
+                    <input type="color" x-model="newField.color" class="w-full h-10 rounded-xl border border-slate-200 px-1">
+                    <input type="hidden" name="color" :value="newField.color">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-mute block mb-1">Font family</label>
+                <select x-model="newField.font_family"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                        :style="{ fontFamily: `'${newField.font_family}', serif` }"
+                        @change="previewNewField()">
+                    @foreach(array_keys(\App\Support\InvitationFonts::CATALOG) as $font)
+                        <option value="{{ $font }}" style="font-family: '{{ $font }}', serif">{{ $font }}</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="font_family" :value="newField.font_family || 'Montserrat'">
+                <p class="mt-2 text-lg leading-none"
+                   :style="{ fontFamily: `'${newField.font_family}', serif`, fontWeight: newField.font_weight || '400', color: newField.color }"
+                   x-text="newField.default_text || 'Sample Aa'"></p>
+            </div>
+            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input type="checkbox"
+                       class="rounded border-slate-300"
+                       :checked="Number(newField.font_weight || 400) >= 600"
+                       @change="newField.font_weight = $event.target.checked ? '700' : '400'">
+                <span class="font-bold">Bold text</span>
+            </label>
+            <div>
+                <label class="text-xs font-bold text-mute block mb-1">Field type</label>
+                <select x-model="newField.field_type" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                        @change="onFieldTypeChange(newField)">
+                    <option value="text">Text</option>
+                    <option value="textarea">Textarea</option>
+                    <option value="date_month">Month name (auto from event date)</option>
+                    <option value="date_day">Day of month (auto)</option>
+                    <option value="date_year">Year (auto)</option>
+                    <option value="date_time">Time (auto from event time)</option>
+                </select>
+                <p class="text-[10px] text-mute mt-1" x-show="isAutoDateType(newField.field_type)" x-cloak>
+                    Buyers won’t type this — choosing event date/time fills it on the invitation.
+                </p>
+            </div>
+            <input type="hidden" name="field_type" :value="newField.field_type || 'text'">
+            <input type="hidden" name="font_style" value="normal">
+            <input type="hidden" name="text_align" value="center">
+            <input type="hidden" name="pos_x" :value="newField.pos_x">
+            <input type="hidden" name="pos_y" :value="newField.pos_y">
+            <input type="hidden" name="box_width" :value="newField.box_width">
+            <input type="hidden" name="font_weight" :value="newField.font_weight || '400'">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_required" value="1"> Required</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="maps_to_couple" value="1"> Couple field (Aroos/Meher)</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_on_card" value="1" checked> Show on card</label>
+            <button type="button" class="w-full py-2 rounded-xl border border-slate-200 text-sm font-bold" @click="previewNewField()">Preview on canvas</button>
+            <button type="button" class="w-full py-2 rounded-xl border border-brand/30 text-brand text-sm font-bold" @click="addDatePartFields()">Add date &amp; time fields</button>
+            <button type="button" class="w-full py-2 rounded-xl border border-brand/30 text-brand text-sm font-bold" @click="addQrSpot()">Add QR code spot</button>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-bold">Add &amp; save field</button>
+        </form>
+        </div>
+    </div>
+    @else
     {{-- Live visual canvas --}}
     <div class="lg:col-span-7">
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-4">
@@ -203,6 +290,7 @@
             <div class="mx-auto rounded-xl border border-slate-200 shadow-inner bg-slate-50/50 p-2"
                  style="max-width: 436px;"
                  x-ref="stage"
+                 @click="clearFieldFocus()"
                  @mousemove.window="onPointerMove($event)"
                  @mouseup.window="endPointer()"
                  @mouseleave.window="endPointer()">
@@ -226,10 +314,11 @@
                              :style="boxStyle(field)"
                              @click.stop="selectField(field)">
                             <div class="absolute -top-6 left-0 right-0 flex items-center gap-1 cursor-grab active:cursor-grabbing z-30"
+                                 x-show="activeFieldId === (field.id || field._tmp)"
+                                 x-cloak
                                  @mousedown.prevent="startDrag(field, $event)">
-                                <span class="text-[9px] font-bold truncate px-1.5 py-0.5 rounded"
-                                      :class="activeFieldId === (field.id || field._tmp) ? 'bg-brand text-white' : 'bg-black/55 text-white'"
-                                      x-text="'⠿ ' + (field.field_type === 'qr' ? 'QR code' : field.label)"></span>
+                                <span class="text-[9px] font-bold truncate px-1.5 py-0.5 rounded bg-brand text-white"
+                                      x-text="'⠿ ' + (field.field_type === 'qr' ? 'QR code' : (field.label || field.field_key || 'Field'))"></span>
                             </div>
                             <template x-if="field.field_type === 'qr'">
                                 <div class="flex flex-col items-center text-center rounded border-2 border-dashed bg-white/90 px-1 py-1 w-full"
@@ -289,11 +378,12 @@
             </p>
         </div>
     </div>
-</form>
+    @endif
+</div>
 
 @if($design->exists)
 <div class="mt-6 grid lg:grid-cols-12 gap-5">
-    <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+    <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
         <h3 class="text-sm font-bold mb-1">Text fields</h3>
         <p class="text-xs text-mute mb-3">Collapsed by default — click a field to edit. Selecting on the canvas also opens it.</p>
 
@@ -370,13 +460,16 @@
                         </div>
                         <div class="col-span-2">
                             <label class="text-[10px] font-bold uppercase text-mute">Font family</label>
-                            <select name="font_family" x-model="field.font_family"
+                            <select x-model="field.font_family"
                                     class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                                    :style="{ fontFamily: `'${field.font_family}', serif` }">
-                                <template x-for="font in fontFamilies" :key="'ff-'+field.id+'-'+font">
-                                    <option :value="font" :style="{ fontFamily: `'${font}', serif` }" x-text="font"></option>
-                                </template>
+                                    :style="{ fontFamily: `'${field.font_family}', serif` }"
+                                    @change="queueAutosave(field)"
+                                    x-effect="$nextTick(() => { if (field.font_family) $el.value = field.font_family })">
+                                @foreach(array_keys(\App\Support\InvitationFonts::CATALOG) as $font)
+                                    <option value="{{ $font }}" style="font-family: '{{ $font }}', serif">{{ $font }}</option>
+                                @endforeach
                             </select>
+                            <input type="hidden" name="font_family" :value="field.font_family || 'Montserrat'">
                             <p class="mt-1 text-base leading-none"
                                :style="{ fontFamily: `'${field.font_family}', serif`, fontWeight: field.font_weight || '400', color: field.color }"
                                x-text="field.default_text || 'Sample Aa'"></p>
@@ -418,108 +511,121 @@
                                 @click.prevent="deleteField(field)">Delete</button>
                     </div>
                     <p class="text-[10px] text-amber-700" x-show="!field.id" x-cloak>
-                        New fields are not saved until you click <strong>Add &amp; save field</strong> on the right.
+                        New fields are not saved until you click <strong>Add &amp; save field</strong> above.
                     </p>
                     </div>
                 </form>
             </template>
-            <p class="text-sm text-mute" x-show="!fields.length">No fields yet — add one on the right, then drag it on the preview.</p>
+            <p class="text-sm text-mute" x-show="!fields.length">No fields yet — add one above, then drag it on the preview.</p>
         </div>
     </div>
+    {{-- Live visual canvas --}}
+    <div class="lg:col-span-7">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-4">
+            <div class="flex items-center justify-between mb-3 gap-2">
+                <div>
+                    <h3 class="text-sm font-bold">Live design preview</h3>
+                    <p class="text-xs text-mute mt-0.5">Drag to move · pull handles to resize · changes auto-save</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
+                          x-show="saveState"
+                          x-cloak
+                          :class="saveState === 'saving' ? 'bg-amber-50 text-amber-700' : (saveState === 'error' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700')"
+                          x-text="saveState === 'saving' ? 'Saving…' : (saveState === 'error' ? 'Save failed' : 'Saved')"></span>
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-mute" x-show="activeFieldId && !saveState" x-cloak>Editing selected field</span>
+                </div>
+            </div>
 
-    <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
-        <button type="button" class="w-full flex items-center justify-between gap-2 text-left"
-                @click="addFieldOpen = !addFieldOpen">
-            <h3 class="text-sm font-bold">Add text field</h3>
-            <span class="text-mute text-xs" x-text="addFieldOpen ? '▾' : '▸'"></span>
-        </button>
-        <div x-show="addFieldOpen" x-cloak>
-        <p class="text-xs text-mute mb-3 mt-2">Creates a box in the center of the preview. Drag it into place, type the sample text, then save.</p>
-        <form method="POST" action="{{ route('admin.invitation-designs.fields.store', $design) }}" class="space-y-3"
-              @submit.prevent="submitNewField($event)">
-            @csrf
-            <div>
-                <label class="text-xs font-bold text-mute block mb-1">Key *</label>
-                <input name="field_key" x-model="newField.field_key" required
-                       pattern="[a-z0-9_]+"
-                       title="Lowercase letters, numbers, and underscores only"
-                       placeholder="invite_line"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono"
-                       @input="newField._keyTouched = true"
-                       @blur="newField.field_key = slugKey(newField.field_key)">
-                <p class="text-[10px] text-mute mt-1">Use snake_case, e.g. <code>guest_name</code>. Auto-filled from the label if left blank.</p>
-            </div>
-            <div>
-                <label class="text-xs font-bold text-mute block mb-1">Customer label *</label>
-                <input name="label" x-model="newField.label" required placeholder="Invite line"
-                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                       @input="if (!newField._keyTouched) newField.field_key = slugKey(newField.label)">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-mute block mb-1">Default / sample text</label>
-                <input name="default_text" x-model="newField.default_text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Type what appears on the card">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1">Font size</label>
-                    <input type="number" name="font_size" x-model.number="newField.font_size" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1">Color</label>
-                    <input type="color" x-model="newField.color" class="w-full h-10 rounded-xl border border-slate-200 px-1">
-                    <input type="hidden" name="color" :value="newField.color">
-                </div>
-            </div>
-            <div>
-                <label class="text-xs font-bold text-mute block mb-1">Font family</label>
-                <select name="font_family" x-model="newField.font_family"
-                        class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        :style="{ fontFamily: `'${newField.font_family}', serif` }">
-                    <template x-for="font in fontFamilies" :key="'new-'+font">
-                        <option :value="font" :style="{ fontFamily: `'${font}', serif` }" x-text="font"></option>
+            <div class="mx-auto rounded-xl border border-slate-200 shadow-inner bg-slate-50/50 p-2"
+                 style="max-width: 436px;"
+                 x-ref="stage"
+                 @click="clearFieldFocus()"
+                 @mousemove.window="onPointerMove($event)"
+                 @mouseup.window="endPointer()"
+                 @mouseleave.window="endPointer()">
+                <div class="relative w-full select-none rounded-lg"
+                     :style="{ aspectRatio: '3 / 4.2', background: cardBg }"
+                     x-ref="canvas">
+                    <div class="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                        <template x-if="previewSrc">
+                            <img :src="previewSrc" alt="Design graphic" class="absolute inset-0 w-full h-full object-cover">
+                        </template>
+                        <template x-if="!previewSrc">
+                            <div class="absolute inset-0 flex items-center justify-center text-sm text-mute px-6 text-center pointer-events-none">
+                                Upload a graphic to see the invitation preview here.
+                            </div>
+                        </template>
+                    </div>
+
+                    <template x-for="field in fields" :key="field.id || field._tmp">
+                        <div class="absolute group"
+                             :class="activeFieldId === (field.id || field._tmp) ? 'z-20' : 'z-10'"
+                             :style="boxStyle(field)"
+                             @click.stop="selectField(field)">
+                            <div class="absolute -top-6 left-0 right-0 flex items-center gap-1 cursor-grab active:cursor-grabbing z-30"
+                                 x-show="activeFieldId === (field.id || field._tmp)"
+                                 x-cloak
+                                 @mousedown.prevent="startDrag(field, $event)">
+                                <span class="text-[9px] font-bold truncate px-1.5 py-0.5 rounded bg-brand text-white"
+                                      x-text="'⠿ ' + (field.field_type === 'qr' ? 'QR code' : (field.label || field.field_key || 'Field'))"></span>
+                            </div>
+                            <template x-if="field.field_type === 'qr'">
+                                <div class="flex flex-col items-center text-center rounded border-2 border-dashed bg-white/90 px-1 py-1 w-full"
+                                     :class="activeFieldId === (field.id || field._tmp) ? 'border-brand' : 'border-slate-400'">
+                                    <div class="w-full aspect-square max-w-[72px] mx-auto flex items-center justify-center bg-slate-100">
+                                        <span class="text-[10px] font-bold text-slate-600">QR</span>
+                                    </div>
+                                    <p class="mt-0.5 text-[7px] leading-tight text-slate-600 w-full">
+                                        Scan at entry · Status: <span class="font-semibold text-brand">Valid</span>
+                                    </p>
+                                </div>
+                            </template>
+                            <template x-if="field.field_type !== 'qr'">
+                            {{-- Match ticket/user overlay: px-1 only — no border/py (those shift glyphs vs live preview) --}}
+                            <div class="min-h-[1.2em] outline-none px-1 leading-tight rounded-sm"
+                                 :class="activeFieldId === (field.id || field._tmp)
+                                    ? 'outline outline-1 outline-dashed outline-brand bg-white/20'
+                                    : 'outline outline-1 outline-dashed outline-transparent hover:outline-brand/40'"
+                                 :style="textStyle(field)"
+                                 contenteditable="true"
+                                 spellcheck="false"
+                                 x-init="$el.innerText = field.default_text || field.label || ''"
+                                 x-effect="if (document.activeElement !== $el) $el.innerText = field.default_text || field.label || ''"
+                                 @focus="selectField(field)"
+                                 @input="field.default_text = $event.target.innerText"
+                                 @blur="queueAutosave(field)"></div>
+                            </template>
+
+                            {{-- Free resize handles (active field only) --}}
+                            <div class="absolute inset-0 pointer-events-none z-40"
+                                 x-show="activeFieldId === (field.id || field._tmp)"
+                                 x-cloak>
+                                <span class="pointer-events-auto absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-brand shadow cursor-ew-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'w', $event)"></span>
+                                <span class="pointer-events-auto absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-brand shadow cursor-ew-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'e', $event)"></span>
+                                <span class="pointer-events-auto absolute left-1/2 -translate-x-1/2 -top-1.5 w-3 h-3 rounded-full bg-white border-2 border-brand shadow cursor-ns-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'n', $event)"></span>
+                                <span class="pointer-events-auto absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 rounded-full bg-white border-2 border-brand shadow cursor-ns-resize"
+                                      @mousedown.prevent.stop="startResize(field, 's', $event)"></span>
+                                <span class="pointer-events-auto absolute -left-1.5 -top-1.5 w-3.5 h-3.5 rounded-sm bg-brand border-2 border-white shadow cursor-nwse-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'nw', $event)"></span>
+                                <span class="pointer-events-auto absolute -right-1.5 -top-1.5 w-3.5 h-3.5 rounded-sm bg-brand border-2 border-white shadow cursor-nesw-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'ne', $event)"></span>
+                                <span class="pointer-events-auto absolute -left-1.5 -bottom-1.5 w-3.5 h-3.5 rounded-sm bg-brand border-2 border-white shadow cursor-nesw-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'sw', $event)"></span>
+                                <span class="pointer-events-auto absolute -right-1.5 -bottom-1.5 w-3.5 h-3.5 rounded-sm bg-brand border-2 border-white shadow cursor-nwse-resize"
+                                      @mousedown.prevent.stop="startResize(field, 'se', $event)"></span>
+                            </div>
+                        </div>
                     </template>
-                </select>
-                <p class="mt-2 text-lg leading-none"
-                   :style="{ fontFamily: `'${newField.font_family}', serif`, fontWeight: newField.font_weight || '400', color: newField.color }"
-                   x-text="newField.default_text || 'Sample Aa'"></p>
+                </div>
             </div>
-            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
-                <input type="checkbox"
-                       class="rounded border-slate-300"
-                       :checked="Number(newField.font_weight || 400) >= 600"
-                       @change="newField.font_weight = $event.target.checked ? '700' : '400'">
-                <span class="font-bold">Bold text</span>
-            </label>
-            <div>
-                <label class="text-xs font-bold text-mute block mb-1">Field type</label>
-                <select x-model="newField.field_type" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        @change="onFieldTypeChange(newField)">
-                    <option value="text">Text</option>
-                    <option value="textarea">Textarea</option>
-                    <option value="date_month">Month name (auto from event date)</option>
-                    <option value="date_day">Day of month (auto)</option>
-                    <option value="date_year">Year (auto)</option>
-                    <option value="date_time">Time (auto from event time)</option>
-                </select>
-                <p class="text-[10px] text-mute mt-1" x-show="isAutoDateType(newField.field_type)" x-cloak>
-                    Buyers won’t type this — choosing event date/time fills it on the invitation.
-                </p>
-            </div>
-            <input type="hidden" name="field_type" :value="newField.field_type || 'text'">
-            <input type="hidden" name="font_style" value="normal">
-            <input type="hidden" name="text_align" value="center">
-            <input type="hidden" name="pos_x" :value="newField.pos_x">
-            <input type="hidden" name="pos_y" :value="newField.pos_y">
-            <input type="hidden" name="box_width" :value="newField.box_width">
-            <input type="hidden" name="font_weight" :value="newField.font_weight || '400'">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_required" value="1"> Required</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="maps_to_couple" value="1"> Couple field (Aroos/Meher)</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_on_card" value="1" checked> Show on card</label>
-            <button type="button" class="w-full py-2 rounded-xl border border-slate-200 text-sm font-bold" @click="previewNewField()">Preview on canvas</button>
-            <button type="button" class="w-full py-2 rounded-xl border border-brand/30 text-brand text-sm font-bold" @click="addDatePartFields()">Add date &amp; time fields</button>
-            <button type="button" class="w-full py-2 rounded-xl border border-brand/30 text-brand text-sm font-bold" @click="addQrSpot()">Add QR code spot</button>
-            <button type="submit" class="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-bold">Add &amp; save field</button>
-        </form>
+
+            <p class="text-[11px] text-mute mt-3 text-center" x-show="fields.length" x-cloak>
+                Drag <strong>⠿</strong> to move · corner/edge handles to resize · layout auto-saves
+            </p>
         </div>
     </div>
 </div>
@@ -530,6 +636,7 @@
 function designEditor(cfg) {
     return {
         previewSrc: cfg.graphicUrl || null,
+        graphicError: '',
         cardBg: cfg.cardBg || '#faf7fc',
         fields: (cfg.fields || []).map(f => ({ ...f })),
         csrf: cfg.csrf,
@@ -538,6 +645,7 @@ function designEditor(cfg) {
         addFieldOpen: true,
         dragging: null,
         resizing: null,
+        suppressClearFocus: false,
         saveState: '',
         saveTimer: null,
         saveClearTimer: null,
@@ -599,7 +707,7 @@ function designEditor(cfg) {
         },
         dateTypeMeta(type) {
             const map = {
-                date_month: { key: 'date_month', label: 'Month', sample: 'January', y: 28 },
+                date_month: { key: 'date_month', label: 'Month', sample: 'Jan', y: 28 },
                 date_day: { key: 'date_day', label: 'Day', sample: '15', y: 36 },
                 date_year: { key: 'date_year', label: 'Year', sample: String(new Date().getFullYear()), y: 44 },
                 date_time: { key: 'date_time', label: 'Time', sample: '6:00 PM', y: 52 },
@@ -641,7 +749,7 @@ function designEditor(cfg) {
                 body.append('default_text', meta.sample);
                 body.append('field_type', type);
                 body.append('font_size', '18');
-                body.append('font_family', 'Great Vibes');
+                body.append('font_family', this.newField.font_family || 'Montserrat');
                 body.append('font_weight', '400');
                 body.append('font_style', 'normal');
                 body.append('color', '#3d3348');
@@ -675,9 +783,8 @@ function designEditor(cfg) {
             this.newField.box_width = tmp.box_width;
             this.newField.default_text = tmp.default_text;
             this.newField.font_size = tmp.font_size;
-            this.newField.font_family = tmp.font_family;
-            this.newField.font_weight = tmp.font_weight || '400';
-            this.newField.color = tmp.color;
+            // Keep font_family / font_weight / color from the add panel (selects),
+            // not from the preview clone — Alpine select native submit was unreliable.
             if (tmp.field_key) this.newField.field_key = tmp.field_key;
             if (tmp.label) this.newField.label = tmp.label;
             if (tmp.field_type) this.newField.field_type = tmp.field_type;
@@ -697,14 +804,28 @@ function designEditor(cfg) {
                 alert('Customer label is required.');
                 return;
             }
+            if (!this.newField.font_family) {
+                this.newField.font_family = 'Montserrat';
+            }
             this.$nextTick(() => {
-                // Native submit skips Alpine handlers and uses current input values.
                 e.target.submit();
             });
         },
         onGraphicPicked(e) {
             const file = e.target.files?.[0];
+            this.graphicError = '';
             if (!file) return;
+            const okType = /image\/(png|jpeg|jpg|webp)/i.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name);
+            if (!okType) {
+                this.graphicError = 'Please choose a PNG, JPG, or WebP file.';
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                this.graphicError = 'File is too large (max 10MB). Compress the PNG and try again.';
+                e.target.value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (ev) => { this.previewSrc = ev.target.result; };
             reader.readAsDataURL(file);
@@ -717,6 +838,15 @@ function designEditor(cfg) {
                 this.fontFamilies = [field.font_family, ...this.fontFamilies];
             }
         },
+        clearFieldFocus() {
+            if (this.dragging || this.resizing || this.suppressClearFocus) return;
+            this.activeFieldId = null;
+            this.openFieldId = null;
+            const active = document.activeElement;
+            if (active && active.isContentEditable) {
+                active.blur();
+            }
+        },
         fieldKey(field) {
             return field.id || field._tmp;
         },
@@ -727,6 +857,11 @@ function designEditor(cfg) {
             const id = this.fieldKey(field);
             if (this.openFieldId === id) {
                 this.openFieldId = null;
+                this.activeFieldId = null;
+                const active = document.activeElement;
+                if (active && active.isContentEditable) {
+                    active.blur();
+                }
                 return;
             }
             this.selectField(field);
@@ -762,6 +897,7 @@ function designEditor(cfg) {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
             this.resizing = null;
+            this.suppressClearFocus = true;
             this.dragging = {
                 field,
                 offsetX: e.clientX - rect.left - (field.pos_x / 100) * rect.width,
@@ -775,6 +911,7 @@ function designEditor(cfg) {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
             this.dragging = null;
+            this.suppressClearFocus = true;
             this.resizing = {
                 field,
                 handle,
@@ -860,6 +997,9 @@ function designEditor(cfg) {
                 : (this.resizing?.dirty ? this.resizing.field : null);
             this.dragging = null;
             this.resizing = null;
+            if (this.suppressClearFocus) {
+                setTimeout(() => { this.suppressClearFocus = false; }, 0);
+            }
             if (target) {
                 this.queueAutosave(target);
             }
@@ -953,14 +1093,29 @@ function designEditor(cfg) {
                 is_required: false,
                 maps_to_couple: false,
                 text_align: 'center',
+                font_family: this.newField.font_family || 'Montserrat',
                 font_weight: this.newField.font_weight || '400',
                 font_style: 'normal',
                 sort_order: this.fields.filter(f => f.id).length + 1,
                 field_type: this.newField.field_type || 'text',
+                color: this.newField.color || '#3d3348',
                 pos_x: existing?.pos_x ?? this.newField.pos_x,
                 pos_y: existing?.pos_y ?? this.newField.pos_y,
                 box_width: existing?.box_width ?? this.newField.box_width,
             };
+            // Keep preview clone in sync when panel font changes after preview.
+            if (existing) {
+                existing.font_family = tmp.font_family;
+                existing.font_weight = tmp.font_weight;
+                existing.color = tmp.color;
+                existing.font_size = tmp.font_size;
+                existing.default_text = tmp.default_text;
+                existing.field_type = tmp.field_type;
+                existing.field_key = tmp.field_key;
+                existing.label = tmp.label;
+                this.activeFieldId = existing._tmp;
+                return;
+            }
             this.fields = this.fields.filter(f => f.id);
             this.fields.push(tmp);
             this.activeFieldId = tmp._tmp;

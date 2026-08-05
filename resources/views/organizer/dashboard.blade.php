@@ -4,12 +4,18 @@
 
 @section('content')
 @if($profile && $profile->approval_status === 'pending')
-    <div class="mb-5 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 p-4 text-sm">
-        <strong>Pending approval.</strong> You can explore the dashboard, but event management unlocks after an admin approves your account.
+    <div class="mb-5 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 p-4 text-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <strong>Pending approval.</strong> You can explore the dashboard, but event management unlocks after an admin approves your account.
+        </div>
+        <a href="{{ route('organizer.application.edit') }}" class="shrink-0 px-3 py-2 rounded-xl bg-white border border-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-100">Update application</a>
     </div>
 @elseif($profile && $profile->approval_status === 'rejected')
-    <div class="mb-5 rounded-xl bg-red-50 border border-red-100 text-red-700 p-4 text-sm">
-        <strong>Application rejected.</strong> {{ $profile->rejection_reason ?: 'Contact support for details.' }}
+    <div class="mb-5 rounded-xl bg-red-50 border border-red-100 text-red-700 p-4 text-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <strong>Application rejected.</strong> {{ $profile->rejection_reason ?: 'Contact support for details.' }}
+        </div>
+        <a href="{{ route('organizer.application.edit') }}" class="shrink-0 px-3 py-2 rounded-xl bg-white border border-red-200 text-red-800 text-xs font-bold hover:bg-red-100">Update &amp; resubmit</a>
     </div>
 @endif
 

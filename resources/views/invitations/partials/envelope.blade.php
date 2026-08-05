@@ -114,24 +114,40 @@
 </article>
 
 @else
-{{-- wedding --}}
+{{-- Default / wedding simple invite (upper card — no QR) --}}
+@php
+    $values = $design['field_values'] ?? [];
+    $couple1 = trim((string) ($values['couple_name_1'] ?? $event?->couple_name_1 ?? ''));
+    $couple2 = trim((string) ($values['couple_name_2'] ?? $event?->couple_name_2 ?? ''));
+    $coupleLine = ($couple1 !== '' && $couple2 !== '') ? ($couple1.' & '.$couple2) : null;
+    $venueLine = trim((string) ($values['venue'] ?? $event?->venue ?? ''));
+    $month = trim((string) ($values['date_month'] ?? ''));
+    $day = trim((string) ($values['date_day'] ?? ''));
+    $year = trim((string) ($values['date_year'] ?? ''));
+    $timeFromFields = trim((string) ($values['date_time'] ?? ''));
+    $prettyDate = ($month !== '' && $day !== '' && $year !== '')
+        ? trim($month.' '.$day.', '.$year)
+        : $dateLabel;
+    $prettyTime = $timeFromFields !== '' ? $timeFromFields : $timeLabel;
+    $headline = $coupleLine ?: ($event?->title ?? '');
+@endphp
 <article class="relative overflow-hidden shadow-2xl mx-auto mb-6" style="max-width: 480px; background: {{ $design['card_bg'] }}; color: {{ $design['text'] }}; border: 1px solid {{ $design['border'] }}; border-radius: 8px;">
     <div class="absolute inset-3 pointer-events-none" style="border: 1px solid {{ $design['border'] }};"></div>
     <div class="absolute inset-4 pointer-events-none" style="border: 1px solid {{ $design['accent'] }}33;"></div>
     <div class="relative px-8 py-10 text-center">
-        <p class="text-[10px] tracking-[0.35em] uppercase font-semibold mb-3" style="color: {{ $design['muted'] }};">{{ $design['invite_line'] }}</p>
+        <p class="text-[10px] tracking-[0.35em] uppercase font-semibold mb-3" style="color: {{ $design['muted'] }};">{{ $design['invite_line'] ?: "You're Invited" }}</p>
         <p class="mb-4" style="font-family: 'Great Vibes', cursive; font-size: 36px; color: {{ $design['accent'] }}; line-height: 1.1;">You're Invited</p>
         <p class="text-sm italic mb-5" style="font-family: 'Cormorant Garamond', serif; color: {{ $design['muted'] }};">{{ $design['request_line'] }}</p>
         <div class="my-5 flex items-center justify-center gap-3">
             <span class="h-px w-10" style="background: {{ $design['border'] }};"></span>
-            <span style="color: {{ $design['accent'] }};">{{ $design['ornament'] }}</span>
+            <span style="color: {{ $design['accent'] }};">{{ $design['ornament'] ?: '✦' }}</span>
             <span class="h-px w-10" style="background: {{ $design['border'] }};"></span>
         </div>
-        <h1 class="text-2xl font-bold leading-tight mb-2" style="font-family: 'Cormorant Garamond', serif;">{{ $event?->title }}</h1>
+        <h1 class="text-2xl font-bold leading-tight mb-2" style="font-family: 'Cormorant Garamond', serif;">{{ $headline }}</h1>
         <div class="mt-5 space-y-1" style="font-family: 'Cormorant Garamond', serif;">
-            <p class="text-base font-semibold">{{ $dateLabel }}</p>
-            @if($timeLabel)<p class="text-sm" style="color: {{ $design['muted'] }};">at {{ $timeLabel }}</p>@endif
-            <p class="text-sm mt-2" style="color: {{ $design['muted'] }};">{{ $event?->venue }}</p>
+            <p class="text-base font-semibold">{{ $prettyDate }}</p>
+            @if($prettyTime)<p class="text-sm" style="color: {{ $design['muted'] }};">at {{ $prettyTime }}</p>@endif
+            @if($venueLine !== '')<p class="text-sm mt-2" style="color: {{ $design['muted'] }};">{{ $venueLine }}</p>@endif
         </div>
         <div class="mt-6 pt-5" style="border-top: 1px solid {{ $design['border'] }};">
             <p class="text-[10px] uppercase tracking-widest mb-1" style="color: {{ $design['muted'] }};">Guest of honour</p>

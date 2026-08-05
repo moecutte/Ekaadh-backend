@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Booked Events')
+@section('title', __('ui.booked_events'))
 
 @section('content')
 @php
@@ -14,17 +14,17 @@
 @endphp
 
 @if($accountMode)
-<div class="max-w-2xl mx-auto px-4 sm:px-6 py-8" x-data="{ expanded: null }">
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-8" x-data="{ expanded: null, labels: { viewQr: @js(__('ui.view_qr')), hideQr: @js(__('ui.hide_qr')) } }">
     @if(session('success'))
         <div class="mb-6 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3">{{ session('success') }}</div>
     @endif
 
     <div class="flex items-center justify-between mb-6 gap-3">
         <div>
-            <h1 class="text-2xl font-extrabold text-ink">Booked Events</h1>
+            <h1 class="text-2xl font-extrabold text-ink">{{ __('ui.booked_events') }}</h1>
             <p class="text-sm text-mute">{{ auth()->user()->name }} · {{ auth()->user()->phone }}</p>
         </div>
-        <span class="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full shrink-0">Signed in</span>
+        <span class="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full shrink-0">{{ __('ui.signed_in') }}</span>
     </div>
 
     <div class="space-y-4">
@@ -53,16 +53,16 @@
                         <p class="text-xs text-mute">{{ $ticket->ticket_type_name }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2 shrink-0">
-                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full {{ $badge }}">{{ ucfirst($ticket->status) }}</span>
+                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full {{ $badge }}">{{ $status === 'valid' ? __('ui.valid') : ucfirst($ticket->status) }}</span>
                         @if($status === 'valid')
                             <button
                                 type="button"
                                 @click="expanded = expanded === {{ $ticket->id }} ? null : {{ $ticket->id }}"
                                 class="text-xs font-bold text-brand hover:underline"
-                                x-text="expanded === {{ $ticket->id }} ? 'Hide QR' : 'View QR'"
-                            >View QR</button>
+                                x-text="expanded === {{ $ticket->id }} ? labels.hideQr : labels.viewQr"
+                            >{{ __('ui.view_qr') }}</button>
                         @else
-                            <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="text-xs font-bold text-brand hover:underline">View</a>
+                            <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="text-xs font-bold text-brand hover:underline">{{ __('ui.view') }}</a>
                         @endif
                     </div>
                 </div>
@@ -81,37 +81,37 @@
                         </div>
                         <div class="flex-1 space-y-3 w-full">
                             <div>
-                                <p class="text-xs text-mute">Event</p>
+                                <p class="text-xs text-mute">{{ __('ui.event') }}</p>
                                 <p class="font-extrabold text-ink text-sm leading-snug">{{ $event?->title }}</p>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <p class="text-xs text-mute">Date</p>
+                                    <p class="text-xs text-mute">{{ __('ui.date') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $dateLabel ?: '—' }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-mute">Time</p>
+                                    <p class="text-xs text-mute">{{ __('ui.time') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $timeLabel ?: '—' }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-mute">Venue</p>
+                                    <p class="text-xs text-mute">{{ __('ui.venue') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $event?->venue ?: ($event?->city ?: '—') }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-xs text-mute">Type</p>
+                                    <p class="text-xs text-mute">{{ __('ui.type') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $ticket->ticket_type_name }}</p>
                                 </div>
                                 <div class="col-span-2">
-                                    <p class="text-xs text-mute">Buyer</p>
+                                    <p class="text-xs text-mute">{{ __('ui.buyer') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $ticket->holder_name ?: ($order?->buyer_name ?: auth()->user()->name) }}</p>
                                 </div>
                             </div>
                             <div class="flex flex-wrap gap-2 pt-1">
                                 <a href="{{ route('tickets.pdf', $ticket->ticket_code) }}" class="inline-flex items-center gap-1.5 bg-brand text-white text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-brand-dark transition-colors">
-                                    Download PDF
+                                    {{ __('ui.download_pdf') }}
                                 </a>
                                 <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="inline-flex items-center gap-1.5 border border-slate-200 text-ink text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-white transition-colors">
-                                    Full ticket
+                                    {{ __('ui.full_ticket') }}
                                 </a>
                             </div>
                         </div>
@@ -120,16 +120,16 @@
             </div>
         @empty
             <div class="text-center py-14 bg-white rounded-2xl border border-slate-100 text-mute">
-                <p class="font-semibold text-ink mb-1">No tickets yet</p>
-                <p class="text-sm mb-5">Buy tickets for an event and they’ll show up here.</p>
-                <a href="{{ route('events.index') }}" class="inline-flex rounded-xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">Browse events</a>
+                <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_yet') }}</p>
+                <p class="text-sm mb-5">{{ __('ui.tickets_empty_hint') }}</p>
+                <a href="{{ route('events.index') }}" class="inline-flex rounded-xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.browse_events_cta') }}</a>
             </div>
         @endforelse
     </div>
 
     @if($tickets->isNotEmpty())
         <div class="mt-8 text-center">
-            <a href="{{ route('events.index') }}" class="text-sm text-brand font-bold hover:underline">Browse more events</a>
+            <a href="{{ route('events.index') }}" class="text-sm text-brand font-bold hover:underline">{{ __('ui.browse_more_events') }}</a>
         </div>
     @endif
 </div>
@@ -144,24 +144,36 @@
         'sendUrl' => $otpSendUrl,
         'verifyUrl' => $otpVerifyUrl,
         'indexUrl' => route('tickets.index'),
+        'i18n' => [
+            'pleaseWait' => __('ui.please_wait'),
+            'verifyShowTickets' => __('ui.verify_show_tickets'),
+            'findTickets' => __('ui.find_tickets'),
+            'enterPhoneNumber' => __('ui.enter_phone_number'),
+            'couldNotSendCode' => __('ui.could_not_send_code'),
+            'codeSent' => __('ui.code_sent'),
+            'testingCode' => __('ui.testing_code'),
+            'enterConfirmationCode' => __('ui.enter_confirmation_code'),
+            'couldNotVerifyCode' => __('ui.could_not_verify_code'),
+            'invalidCode' => __('ui.invalid_code'),
+        ],
     ]))"
 >
     @if(session('success'))
         <div class="mb-6 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3">{{ session('success') }}</div>
     @endif
 
-    <h1 class="text-3xl font-extrabold mb-2">Booked Events</h1>
+    <h1 class="text-3xl font-extrabold mb-2">{{ __('ui.booked_events') }}</h1>
     <p class="text-mute mb-8">
         @guest
-            <a href="{{ route('customer.login') }}" class="font-bold text-brand hover:underline">Sign in</a>
-            to see events you booked, or find guest tickets with your phone below.
+            <a href="{{ route('customer.login') }}" class="font-bold text-brand hover:underline">{{ __('ui.sign_in') }}</a>
+            {{ __('ui.find_tickets_guest_hint') }}
         @else
-            Enter the phone used at checkout to view available tickets.
+            {{ __('ui.find_tickets_phone_hint') }}
         @endguest
     </p>
 
     <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-8 space-y-3">
-        <label class="block text-sm font-bold text-ink">Phone number</label>
+        <label class="block text-sm font-bold text-ink">{{ __('ui.phone_number') }}</label>
         <div class="flex">
             <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
             <input
@@ -173,7 +185,7 @@
         </div>
 
         <div x-show="otpSent" x-cloak class="space-y-2 pt-1">
-            <label class="block text-sm font-bold text-ink">Confirmation code</label>
+            <label class="block text-sm font-bold text-ink">{{ __('ui.confirmation_code') }}</label>
             <input
                 type="text"
                 inputmode="numeric"
@@ -183,7 +195,7 @@
                 class="w-full rounded-xl bg-page border border-slate-200 px-4 py-3 tracking-[0.35em] text-center font-bold outline-none focus:border-brand"
             >
             <p class="text-xs text-brand font-semibold" x-show="otpHint" x-text="otpHint"></p>
-            <button type="button" @click="sendOtp" :disabled="busy" class="text-xs font-bold text-brand hover:underline">Resend code</button>
+            <button type="button" @click="sendOtp" :disabled="busy" class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend_code') }}</button>
         </div>
 
         <p x-show="error" x-cloak class="text-sm text-amber-800 font-semibold" x-text="error"></p>
@@ -197,7 +209,7 @@
             :disabled="busy"
             class="w-full sm:w-auto rounded-xl bg-brand text-white font-extrabold px-6 py-3 hover:bg-brand-dark transition disabled:opacity-60"
         >
-            <span x-text="busy ? 'Please wait…' : (otpSent ? 'Verify & show tickets' : 'Find tickets')"></span>
+            <span x-text="busy ? i18n.pleaseWait : (otpSent ? i18n.verifyShowTickets : i18n.findTickets)"></span>
         </button>
     </div>
 
@@ -214,7 +226,7 @@
                         <div class="text-xs text-white/70">{{ $ticket->event?->event_date?->format('M j, Y') }}</div>
                     </div>
                     <span class="absolute top-3 right-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full {{ $ticket->status === 'valid' ? 'bg-brand text-white' : 'bg-slate-500 text-white' }}">
-                        {{ ucfirst($ticket->status) }}
+                        {{ $ticket->status === 'valid' ? __('ui.valid') : ucfirst($ticket->status) }}
                     </span>
                 </div>
                 <div class="px-4 py-3 flex items-center justify-between">
@@ -222,12 +234,12 @@
                         <div class="text-xs font-semibold text-mute">{{ $ticket->ticket_type_name }}</div>
                         <div class="text-sm font-extrabold text-brand font-mono">{{ $ticket->ticket_code }}</div>
                     </div>
-                    <span class="text-sm font-bold text-brand">View QR →</span>
+                    <span class="text-sm font-bold text-brand">{{ __('ui.view_qr') }} →</span>
                 </div>
             </a>
         @empty
             <div class="text-center py-12 bg-white rounded-2xl border border-slate-100 text-mute">
-                No available valid tickets found for that phone number.
+                {{ __('ui.no_tickets_for_phone') }}
             </div>
         @endforelse
     @endif
@@ -239,6 +251,7 @@ function findTicketsOtp(cfg) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content
         || document.querySelector('input[name="_token"]')?.value
         || '';
+    const i18n = cfg.i18n || {};
 
     return {
         phoneLocal: cfg.phone || '',
@@ -247,13 +260,14 @@ function findTicketsOtp(cfg) {
         otpHint: '',
         error: '',
         busy: false,
+        i18n,
         get fullPhone() {
             const local = String(this.phoneLocal || '').replace(/\D/g, '');
             return local ? '+252' + local : '';
         },
         async sendOtp() {
             if (!this.fullPhone) {
-                this.error = 'Enter your phone number.';
+                this.error = i18n.enterPhoneNumber;
                 return false;
             }
             this.busy = true;
@@ -270,20 +284,20 @@ function findTicketsOtp(cfg) {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.error = 'Could not send confirmation code (' + res.status + '). Refresh and try again.';
+                    this.error = i18n.couldNotSendCode + ' (' + res.status + ')';
                     return false;
                 }
                 if (!res.ok) {
-                    this.error = body.errors?.phone?.[0] || body.message || 'Could not send code.';
+                    this.error = body.errors?.phone?.[0] || body.message || i18n.couldNotSendCode;
                     return false;
                 }
                 this.otpSent = true;
                 this.otpHint = body.debug_code
-                    ? ('Testing code: ' + body.debug_code)
-                    : (body.message || 'Code sent.');
+                    ? i18n.testingCode.replace(':code', body.debug_code)
+                    : (body.message || i18n.codeSent);
                 return true;
             } catch (e) {
-                this.error = e.message || 'Could not send confirmation code.';
+                this.error = e.message || i18n.couldNotSendCode;
                 return false;
             } finally {
                 this.busy = false;
@@ -295,7 +309,7 @@ function findTicketsOtp(cfg) {
                 return;
             }
             if (!String(this.otpCode || '').trim()) {
-                this.error = 'Enter the confirmation code.';
+                this.error = i18n.enterConfirmationCode;
                 return;
             }
             this.busy = true;
@@ -316,11 +330,11 @@ function findTicketsOtp(cfg) {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.error = 'Could not verify code (' + res.status + ').';
+                    this.error = i18n.couldNotVerifyCode + ' (' + res.status + ')';
                     return;
                 }
                 if (!res.ok) {
-                    this.error = body.errors?.otp?.[0] || body.message || 'Invalid code.';
+                    this.error = body.errors?.otp?.[0] || body.message || i18n.invalidCode;
                     return;
                 }
                 const url = new URL(cfg.indexUrl, window.location.origin);
@@ -328,7 +342,7 @@ function findTicketsOtp(cfg) {
                 url.searchParams.set('otp_token', body.otp_token);
                 window.location.href = url.toString();
             } catch (e) {
-                this.error = e.message || 'Could not verify code.';
+                this.error = e.message || i18n.couldNotVerifyCode;
             } finally {
                 this.busy = false;
             }

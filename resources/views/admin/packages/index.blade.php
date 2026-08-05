@@ -3,6 +3,34 @@
 @section('heading', 'Pricing Packages')
 
 @section('content')
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
+    <div class="min-w-0">
+        <p class="font-bold text-sm text-ink">Show packages on Create Event page</p>
+        <p class="text-xs text-mute mt-0.5">
+            When off, pricing cards are hidden from the public organizer landing page.
+            Admin package assignment for organizers still works.
+        </p>
+    </div>
+    <form method="POST" action="{{ route('admin.packages.front-visibility') }}" class="flex items-center gap-3 shrink-0">
+        @csrf
+        <input type="hidden" name="show_on_front" value="0">
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input
+                type="checkbox"
+                name="show_on_front"
+                value="1"
+                class="sr-only peer"
+                @checked($showOnFront)
+                onchange="this.form.submit()"
+            >
+            <span class="relative w-11 h-6 rounded-full bg-slate-200 peer-checked:bg-brand transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+            <span class="text-sm font-bold {{ $showOnFront ? 'text-brand' : 'text-mute' }}">
+                {{ $showOnFront ? 'Visible' : 'Hidden' }}
+            </span>
+        </label>
+    </form>
+</div>
+
 <div class="grid lg:grid-cols-3 gap-5 mb-5">
     <div class="lg:col-span-2 space-y-5">
         <form method="GET" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">

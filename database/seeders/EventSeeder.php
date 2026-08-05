@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Event;
+use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\TicketType;
 use App\Models\User;
@@ -24,19 +25,19 @@ class EventSeeder extends Seeder
             ]
         );
 
+        $defaultPackageId = OrganizerPackage::defaultPackage()?->id;
+
         $profile = OrganizerProfile::query()->updateOrCreate(
             ['user_id' => $organizerUser->id],
             [
                 'business_name' => 'Horizon Events',
                 'business_phone' => '+252610000010',
                 'commission_rate' => null,
+                'package_id' => $defaultPackageId,
                 'approval_status' => 'approved',
                 'approved_at' => now(),
             ]
         );
-
-        // Replace previous seeded events for this organizer
-        Event::query()->where('organizer_id', $profile->id)->delete();
 
         $events = [
             [

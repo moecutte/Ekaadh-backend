@@ -8,10 +8,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrganizerProfile extends Model
 {
+    public const ID_TYPES = [
+        'national_id' => 'National ID',
+        'passport' => 'Passport',
+        'drivers_license' => "Driver's license",
+    ];
+
     protected $fillable = [
         'user_id',
         'business_name',
         'business_phone',
+        'city',
+        'business_description',
+        'id_number',
         'commission_rate',
         'package_id',
         'approval_status',
@@ -26,6 +35,7 @@ class OrganizerProfile extends Model
         return [
             'commission_rate' => 'decimal:2',
             'approved_at' => 'datetime',
+            'documents' => 'array',
         ];
     }
 
@@ -57,6 +67,32 @@ class OrganizerProfile extends Model
     public function isApproved(): bool
     {
         return $this->approval_status === 'approved';
+    }
+
+    public function idTypeLabel(): ?string
+    {
+        $type = $this->documents['id_type'] ?? null;
+
+        return $type ? (self::ID_TYPES[$type] ?? $type) : null;
+    }
+
+    public function documentPath(string $key): ?string
+    {
+        $path = $this->documents[$key] ?? null;
+
+        return is_string($path) && $path !== '' ? $path : null;
+    }
+
+    public function documentUrl(string $key): ?string
+    {
+        $path = $this->documentPath($key);
+
+        return $path ? asset('storage/'.$path) : null;
+    }
+
+    public function hasIdentityDocuments(): bool
+    {
+        return (bool) $this->documentPath('id_front');
     }
 
     public function effectiveCommissionRate(?float $platformDefault = null): float

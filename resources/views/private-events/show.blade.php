@@ -14,7 +14,7 @@
     <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <a href="{{ route('private-events.index') }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-mute hover:text-brand transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            My private events
+            {{ __('ui.my_private_events') }}
         </a>
 
         <div class="mt-6 grid sm:grid-cols-[9rem_1fr] gap-6 items-start">
@@ -22,12 +22,12 @@
                 @if($thumb)
                     <img src="{{ $thumb }}" alt="{{ $event->title }}" class="w-full h-full object-cover">
                 @else
-                    <div class="w-full h-full flex items-center justify-center text-mute text-xs font-semibold">No preview</div>
+                    <div class="w-full h-full flex items-center justify-center text-mute text-xs font-semibold">{{ __('ui.no_preview') }}</div>
                 @endif
             </div>
 
             <div class="min-w-0 text-center sm:text-left">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">Event details</p>
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">{{ __('ui.event_details') }}</p>
                 <h1 class="text-3xl font-extrabold tracking-tight text-ink leading-tight">{{ $event->title }}</h1>
                 <p class="text-sm text-mute mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
                     <span class="inline-flex items-center gap-1">
@@ -44,11 +44,11 @@
                 <div class="mt-5 flex flex-wrap gap-3 justify-center sm:justify-start">
                     <a href="{{ route('private-events.invitations.index', $event) }}"
                        class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-brand text-white text-sm font-bold shadow-lg shadow-brand/25 hover:bg-brand-dark hover:-translate-y-0.5 transition-all">
-                        Manage invitations
+                        {{ __('ui.manage_invitations') }}
                     </a>
                     <a href="{{ route('private-events.capacity.create', $event) }}"
                        class="inline-flex px-5 py-3 rounded-2xl bg-brand-soft text-brand text-sm font-bold hover:bg-brand/15 transition-colors">
-                        Buy more tickets
+                        {{ __('ui.buy_more_tickets') }}
                     </a>
                 </div>
             </div>
@@ -57,21 +57,21 @@
         <div class="mt-8 grid grid-cols-3 gap-3">
             <div class="bg-white/90 backdrop-blur rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
                 <div class="text-2xl font-black text-brand tabular-nums">{{ $capacity }}</div>
-                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">Paid seats</div>
+                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.paid_seats') }}</div>
             </div>
             <div class="bg-white/90 backdrop-blur rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
                 <div class="text-2xl font-black text-ink tabular-nums">{{ $sold }}</div>
-                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">Invited</div>
+                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.invited') }}</div>
             </div>
             <div class="bg-white/90 backdrop-blur rounded-2xl border border-slate-100 p-4 text-center shadow-sm">
                 <div class="text-2xl font-black text-ink tabular-nums">{{ $remaining }}</div>
-                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">Remaining</div>
+                <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.remaining_label') }}</div>
             </div>
         </div>
 
         <div class="mt-4 bg-white/90 backdrop-blur rounded-2xl border border-slate-100 p-4 shadow-sm">
             <div class="flex items-center justify-between text-[11px] font-bold mb-2">
-                <span class="text-mute">Capacity used</span>
+                <span class="text-mute">{{ __('ui.capacity_used') }}</span>
                 <span class="text-ink">{{ $pct }}%</span>
             </div>
             <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -81,7 +81,7 @@
 
         @if($event->description)
             <div class="mt-6 bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 p-6 shadow-sm">
-                <h2 class="text-xs font-bold uppercase tracking-[0.14em] text-mute mb-3">About</h2>
+                <h2 class="text-xs font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.about') }}</h2>
                 <div class="text-sm text-ink/80 leading-relaxed whitespace-pre-line">{{ $event->description }}</div>
             </div>
         @endif

@@ -38,7 +38,7 @@ class InvitationDateFields
     public static function sampleDefaults(): array
     {
         return [
-            self::TYPE_MONTH => 'January',
+            self::TYPE_MONTH => 'Jan',
             self::TYPE_DAY => '15',
             self::TYPE_YEAR => (string) now()->year,
             self::TYPE_TIME => '6:00 PM',
@@ -75,7 +75,7 @@ class InvitationDateFields
     {
         $carbon = self::parseDate($date);
 
-        return $carbon?->format('F') ?? '';
+        return $carbon?->format('M') ?? '';
     }
 
     public static function formatDay(DateTimeInterface|string|null $date): string

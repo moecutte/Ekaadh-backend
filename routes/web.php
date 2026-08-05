@@ -16,7 +16,9 @@ use App\Http\Controllers\Web\Admin\RevenueReportController as AdminRevenueReport
 use App\Http\Controllers\Web\AuthController as CustomerAuthController;
 use App\Http\Controllers\Web\CheckoutController;
 use App\Http\Controllers\Web\EventController;
+use App\Http\Controllers\Web\LocaleController;
 use App\Http\Controllers\Web\Organizer\AuthController as OrganizerAuthController;
+use App\Http\Controllers\Web\Organizer\ApplicationController as OrganizerApplicationController;
 use App\Http\Controllers\Web\Organizer\DashboardController as OrganizerDashboardController;
 use App\Http\Controllers\Web\Organizer\EarningsController as OrganizerEarningsController;
 use App\Http\Controllers\Web\InvitationController;
@@ -28,6 +30,8 @@ use App\Http\Controllers\Web\PrivateEventController;
 use App\Http\Controllers\Web\PrivateEventInvitationController;
 use App\Http\Controllers\Web\TicketController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
 
 Route::get('/', [EventController::class, 'home'])->name('home');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
@@ -91,6 +95,8 @@ Route::prefix('organizer')->name('organizer.')->group(function () {
         Route::post('/logout', [OrganizerAuthController::class, 'logout'])->name('logout');
         Route::get('/', OrganizerDashboardController::class)->name('dashboard');
         Route::get('/earnings', OrganizerEarningsController::class)->name('earnings');
+        Route::get('/application', [OrganizerApplicationController::class, 'edit'])->name('application.edit');
+        Route::post('/application', [OrganizerApplicationController::class, 'update'])->name('application.update');
 
         Route::middleware('organizer.approved')->group(function () {
             Route::get('/events', [OrganizerEventController::class, 'index'])->name('events.index');
@@ -156,6 +162,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/packages', [AdminOrganizerPackageController::class, 'index'])->name('packages.index');
         Route::post('/packages', [AdminOrganizerPackageController::class, 'store'])->name('packages.store');
+        Route::post('/packages/front-visibility', [AdminOrganizerPackageController::class, 'updateFrontVisibility'])->name('packages.front-visibility');
         Route::put('/packages/{package}', [AdminOrganizerPackageController::class, 'update'])->name('packages.update');
         Route::post('/packages/{package}/toggle', [AdminOrganizerPackageController::class, 'toggle'])->name('packages.toggle');
         Route::delete('/packages/{package}', [AdminOrganizerPackageController::class, 'destroy'])->name('packages.destroy');

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'My Private Events')
+@section('title', __('ui.my_private_events'))
 
 @section('content')
 <div class="relative overflow-hidden">
@@ -8,14 +8,14 @@
     <div class="relative max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">Private invitations</p>
-                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">Your events</h1>
-                <p class="text-sm text-mute mt-2 max-w-lg">Design, pay for capacity, then send guests a personal invitation with their tickets.</p>
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">{{ __('ui.private_invitations') }}</p>
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">{{ __('ui.your_events') }}</h1>
+                <p class="text-sm text-mute mt-2 max-w-lg">{{ __('ui.private_events_index_sub') }}</p>
             </div>
             <a href="{{ route('private-events.create') }}"
                class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-brand text-white text-sm font-bold shadow-lg shadow-brand/25 hover:bg-brand-dark hover:-translate-y-0.5 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                Create event
+                {{ __('ui.create_event') }}
             </a>
         </div>
 
@@ -42,13 +42,13 @@
                         @else
                             <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-mute">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                <span class="text-xs font-semibold">No design preview</span>
+                                <span class="text-xs font-semibold">{{ __('ui.no_design_preview') }}</span>
                             </div>
                         @endif
                         <div class="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent pointer-events-none"></div>
                         <span class="absolute top-3 left-3 text-[10px] font-extrabold tracking-wide uppercase px-2.5 py-1 rounded-full border backdrop-blur-md
                             {{ $paid ? 'bg-emerald-500/90 text-white border-emerald-400/40' : 'bg-amber-400/95 text-ink border-amber-300/50' }}">
-                            {{ $paid ? 'Paid' : 'Awaiting payment' }}
+                            {{ $paid ? __('ui.paid') : __('ui.awaiting_payment') }}
                         </span>
                         <div class="absolute bottom-3 left-3 right-3 text-white">
                             <h2 class="font-extrabold text-base leading-snug line-clamp-2 drop-shadow-sm">{{ $event->title }}</h2>
@@ -67,7 +67,7 @@
 
                         <div>
                             <div class="flex items-center justify-between text-[11px] font-bold mb-1.5">
-                                <span class="text-mute">Invitations</span>
+                                <span class="text-mute">{{ __('ui.invitations') }}</span>
                                 <span class="text-ink">{{ $sold }}/{{ $capacity }}</span>
                             </div>
                             <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -79,16 +79,16 @@
                             @if(! $paid)
                                 <a href="{{ route('private-events.pay', $event) }}"
                                    class="flex-1 text-center px-3 py-2.5 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors">
-                                    Pay now
+                                    {{ __('ui.pay_now') }}
                                 </a>
                             @else
                                 <a href="{{ route('private-events.invitations.index', $event) }}"
                                    class="flex-1 text-center px-3 py-2.5 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors">
-                                    Invitations
+                                    {{ __('ui.invitations') }}
                                 </a>
                                 <a href="{{ route('private-events.show', $event) }}"
                                    class="px-3 py-2.5 rounded-xl bg-brand-soft text-brand text-xs font-bold hover:bg-brand/15 transition-colors">
-                                    Details
+                                    {{ __('ui.details') }}
                                 </a>
                             @endif
                         </div>
@@ -100,10 +100,10 @@
                     <div class="relative mx-auto w-16 h-16 rounded-2xl bg-brand-soft flex items-center justify-center mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     </div>
-                    <h2 class="text-lg font-extrabold text-ink">No private events yet</h2>
-                    <p class="text-sm text-mute mt-1.5 max-w-sm mx-auto">Pick a design, set your guest capacity, and start sending invitation links.</p>
+                    <h2 class="text-lg font-extrabold text-ink">{{ __('ui.no_private_events') }}</h2>
+                    <p class="text-sm text-mute mt-1.5 max-w-sm mx-auto">{{ __('ui.no_private_events_desc') }}</p>
                     <a href="{{ route('private-events.create') }}" class="inline-flex mt-6 px-5 py-3 rounded-2xl bg-brand text-white text-sm font-bold hover:bg-brand-dark transition-colors">
-                        Create your first event
+                        {{ __('ui.create_first_event') }}
                     </a>
                 </div>
             @endforelse

@@ -14,10 +14,11 @@ class CheckInController extends Controller
 {
     public function events(Request $request): JsonResponse
     {
+        // Public + private published events (so staff can check in invitation guests).
         $events = Event::query()
             ->published()
             ->withCount([
-                'tickets as tickets_total',
+                'tickets as tickets_total' => fn ($q) => $q->whereIn('status', ['valid', 'used']),
                 'tickets as tickets_checked_in' => fn ($q) => $q->where('status', 'used'),
             ])
             ->orderBy('event_date')
@@ -30,6 +31,7 @@ class CheckInController extends Controller
                 'venue' => $event->venue,
                 'city' => $event->city,
                 'cover_image' => $event->cover_image,
+                'is_private' => (bool) $event->is_private,
                 'event_date' => $event->event_date?->format('Y-m-d'),
                 'event_date_label' => $event->event_date?->format('M j, Y'),
                 'event_time_label' => $event->event_time
@@ -46,13 +48,13 @@ class CheckInController extends Controller
     {
         $data = $request->validate([
             'payload' => ['required', 'string', 'max:500'],
-            'event_id' => ['nullable', 'integer', 'exists:events,id'],
+            'event_id' => ['required', 'integer', 'exists:events,id'],
         ]);
 
         $outcome = $checkIn->scan(
             $data['payload'],
             $request->user(),
-            isset($data['event_id']) ? (int) $data['event_id'] : null,
+            (int) $data['event_id'],
         );
 
         $status = match ($outcome['result']) {
@@ -74,7 +76,10 @@ class CheckInController extends Controller
     {
         abort_unless($event->status === 'published', 404);
 
-        $total = Ticket::query()->where('event_id', $event->id)->count();
+        $total = Ticket::query()
+            ->where('event_id', $event->id)
+            ->whereIn('status', ['valid', 'used'])
+            ->count();
         $checkedIn = Ticket::query()->where('event_id', $event->id)->where('status', 'used')->count();
         $valid = Ticket::query()->where('event_id', $event->id)->where('status', 'valid')->count();
 

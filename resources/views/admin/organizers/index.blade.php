@@ -48,6 +48,11 @@
                     <td class="px-4 py-3">
                         @php $colors = ['pending'=>'bg-amber-50 text-amber-700 border-amber-100','approved'=>'bg-emerald-50 text-emerald-700 border-emerald-100','rejected'=>'bg-red-50 text-red-600 border-red-100']; @endphp
                         <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border {{ $colors[$org->approval_status] ?? 'bg-slate-50 text-mute' }}">{{ $org->approval_status }}</span>
+                        @if($org->hasIdentityDocuments())
+                            <div class="text-[10px] font-bold text-emerald-600 mt-1">ID on file</div>
+                        @else
+                            <div class="text-[10px] font-bold text-amber-600 mt-1">No ID</div>
+                        @endif
                         @if($org->rejection_reason)
                             <div class="text-xs text-red-500 mt-1 max-w-[180px]">{{ $org->rejection_reason }}</div>
                         @endif
