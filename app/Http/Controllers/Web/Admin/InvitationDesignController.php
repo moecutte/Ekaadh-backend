@@ -103,7 +103,9 @@ class InvitationDesignController extends Controller
 
         $invitationDesign->update($data);
 
-        return back()->with('success', 'Design updated.');
+        return redirect()
+            ->route('admin.invitation-designs.edit', $invitationDesign)
+            ->with('success', 'Design updated.');
     }
 
     public function destroy(InvitationDesign $invitationDesign): RedirectResponse
