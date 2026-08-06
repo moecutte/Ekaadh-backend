@@ -13,11 +13,11 @@
 <link href="{{ \App\Support\InvitationFonts::googleCssUrlForFields($fields->all()) }}" rel="stylesheet">
 @endif
 
-<div class="mx-auto" style="max-width: {{ $compact ? '360px' : '420px' }};">
-    <article class="relative overflow-hidden shadow-2xl mx-auto"
-             style="aspect-ratio: 3 / 4.2; background: {{ $design['card_bg'] ?? '#fff' }}; color: {{ $design['text'] ?? '#111' }};">
+<div class="mx-auto invitation-design-wrap" style="max-width: {{ $compact ? '360px' : '420px' }};">
+    <article class="relative overflow-hidden shadow-2xl mx-auto invitation-design-card"
+             style="aspect-ratio: 3 / 4.2; width: 100%; container-type: inline-size; container-name: invite-card; background: {{ $design['card_bg'] ?? '#fff' }}; color: {{ $design['text'] ?? '#111' }};">
         @if($graphic)
-            <img src="{{ $graphic }}" alt="" class="absolute inset-0 w-full h-full object-cover" style="z-index: 0;">
+            <img src="{{ $graphic }}" alt="" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover" style="z-index: 0; display: block;">
         @endif
 
         @foreach($fields as $field)
@@ -36,15 +36,18 @@
                 }
                 $raw = trim((string) $raw);
                 $family = \App\Support\InvitationFonts::cssFontFamily($field['font_family'] ?? 'Montserrat');
+                $fontPx = ($field['font_size'] ?? 18) * $scale;
             @endphp
             @if($raw !== '')
-            <div class="absolute px-1 leading-tight" style="left: {{ $x }}%; top: {{ $y }}%; width: {{ $w }}%; z-index: 10;
+            <div class="absolute invitation-design-field" style="left: {{ $x }}%; top: {{ $y }}%; width: {{ $w }}%; z-index: 10;
+                        box-sizing: border-box; padding: 0 calc(4 * 100cqw / 420); line-height: 1.25;
                         text-align: {{ $field['text_align'] ?? 'center' }};
-                        font-size: {{ ($field['font_size'] ?? 18) * $scale }}px;
+                        font-size: calc({{ $fontPx }} * 100cqw / 420);
                         font-family: {{ $family }};
                         font-weight: {{ $field['font_weight'] ?? '400' }};
                         font-style: {{ $field['font_style'] ?? 'normal' }};
-                        color: {{ $field['color'] ?? ($design['text'] ?? '#111') }};">
+                        color: {{ $field['color'] ?? ($design['text'] ?? '#111') }};
+                        margin: 0; transform: none;">
                 {{ $raw }}
             </div>
             @endif
@@ -63,10 +66,11 @@
                         $accent = $design['accent'] ?? '#705898';
                         $statusOk = $ticket->status === 'valid';
                     @endphp
-                    <div class="absolute flex flex-col items-center text-center bg-white/92 px-1 py-1 rounded-sm"
-                         style="left: {{ $x }}%; top: {{ $y }}%; width: {{ $w }}%; z-index: 15; color: {{ $muted }};">
-                        <img src="{{ $qrImage }}" alt="QR" style="width: 100%; max-width: {{ $qrSize }}px; aspect-ratio: 1; object-fit: contain;">
-                        <p style="margin: 2px 0 0; font-size: {{ $metaSize }}px; line-height: 1.25; width: 100%;
+                    <div class="absolute flex flex-col items-center text-center invitation-design-field"
+                         style="left: {{ $x }}%; top: {{ $y }}%; width: {{ $w }}%; z-index: 15; color: {{ $muted }};
+                                box-sizing: border-box; padding: calc(4 * 100cqw / 420); background: rgba(255,255,255,0.92); border-radius: 2px; margin: 0; transform: none;">
+                        <img src="{{ $qrImage }}" alt="QR" crossorigin="anonymous" style="width: 100%; max-width: {{ $qrSize }}px; aspect-ratio: 1; object-fit: contain; display: block;">
+                        <p style="margin: 2px 0 0; font-size: calc({{ $metaSize }} * 100cqw / 420); line-height: 1.25; width: 100%;
                                   font-family: Montserrat, sans-serif;">
                             Scan at entry · Status:
                             <span style="color: {{ $statusOk ? $accent : '#ef4444' }}; font-weight: 600;">{{ ucfirst($ticket->status) }}</span>
@@ -83,10 +87,11 @@
                 $metaSize = max(7, (int) round(9 * $scale));
             @endphp
             @if(! $hasQrField && ! empty($qrImage))
-                <div class="absolute flex flex-col items-center text-center bg-white/95 px-2 py-2 rounded-md shadow-sm"
-                     style="left: 50%; bottom: 3%; transform: translateX(-50%); width: 32%; z-index: 15; color: {{ $muted }};">
-                    <img src="{{ $qrImage }}" alt="QR" style="width: 100%; max-width: 120px; aspect-ratio: 1; object-fit: contain;">
-                    <p style="margin: 2px 0 0; font-size: {{ $metaSize }}px; line-height: 1.25; width: 100%;
+                <div class="absolute flex flex-col items-center text-center invitation-design-field"
+                     style="left: 50%; bottom: 3%; transform: translateX(-50%); width: 32%; z-index: 15; color: {{ $muted }};
+                            box-sizing: border-box; padding: calc(8 * 100cqw / 420); background: rgba(255,255,255,0.95); border-radius: 6px; margin: 0;">
+                    <img src="{{ $qrImage }}" alt="QR" crossorigin="anonymous" style="width: 100%; max-width: 120px; aspect-ratio: 1; object-fit: contain; display: block;">
+                    <p style="margin: 2px 0 0; font-size: calc({{ $metaSize }} * 100cqw / 420); line-height: 1.25; width: 100%;
                               font-family: Montserrat, sans-serif;">
                         {{ $ticket->ticket_code }}
                         · <span style="color: {{ $statusOk ? $accent : '#ef4444' }}; font-weight: 600;">{{ ucfirst($ticket->status) }}</span>

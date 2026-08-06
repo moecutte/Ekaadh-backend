@@ -2,6 +2,30 @@
 
 @section('title', $event->title)
 
+@php
+    $shareUrl = route('events.show', $event->slug);
+    $shareText = __('ui.share_event_text', ['title' => $event->title]);
+    $shareDesc = \Illuminate\Support\Str::limit(strip_tags((string) $event->description), 160);
+@endphp
+
+@push('head')
+    <meta name="description" content="{{ $shareDesc }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ekaadh">
+    <meta property="og:title" content="{{ $event->title }}">
+    <meta property="og:description" content="{{ $shareDesc }}">
+    <meta property="og:url" content="{{ $shareUrl }}">
+    @if($event->cover_image)
+        <meta property="og:image" content="{{ $event->cover_image }}">
+    @endif
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $event->title }}">
+    <meta name="twitter:description" content="{{ $shareDesc }}">
+    @if($event->cover_image)
+        <meta name="twitter:image" content="{{ $event->cover_image }}">
+    @endif
+@endpush
+
 @section('content')
 @php
     $starting = $event->ticketTypes->min('price');
@@ -132,6 +156,47 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                     {{ __('ui.secure_checkout') }}
                 </div>
+
+                <div
+                    class="mt-5 pt-5 border-t border-slate-100"
+                    x-data='eventShare(@json($shareUrl), @json($shareText), @json(__("ui.link_copied")))'
+                >
+                    <p class="text-xs font-bold text-mute mb-3">{{ __('ui.share_event') }}</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            @click="nativeShare()"
+                            class="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-ink text-white text-sm font-bold py-2.5 hover:bg-ink/90 transition"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                            {{ __('ui.share') }}
+                        </button>
+                        <a
+                            :href="whatsappUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-sm font-bold py-2.5 text-ink hover:bg-page transition"
+                        >{{ __('ui.share_whatsapp') }}</a>
+                        <a
+                            :href="facebookUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-sm font-bold py-2.5 text-ink hover:bg-page transition"
+                        >{{ __('ui.share_facebook') }}</a>
+                        <a
+                            :href="xUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-sm font-bold py-2.5 text-ink hover:bg-page transition"
+                        >{{ __('ui.share_x') }}</a>
+                        <button
+                            type="button"
+                            @click="copyLink()"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-sm font-bold py-2.5 text-ink hover:bg-page transition"
+                            x-text="copied ? copiedLabel : copyLabel"
+                        ></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -163,6 +228,49 @@
 <style>[x-cloak] { display: none !important; }</style>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
+function eventShare(url, text, copiedLabel) {
+    return {
+        url,
+        text,
+        copied: false,
+        copiedLabel,
+        copyLabel: @json(__('ui.copy_link')),
+        get whatsappUrl() {
+            return 'https://wa.me/?text=' + encodeURIComponent(this.text + ' ' + this.url);
+        },
+        get facebookUrl() {
+            return 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(this.url);
+        },
+        get xUrl() {
+            return 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(this.text) + '&url=' + encodeURIComponent(this.url);
+        },
+        async nativeShare() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: this.text, text: this.text, url: this.url });
+                    return;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;
+                }
+            }
+            this.copyLink();
+        },
+        async copyLink() {
+            try {
+                await navigator.clipboard.writeText(this.url);
+            } catch (e) {
+                const input = document.createElement('input');
+                input.value = this.url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+            }
+            this.copied = true;
+            setTimeout(() => { this.copied = false; }, 2000);
+        },
+    };
+}
 function eventTickets() {
     const prices = {
         @foreach($event->ticketTypes as $type)

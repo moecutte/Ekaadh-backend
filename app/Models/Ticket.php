@@ -17,12 +17,14 @@ class Ticket extends Model
         'status',
         'checked_in_at',
         'checked_in_by',
+        'reminder_24h_sent_at',
     ];
 
     protected function casts(): array
     {
         return [
             'checked_in_at' => 'datetime',
+            'reminder_24h_sent_at' => 'datetime',
         ];
     }
 

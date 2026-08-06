@@ -195,6 +195,7 @@ class OrderService
                 if ($order->source === 'private_event') {
                     app(PrivateEventService::class)->fulfillCapacityPurchase($order->load('items.ticketType'));
                     $paid = $order->fresh()->load(['items.ticketType', 'items.tickets', 'event', 'payment']);
+                    $this->notifyPrivateEventPaid($paid);
                 } else {
                     $this->fulfillPaidOrder($order->load('items.ticketType'));
                     $paid = $order->fresh()->load(['items.ticketType', 'items.tickets', 'event', 'payment']);
@@ -258,5 +259,29 @@ class OrderService
         } while (Ticket::query()->where('ticket_code', $code)->exists());
 
         return $code;
+    }
+
+    private function notifyPrivateEventPaid(Order $order): void
+    {
+        if (! $order->user_id) {
+            return;
+        }
+
+        $user = User::query()->find($order->user_id);
+        if (! $user) {
+            return;
+        }
+
+        $title = $order->event?->title ?? 'your event';
+        app(PushNotificationService::class)->sendToUser(
+            $user,
+            'Private event paid',
+            "{$title} is paid. You can now send invitations from Ekaadh.",
+            PushNotificationService::TYPE_PRIVATE_EVENT_PAID,
+            [
+                'event_id' => (string) $order->event_id,
+                'order_number' => (string) $order->order_number,
+            ],
+        );
     }
 }

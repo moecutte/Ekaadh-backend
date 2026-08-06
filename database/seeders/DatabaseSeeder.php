@@ -56,6 +56,7 @@ class DatabaseSeeder extends Seeder
             OrganizerPackageSeeder::class,
             CategorySeeder::class,
             InvitationDesignSeeder::class,
+            SupportFaqSeeder::class,
             EventSeeder::class,
         ]);
     }

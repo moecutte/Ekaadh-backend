@@ -131,13 +131,50 @@ php artisan schedule:run
 
 ## 5. Flutter app
 
-Point the mobile API at production:
-
 ```bash
 flutter build apk --dart-define=API_BASE_URL=https://YOUR_DOMAIN/api/v1
 ```
 
-## 6. Post-deploy smoke checklist
+## 6. Support chat (built-in)
+
+Customer support uses the Laravel FAQ + inbox (no third-party chat).
+
+After deploy / migrate:
+
+```bash
+php artisan db:seed --class=SupportFaqSeeder
+```
+
+- **Web:** floating support widget on customer pages (FAQ tab, then chat).
+- **Mobile:** Profile → Support (same FAQ + chat via API).
+- **Admin:** Support → Inbox (reply) and FAQs (manage questions).
+
+## 7. Push notifications (FCM)
+
+Priorities wired in backend:
+
+| Type | When |
+|------|------|
+| `support_reply` | Admin replies in support chat |
+| `event_reminder` | ~24h before event (`events:send-reminders` hourly) |
+| `invitation_received` | Private invitation sent (guest with matching app account) |
+| `private_event_paid` | Host paid for private invitation capacity |
+| `invite_send_failed` | SMS delivery failed for an invitation (notifies host) |
+
+1. Create a Firebase project → enable Cloud Messaging → download a **service account** JSON.
+2. Place it on the server (e.g. `storage/app/firebase-credentials.json`) — do not commit it.
+3. Coolify env:
+
+```env
+FCM_ENABLED=true
+FCM_PROJECT_ID=your-firebase-project-id
+FCM_CREDENTIALS=/app/storage/app/firebase-credentials.json
+```
+
+4. Flutter: add `google-services.json` / `GoogleService-Info.plist`, then build with Firebase options (see `Ekaadh-mobile/docs/PUSH_SETUP.md`).
+5. App registers device tokens via `POST /api/v1/auth/device-token` after login.
+
+## 8. Post-deploy smoke checklist
 
 - [ ] `GET /up` health OK
 - [ ] Home / browse / event detail load (seeded events + cover images under `public/images/events`)
@@ -147,9 +184,11 @@ flutter build apk --dart-define=API_BASE_URL=https://YOUR_DOMAIN/api/v1
 - [ ] Organizer login + dashboard
 - [ ] Admin login + approvals + packages screen
 - [ ] Staff API login + check-in
+- [ ] Support widget FAQ + test message in admin inbox
+- [ ] FCM: device token registered + test support reply push (when enabled)
 - [ ] Seeded passwords changed
 
-## 7. Payment gateways
+## 9. Payment gateways
 
 | Mode | Env | Behavior |
 |------|-----|----------|

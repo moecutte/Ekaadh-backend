@@ -28,6 +28,9 @@ use App\Http\Controllers\Web\CreateTicketLandingController;
 use App\Http\Controllers\Web\OtpController as WebOtpController;
 use App\Http\Controllers\Web\PrivateEventController;
 use App\Http\Controllers\Web\PrivateEventInvitationController;
+use App\Http\Controllers\Web\Admin\SupportConversationController as AdminSupportConversationController;
+use App\Http\Controllers\Web\Admin\SupportFaqController as AdminSupportFaqController;
+use App\Http\Controllers\Web\SupportController;
 use App\Http\Controllers\Web\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +51,13 @@ Route::get('/my-tickets', [TicketController::class, 'index'])->middleware('throt
 Route::get('/t/{code}', [TicketController::class, 'show'])->middleware('throttle:tickets')->name('tickets.show');
 Route::get('/t/{code}/pdf', [TicketController::class, 'pdf'])->middleware('throttle:tickets')->name('tickets.pdf');
 Route::get('/i/{token}', [InvitationController::class, 'show'])->middleware('throttle:tickets')->name('invitations.show');
+
+Route::prefix('support')->name('support.')->middleware('throttle:support')->group(function () {
+    Route::get('/faqs', [SupportController::class, 'faqs'])->name('faqs');
+    Route::post('/conversation', [SupportController::class, 'conversation'])->name('conversation');
+    Route::get('/conversations/{conversation}/messages', [SupportController::class, 'messages'])->name('messages');
+    Route::post('/conversations/{conversation}/messages', [SupportController::class, 'storeMessage'])->name('messages.store');
+});
 
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/otp/send', [WebOtpController::class, 'send'])->name('otp.send');
@@ -177,5 +187,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('payouts.index');
         Route::post('/payouts', [AdminPayoutController::class, 'store'])->name('payouts.store');
         Route::post('/payouts/{payout}/paid', [AdminPayoutController::class, 'markPaid'])->name('payouts.paid');
+
+        Route::get('/support/faqs', [AdminSupportFaqController::class, 'index'])->name('support.faqs.index');
+        Route::post('/support/faqs', [AdminSupportFaqController::class, 'store'])->name('support.faqs.store');
+        Route::put('/support/faqs/{faq}', [AdminSupportFaqController::class, 'update'])->name('support.faqs.update');
+        Route::post('/support/faqs/{faq}/toggle', [AdminSupportFaqController::class, 'toggle'])->name('support.faqs.toggle');
+        Route::delete('/support/faqs/{faq}', [AdminSupportFaqController::class, 'destroy'])->name('support.faqs.destroy');
+
+        Route::get('/support/conversations', [AdminSupportConversationController::class, 'index'])->name('support.conversations.index');
+        Route::get('/support/conversations/{conversation}', [AdminSupportConversationController::class, 'show'])->name('support.conversations.show');
+        Route::post('/support/conversations/{conversation}/reply', [AdminSupportConversationController::class, 'reply'])->name('support.conversations.reply');
+        Route::post('/support/conversations/{conversation}/close', [AdminSupportConversationController::class, 'close'])->name('support.conversations.close');
+        Route::post('/support/conversations/{conversation}/reopen', [AdminSupportConversationController::class, 'reopen'])->name('support.conversations.reopen');
     });
 });

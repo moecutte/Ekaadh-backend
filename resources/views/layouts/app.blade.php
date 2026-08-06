@@ -31,6 +31,7 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     @livewireStyles
+    @stack('head')
 </head>
 <body class="bg-page text-ink antialiased min-h-screen flex flex-col">
     @php
@@ -239,5 +240,6 @@
         </div>
     </footer>
     @livewireScripts
+    @include('partials.support-widget')
 </body>
 </html>
