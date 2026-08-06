@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PrivateEventController;
+use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\SupportController as ApiSupportController;
 use App\Http\Controllers\Api\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +30,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{idOrSlug}', [EventController::class, 'show']);
 
+    Route::prefix('support')->middleware('throttle:support')->group(function () {
+        Route::get('/faqs', [ApiSupportController::class, 'faqs']);
+        Route::post('/conversation', [ApiSupportController::class, 'conversation']);
+        Route::get('/conversations/{conversation}/messages', [ApiSupportController::class, 'messages']);
+        Route::post('/conversations/{conversation}/messages', [ApiSupportController::class, 'storeMessage']);
+    });
+
     Route::middleware('throttle:checkout')->group(function () {
         Route::post('/checkout', [CheckoutController::class, 'store']);
         Route::post('/orders/{orderNumber}/pay', [CheckoutController::class, 'pay']);
@@ -43,6 +52,8 @@ Route::prefix('v1')->group(function () {
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        Route::post('/auth/device-token', [DeviceTokenController::class, 'store']);
+        Route::delete('/auth/device-token', [DeviceTokenController::class, 'destroy']);
         Route::get('/my-tickets', [TicketController::class, 'mine']);
 
         Route::prefix('private-events')->group(function () {

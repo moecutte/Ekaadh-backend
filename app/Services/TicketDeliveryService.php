@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EventInvitation;
 use App\Models\Order;
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -13,6 +14,7 @@ class TicketDeliveryService
     public function __construct(
         private TicketQrService $qr,
         private TextBeeSmsService $sms,
+        private PushNotificationService $push,
     ) {}
 
     public function sendForOrder(Order $order): void
@@ -66,6 +68,39 @@ class TicketDeliveryService
             'whatsapp_status' => $waStatus,
             'last_sent_at' => now(),
         ]);
+
+        $this->push->sendToPhone(
+            $invitation->guest_phone,
+            'You\'re invited',
+            "You're invited to {$eventTitle}. Open Ekaadh to view your invitation.",
+            PushNotificationService::TYPE_INVITATION_RECEIVED,
+            [
+                'invitation_id' => (string) $invitation->id,
+                'event_id' => (string) ($invitation->event_id ?? ''),
+                'token' => (string) $invitation->token,
+            ],
+        );
+
+        if ($smsStatus === 'failed') {
+            $ownerId = $invitation->event?->owner_user_id;
+            if ($ownerId) {
+                $owner = User::query()->find($ownerId);
+                if ($owner) {
+                    $guest = $invitation->guest_name ?: $invitation->guest_phone ?: 'a guest';
+                    $this->push->sendToUser(
+                        $owner,
+                        'Invitation send failed',
+                        "SMS to {$guest} for {$eventTitle} failed. Try resending from Ekaadh.",
+                        PushNotificationService::TYPE_INVITE_SEND_FAILED,
+                        [
+                            'invitation_id' => (string) $invitation->id,
+                            'event_id' => (string) ($invitation->event_id ?? ''),
+                            'sms_status' => $smsStatus,
+                        ],
+                    );
+                }
+            }
+        }
     }
 
     /**

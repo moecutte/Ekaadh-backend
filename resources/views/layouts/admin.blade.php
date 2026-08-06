@@ -24,6 +24,7 @@
         || request()->routeIs('admin.revenue.*')
         || request()->routeIs('admin.commission.*')
         || request()->routeIs('admin.payouts.*');
+    $supportOpen = request()->routeIs('admin.support.*');
 
     $link = function (string $route, string $label, string $icon, bool $active) {
         return compact('route', 'label', 'icon', 'active');
@@ -60,6 +61,7 @@
             people: {{ $peopleOpen ? 'true' : 'false' }},
             catalog: {{ $catalogOpen ? 'true' : 'false' }},
             business: {{ $businessOpen ? 'true' : 'false' }},
+            support: {{ $supportOpen ? 'true' : 'false' }},
         }">
             <a href="{{ route('admin.dashboard') }}"
                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.dashboard') ? 'bg-brand text-white shadow-sm shadow-brand/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800' }}">
@@ -112,6 +114,24 @@
                             <span class="truncate leading-none">{{ $item['label'] }}</span>
                         </a>
                     @endforeach
+                </div>
+            </div>
+
+            <div class="pt-1">
+                <button type="button" @click="support = !support"
+                        class="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-wider text-gray-400 hover:text-gray-600">
+                    <span>Support</span>
+                    <span x-text="support ? '▾' : '▸'"></span>
+                </button>
+                <div x-show="support" x-cloak class="space-y-0.5 mt-0.5">
+                    <a href="{{ route('admin.support.conversations.index') }}" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.support.conversations.*') ? 'bg-brand text-white shadow-sm shadow-brand/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span class="truncate leading-none">Inbox</span>
+                    </a>
+                    <a href="{{ route('admin.support.faqs.index') }}" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.support.faqs.*') ? 'bg-brand text-white shadow-sm shadow-brand/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="truncate leading-none">FAQs</span>
+                    </a>
                 </div>
             </div>
 

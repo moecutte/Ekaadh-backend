@@ -15,3 +15,7 @@ Artisan::command('inspire', function () {
 Schedule::command('queue:work --stop-when-empty --max-time=50')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('events:send-reminders')
+    ->hourly()
+    ->withoutOverlapping();

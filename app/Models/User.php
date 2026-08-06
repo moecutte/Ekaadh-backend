@@ -50,6 +50,11 @@ class User extends Authenticatable
         return $this->hasMany(Event::class, 'owner_user_id');
     }
 
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;

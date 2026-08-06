@@ -14,6 +14,48 @@
         );
     }
     $activeTickets = $tickets->where('status', '!=', 'cancelled')->values();
+    $isOverlayDesign = ! empty($design['graphic_url'])
+        || ! empty($design['graphic_path'])
+        || (($design['render_mode'] ?? '') === 'overlay');
+
+    $shareSpec = null;
+    if ($isOverlayDesign) {
+        $values = $design['field_values'] ?? [];
+        $guestName = trim((string) ($invitation->guest_name ?? ''));
+        $shareFields = [];
+        foreach (collect($design['fields'] ?? [])->where('show_on_card', true) as $field) {
+            if (($field['field_type'] ?? '') === 'qr') {
+                continue;
+            }
+            $key = $field['field_key'] ?? '';
+            $raw = $values[$key] ?? $field['default_text'] ?? '';
+            if ($key === 'guest_name' && $guestName !== '') {
+                $raw = $guestName;
+            }
+            $raw = trim((string) $raw);
+            if ($raw === '') {
+                continue;
+            }
+            $shareFields[] = [
+                'text' => $raw,
+                'pos_x' => (float) ($field['pos_x'] ?? 20),
+                'pos_y' => (float) ($field['pos_y'] ?? 30),
+                'box_width' => (float) ($field['box_width'] ?? 60),
+                'font_size' => (float) ($field['font_size'] ?? 18),
+                'font_family' => \App\Support\InvitationFonts::cssFontFamily($field['font_family'] ?? 'Montserrat'),
+                'font_weight' => (string) ($field['font_weight'] ?? '400'),
+                'font_style' => (string) ($field['font_style'] ?? 'normal'),
+                'color' => (string) ($field['color'] ?? ($design['text'] ?? '#0f1a2e')),
+                'text_align' => (string) ($field['text_align'] ?? 'center'),
+            ];
+        }
+        $shareSpec = [
+            'mode' => 'overlay',
+            'cardBg' => $design['card_bg'] ?? '#ffffff',
+            'graphicUrl' => $design['graphic_url'] ?? null,
+            'fields' => $shareFields,
+        ];
+    }
 @endphp
 <div class="max-w-lg mx-auto px-4 sm:px-6 py-10">
     @if(! $invitation->isActive())
@@ -22,12 +64,42 @@
             <p class="text-sm">{{ __('ui.invitation_cancelled_desc') }}</p>
         </div>
     @else
-        {{-- Previous simple invite (upper envelope design) --}}
-        @include('invitations.partials.envelope', [
+        <div id="invitation-share-card">
+            @if($isOverlayDesign)
+                @php
+                    $shareTicket = $activeTickets->first();
+                    if (! $shareTicket) {
+                        $shareTicket = new \App\Models\Ticket([
+                            'holder_name' => $invitation->guest_name,
+                            'status' => 'valid',
+                            'ticket_code' => 'INVITE',
+                        ]);
+                        $shareTicket->setRelation('event', $event);
+                    } else {
+                        $shareTicket->holder_name = $invitation->guest_name ?: $shareTicket->holder_name;
+                    }
+                @endphp
+                @include('tickets.partials.designed-card', [
+                    'ticket' => $shareTicket,
+                    'qrImage' => $shareTicket->qr_image ?? '',
+                    'design' => $design,
+                    'showQr' => false,
+                    'compact' => false,
+                ])
+            @else
+                @include('invitations.partials.envelope', [
+                    'design' => $design,
+                    'event' => $event,
+                    'invitation' => $invitation,
+                    'tickets' => $tickets,
+                ])
+            @endif
+        </div>
+
+        @include('invitations.partials.share-image-buttons', [
             'design' => $design,
             'event' => $event,
-            'invitation' => $invitation,
-            'tickets' => $tickets,
+            'shareSpec' => $shareSpec,
         ])
 
         <p class="text-center text-xs mb-6" style="color: {{ $design['muted'] }};">
@@ -58,4 +130,12 @@
         @endif
     @endif
 </div>
+
+@if($invitation->isActive())
+@unless($isOverlayDesign)
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+@endunless
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+@include('invitations.partials.share-image-script')
+@endif
 @endsection
