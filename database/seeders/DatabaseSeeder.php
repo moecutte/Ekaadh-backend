@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@ekaadh.com'],
             [
                 'name' => 'Ekaadh Admin',
-                'phone' => '+252610000001',
+                'phone' => '+252630000001',
                 'password' => 'password',
                 'role' => User::ROLE_ADMIN,
                 'status' => 'active',
@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'customer@ekaadh.com'],
             [
                 'name' => 'Amina Hassan',
-                'phone' => '+252612345678',
+                'phone' => '+252632345678',
                 'password' => 'password',
                 'role' => User::ROLE_CUSTOMER,
                 'status' => 'active',
@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'staff@ekaadh.com'],
             [
                 'name' => 'Gate Staff',
-                'phone' => '+252610000002',
+                'phone' => '+252630000002',
                 'password' => 'password',
                 'role' => User::ROLE_STAFF,
                 'status' => 'active',

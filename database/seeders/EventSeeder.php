@@ -18,7 +18,7 @@ class EventSeeder extends Seeder
             ['email' => 'organizer@ekaadh.com'],
             [
                 'name' => 'Horizon Events',
-                'phone' => '+252610000010',
+                'phone' => '+252630000010',
                 'password' => 'password',
                 'role' => User::ROLE_ORGANIZER,
                 'status' => 'active',
@@ -31,7 +31,7 @@ class EventSeeder extends Seeder
             ['user_id' => $organizerUser->id],
             [
                 'business_name' => 'Horizon Events',
-                'business_phone' => '+252610000010',
+                'business_phone' => '+252630000010',
                 'commission_rate' => null,
                 'package_id' => $defaultPackageId,
                 'approval_status' => 'approved',

@@ -7,7 +7,7 @@
     @csrf
     <div>
         <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone_or_email') }}</label>
-        <input name="login" value="{{ old('login') }}" required autofocus placeholder="+252 61 234 5678"
+        <input name="login" value="{{ old('login') }}" required autofocus placeholder="+252 63 234 5678"
             class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
     </div>
     <div>

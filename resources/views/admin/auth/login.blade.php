@@ -24,11 +24,11 @@
             @csrf
             <div>
                 <label class="text-xs font-bold text-mute block mb-1.5">Email or phone</label>
-                <input name="login" value="{{ old('login', 'admin@ekaadh.com') }}" required class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
+                <input name="login" value="{{ old('login') }}" required autofocus autocomplete="username" class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
             </div>
             <div>
                 <label class="text-xs font-bold text-mute block mb-1.5">Password</label>
-                <input type="password" name="password" value="password" required class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
+                <input type="password" name="password" required autocomplete="current-password" class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
             </div>
             <button class="w-full rounded-xl bg-brand text-white font-extrabold py-3.5 text-sm hover:bg-brand-dark">Sign in as Admin</button>
         </form>

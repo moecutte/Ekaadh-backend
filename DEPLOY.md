@@ -19,6 +19,27 @@ GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
 4. Attach a **MySQL** resource and link it (or paste DB env vars manually).
 5. Persistent storage for uploads: mount a volume on `storage/app` (and keep `storage/logs` writable).
 6. Set the domain + enable HTTPS (Let’s Encrypt).
+7. Raise upload limit (invitation graphics are often 2–10MB). Coolify’s proxy defaults to ~1MB and returns **413 Request Entity Too Large**.
+
+   **Traefik (Coolify default):** Application → **Settings** → **Custom Traefik / Labels** (or the domain’s middlewares) add:
+
+   ```text
+   traefik.http.middlewares.ekaadh-upload.buffering.maxRequestBodyBytes=20971520
+   traefik.http.middlewares.ekaadh-upload.buffering.memRequestBodyBytes=20971520
+   ```
+
+   Attach that middleware to the HTTPS router (Coolify UI: Domain → Middlewares → `ekaadh-upload`), or paste both labels so they apply to this service.
+
+   **Nginx proxy:** in the server proxy config add `client_max_body_size 20m;`
+
+   Also set PHP env on the app:
+
+   ```env
+   PHP_UPLOAD_MAX_FILESIZE=20M
+   PHP_POST_MAX_SIZE=20M
+   ```
+
+   Redeploy after changing labels/env. Until then, compress the PNG under ~1MB and save again.
 
 ## 2. Environment variables
 
@@ -117,7 +138,7 @@ php artisan view:cache
 | Admin | `admin@ekaadh.com` | `password` |
 | Staff | `staff@ekaadh.com` | `password` |
 | Organizer | `organizer@ekaadh.com` | `password` |
-| Customer | `customer@ekaadh.com` / `+252612345678` | `password` |
+| Customer | `customer@ekaadh.com` / `+252632345678` | `password` |
 
 ## 4. Cron (queue + schedule)
 

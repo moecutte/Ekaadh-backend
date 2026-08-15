@@ -15,7 +15,7 @@
         <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone') }}</label>
         <div class="flex">
             <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
-            <input type="tel" x-model="phoneLocal" required placeholder="61 234 5678"
+            <input type="tel" x-model="phoneLocal" required placeholder="63 234 5678"
                 class="flex-1 rounded-r-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand">
         </div>
         <input type="hidden" name="phone" :value="fullPhone">

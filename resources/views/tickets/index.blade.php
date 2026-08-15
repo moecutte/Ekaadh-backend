@@ -179,7 +179,7 @@
             <input
                 type="tel"
                 x-model="phoneLocal"
-                placeholder="61 234 5678"
+                placeholder="63 234 5678"
                 class="flex-1 rounded-r-xl bg-page border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand"
             >
         </div>

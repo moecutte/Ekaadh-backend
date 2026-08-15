@@ -62,7 +62,7 @@
                                 </div>
                                 <div class="col-span-12 sm:col-span-4">
                                     <label class="text-[11px] font-bold text-mute block mb-1">{{ __('ui.phone') }} *</label>
-                                    <input class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition" :name="'guests['+index+'][phone]'" x-model="row.phone" required placeholder="61xxxxxxx">
+                                    <input class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition" :name="'guests['+index+'][phone]'" x-model="row.phone" required placeholder="63xxxxxxx">
                                 </div>
                                 <div class="col-span-4 sm:col-span-3">
                                     <label class="text-[11px] font-bold text-mute block mb-1">{{ __('ui.qty') }}</label>
