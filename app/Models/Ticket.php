@@ -43,6 +43,11 @@ class Ticket extends Model
         return $this->belongsTo(Event::class);
     }
 
+    public function scopeForPublicEvents($query)
+    {
+        return $query->whereHas('event', fn ($q) => $q->where('is_private', false));
+    }
+
     public function checkedInBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_in_by');

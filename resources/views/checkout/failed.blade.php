@@ -11,7 +11,7 @@
     <p class="text-ink text-base font-semibold mb-2">{{ $friendlyMessage }}</p>
     <p class="text-mute text-sm mb-2">{{ __('ui.payment_failed_for_order', ['order' => $order->order_number]) }}</p>
     <p class="text-mute mb-8">{{ __('ui.payment_failed_hint') }}</p>
-    <a href="{{ route('checkout.show', $order->event->slug) }}" class="inline-block w-full rounded-2xl bg-red-500 text-white font-extrabold py-4 mb-3">{{ __('ui.try_again') }}</a>
+    <a href="{{ $order->event?->slug ? route('checkout.show', $order->event->slug) : route('home') }}" class="inline-block w-full rounded-2xl bg-red-500 text-white font-extrabold py-4 mb-3">{{ __('ui.try_again') }}</a>
     <a href="{{ route('home') }}" class="inline-block text-sm font-bold text-mute">{{ __('ui.back_to_home') }}</a>
 </div>
 @endsection

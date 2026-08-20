@@ -22,13 +22,18 @@ class EnsureUserHasRole
                 ], 403);
             }
 
+            if ($user) {
+                return redirect()->route($user->homeRoute())
+                    ->with('error', 'You do not have access to that area.');
+            }
+
             if ($request->is('admin') || $request->is('admin/*')) {
                 return redirect()->route('admin.login')
-                    ->with('error', 'Admin access required.');
+                    ->withErrors(['login' => 'Admin access required.']);
             }
 
             return redirect()->route('organizer.login')
-                ->with('error', 'Please sign in with an organizer account.');
+                ->withErrors(['login' => 'Please sign in with an organizer account.']);
         }
 
         return $next($request);

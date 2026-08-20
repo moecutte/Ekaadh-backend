@@ -117,4 +117,13 @@ class User extends Authenticatable
     {
         return $this->status === 'active';
     }
+
+    public function homeRoute(): string
+    {
+        return match (true) {
+            $this->isAdmin() => 'admin.dashboard',
+            $this->isOrganizer(), $this->isStaff() => 'organizer.dashboard',
+            default => 'tickets.index',
+        };
+    }
 }

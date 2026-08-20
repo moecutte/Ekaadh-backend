@@ -17,6 +17,9 @@
         <p class="text-mute text-sm mt-1">Platform control panel</p>
     </div>
     <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+        @if(session('error'))
+            <div class="mb-4 rounded-xl bg-red-50 text-red-700 text-sm p-3">{{ session('error') }}</div>
+        @endif
         @if($errors->any())
             <div class="mb-4 rounded-xl bg-red-50 text-red-700 text-sm p-3">{{ $errors->first() }}</div>
         @endif

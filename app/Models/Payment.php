@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -25,8 +26,37 @@ class Payment extends Model
     {
         return [
             'amount' => 'decimal:2',
-            'raw_response' => 'array',
         ];
+    }
+
+    /**
+     * WaafiPay (and older rows) can store truncated/non-JSON payloads.
+     * The default array cast throws and 500s the payment failed page.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function rawResponse(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value): ?array {
+                if (is_array($value)) {
+                    return $value;
+                }
+                if (! is_string($value) || trim($value) === '') {
+                    return null;
+                }
+                $decoded = json_decode($value, true);
+
+                return is_array($decoded) ? $decoded : ['result' => $value];
+            },
+            set: function (mixed $value): array {
+                if (is_string($value)) {
+                    return ['raw_response' => $value];
+                }
+
+                return ['raw_response' => json_encode(is_array($value) ? $value : []) ?: '{}'];
+            },
+        );
     }
 
     public function order(): BelongsTo

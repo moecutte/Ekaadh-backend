@@ -6,7 +6,11 @@ class PaymentMessage
 {
     public static function forOrder(?object $order, ?string $fallback = null): string
     {
-        $raw = $order?->payment?->raw_response ?? null;
+        try {
+            $raw = $order?->payment?->raw_response ?? null;
+        } catch (\Throwable) {
+            $raw = null;
+        }
 
         return self::forFailure(is_array($raw) ? $raw : null, $fallback);
     }

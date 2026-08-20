@@ -41,7 +41,7 @@ class TicketQrService
 
     public function publicUrl(string $ticketCode): string
     {
-        return url('/t/'.$ticketCode);
+        return \App\Support\PublicUrl::to('/t/'.$ticketCode);
     }
 
     public function imageUrl(string $ticketCode): string
