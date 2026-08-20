@@ -3,6 +3,11 @@
 @section('heading', 'Customers')
 
 @section('content')
+<p class="text-sm text-mute mb-5">
+    Ticket buyers and hosts who paid for private seats.
+    <a href="{{ route('admin.invitees.index') }}" class="font-bold text-brand hover:underline">Invitees</a>
+    live on their own tab.
+</p>
 <div class="grid sm:grid-cols-3 gap-4 mb-5">
     <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
         <div class="text-xs text-mute">Registered users</div>
@@ -11,6 +16,7 @@
     <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
         <div class="text-xs text-mute">Guest customers</div>
         <div class="text-xl font-black mt-1">{{ number_format($totals['guests']) }}</div>
+        <p class="text-[11px] text-mute mt-1">Public checkout only — invitees are listed separately.</p>
     </div>
     <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
         <div class="text-xs text-mute">Active accounts</div>
@@ -75,6 +81,6 @@
             @endforelse
         </tbody>
     </table>
+    @include('admin.partials.pager', ['paginator' => $customers])
 </div>
-<div class="mt-4">{{ $customers->links() }}</div>
 @endsection

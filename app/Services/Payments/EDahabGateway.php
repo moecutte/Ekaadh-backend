@@ -42,4 +42,18 @@ class EDahabGateway implements PaymentGatewayInterface
             ],
         ];
     }
+
+    public function inquire(string $reference, ?string $transactionId = null): array
+    {
+        return [
+            'status' => 'unknown',
+            'transaction_id' => $transactionId ?: $reference,
+            'message' => 'eDahab inquiry is not available yet.',
+            'raw' => [
+                'provider' => 'edahab',
+                'reference' => $reference,
+                'result' => 'NOT_SUPPORTED',
+            ],
+        ];
+    }
 }

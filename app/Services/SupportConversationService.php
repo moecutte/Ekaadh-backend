@@ -89,7 +89,18 @@ class SupportConversationService
             return $this->addMessage($conversation, SupportMessage::SENDER_SYSTEM, $faq->answer, null, $faq);
         }
 
-        return $this->addMessage($conversation, SupportMessage::SENDER_CUSTOMER, $body, $user);
+        $message = $this->addMessage($conversation, SupportMessage::SENDER_CUSTOMER, $body, $user);
+        $who = $user?->name ?: ($conversation->customer_name ?: 'A customer');
+        $preview = mb_strlen($body) > 120 ? mb_substr($body, 0, 117).'…' : $body;
+        app(PanelNotifier::class)->toAdmins(
+            'New support message',
+            "{$who}: {$preview}",
+            'support_message',
+            route('admin.support.conversations.show', $conversation),
+            ['conversation_id' => (string) $conversation->id],
+        );
+
+        return $message;
     }
 
     public function addAdminMessage(SupportConversation $conversation, User $admin, string $body): SupportMessage
@@ -109,6 +120,7 @@ class SupportConversationService
                         'conversation_id' => (string) $conversation->id,
                         'message_id' => (string) $message->id,
                     ],
+                    true,
                 );
             }
         }

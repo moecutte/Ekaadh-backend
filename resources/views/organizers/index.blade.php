@@ -2,6 +2,11 @@
 
 @section('title', __('ui.create_event'))
 
+@push('head')
+<style>[x-cloak]{display:none!important}</style>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+@endpush
+
 @section('content')
 @php
     $registerUrl = auth()->check()
@@ -29,6 +34,18 @@
         'name' => $package->name,
         'price' => $package->displayPrice(),
         'period' => $package->displayPeriod(),
+        'meta' => null,
+        'desc' => $package->description,
+        'features' => $package->features ?? [],
+        'cta' => $package->cta_label ?: __('ui.get_started'),
+        'highlight' => (bool) $package->is_highlighted,
+        'billing_type' => $package->billing_type,
+    ]);
+    $freePlans = ($freeEventPackages ?? collect())->map(fn ($package) => [
+        'name' => $package->name,
+        'price' => $package->displayPrice(),
+        'period' => $package->displayPeriod() ?: __('ui.org_pricing_per_event'),
+        'meta' => $package->ticketRangeLabel(),
         'desc' => $package->description,
         'features' => $package->features ?? [],
         'cta' => $package->cta_label ?: __('ui.get_started'),
@@ -139,8 +156,8 @@
 
     {{-- Pricing (admin-controlled visibility) --}}
     @if($showPackages ?? false)
-    <section class="py-12 mb-8">
-        <div class="text-center mb-12">
+    <section class="py-12 mb-8" x-data="{ eventType: 'free' }">
+        <div class="text-center mb-6">
             <h2 class="text-3xl font-extrabold text-ink mb-3">
                 {{ __('ui.org_pricing_title') }}
             </h2>
@@ -148,40 +165,37 @@
                 {{ __('ui.org_pricing_sub') }}
             </p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            @forelse($plans as $plan)
-                <div class="rounded-2xl border p-6 relative {{ $plan['highlight'] ? 'border-brand bg-ink shadow-2xl scale-[1.02]' : 'border-slate-100 bg-white' }}">
-                    @if($plan['highlight'])
-                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-white text-xs font-extrabold px-4 py-1 rounded-full">
-                            {{ __('ui.most_popular') }}
-                        </div>
-                    @endif
-                    <h3 class="font-extrabold text-xl mb-1 {{ $plan['highlight'] ? 'text-white' : 'text-ink' }}">{{ $plan['name'] }}</h3>
-                    <div class="flex items-baseline gap-1 mb-2">
-                        <span class="text-4xl font-extrabold {{ $plan['highlight'] ? 'text-brand' : 'text-ink' }}">{{ $plan['price'] }}</span>
-                        <span class="text-sm {{ $plan['highlight'] ? 'text-slate-400' : 'text-mute' }}">/ {{ $plan['period'] }}</span>
-                    </div>
-                    <p class="text-sm mb-6 {{ $plan['highlight'] ? 'text-slate-400' : 'text-mute' }}">{{ $plan['desc'] }}</p>
-                    <ul class="space-y-2.5 mb-7">
-                        @foreach($plan['features'] as $f)
-                            <li class="flex items-start gap-2.5 text-sm">
-                                <span class="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 {{ $plan['highlight'] ? 'bg-brand/20' : 'bg-brand/10' }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                </span>
-                                <span class="{{ $plan['highlight'] ? 'text-slate-300' : 'text-ink' }}">{{ $f }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                    <a
-                        href="{{ ($plan['billing_type'] ?? '') === 'custom' ? 'mailto:sales@ekaadh.com' : $registerUrl }}"
-                        class="block w-full text-center font-bold py-3 rounded-xl text-sm transition-colors {{ $plan['highlight'] ? 'bg-brand hover:bg-brand-dark text-white' : 'border border-slate-200 text-ink hover:bg-slate-50' }}"
-                    >
-                        {{ auth()->check() && ($plan['billing_type'] ?? '') !== 'custom' ? __('ui.go_to_dashboard') : $plan['cta'] }}
-                    </a>
-                </div>
-            @empty
-                <div class="md:col-span-3 text-center text-mute text-sm py-8">{{ __('ui.org_pricing_soon') }}</div>
-            @endforelse
+        <div class="flex justify-center mb-3">
+            <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1">
+                <button
+                    type="button"
+                    @click="eventType = 'free'"
+                    :class="eventType === 'free' ? 'bg-brand text-white' : 'text-mute hover:text-ink'"
+                    class="px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer"
+                >
+                    {{ __('ui.org_pricing_free_title') }}
+                </button>
+                <button
+                    type="button"
+                    @click="eventType = 'paid'"
+                    :class="eventType === 'paid' ? 'bg-brand text-white' : 'text-mute hover:text-ink'"
+                    class="px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer"
+                >
+                    {{ __('ui.org_pricing_paid_title') }}
+                </button>
+            </div>
+        </div>
+        <p class="text-center text-xs text-mute mb-8" x-show="eventType === 'free'">
+            {{ __('ui.org_pricing_free_desc') }}
+        </p>
+        <p class="text-center text-xs text-mute mb-8" x-show="eventType === 'paid'" x-cloak>
+            {{ __('ui.org_pricing_paid_desc') }}
+        </p>
+        <div x-show="eventType === 'free'">
+            @include('organizers._package-grid', ['plans' => $freePlans, 'emptyMessage' => __('ui.org_pricing_free_empty')])
+        </div>
+        <div x-show="eventType === 'paid'" x-cloak>
+            @include('organizers._package-grid', ['plans' => $plans, 'emptyMessage' => __('ui.org_pricing_paid_empty')])
         </div>
     </section>
     @endif

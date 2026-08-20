@@ -26,6 +26,9 @@
         @if($event->is_featured)
             <div class="absolute top-3 right-3 bg-brand text-white text-xs font-bold px-2.5 py-1 rounded-full">{{ __('ui.featured') }}</div>
         @endif
+        @if($event->isExpired())
+            <div class="absolute bottom-3 right-3 bg-slate-900/90 text-white text-xs font-extrabold px-2.5 py-1 rounded-full">{{ __('ui.expired') }}</div>
+        @endif
     </div>
     <div class="p-4">
         <h3 class="font-bold text-ink text-sm leading-snug mb-2.5 line-clamp-2 group-hover:text-brand transition">{{ $event->title }}</h3>
@@ -41,14 +44,17 @@
         </div>
         <div class="flex items-center justify-between">
             <p class="text-sm">
-                <span class="text-mute text-xs">{{ __('ui.from') }} </span>
-                @if($price !== null)
+                @if($event->isFreeEvent() || (float) $price === 0.0)
+                    <span class="font-extrabold text-emerald-700">{{ __('ui.free') }}</span>
+                @elseif($price !== null)
+                    <span class="text-mute text-xs">{{ __('ui.from') }} </span>
                     <span class="font-extrabold text-ink">${{ number_format((float) $price, 0) }}</span>
                 @else
+                    <span class="text-mute text-xs">{{ __('ui.from') }} </span>
                     <span class="font-extrabold text-ink">—</span>
                 @endif
             </p>
-            <span class="bg-brand group-hover:bg-brand-dark text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors">{{ __('ui.get_tickets') }}</span>
+            <span class="text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors {{ $event->isExpired() ? 'bg-slate-200 text-slate-600' : 'bg-brand group-hover:bg-brand-dark text-white' }}">{{ $event->isExpired() ? __('ui.expired') : ($event->isFreeEvent() ? 'Get tickets' : __('ui.get_tickets')) }}</span>
         </div>
     </div>
 </a>

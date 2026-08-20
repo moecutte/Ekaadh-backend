@@ -3,11 +3,12 @@
     $compact = $compact ?? false;
     $showQr = $showQr ?? true;
     $template = \App\Support\TicketDesigns::templateView($design);
+    $cardData = \App\Support\InvitationCardData::hydrate($design, $ticket ?? null, $compact, $showQr);
 @endphp
-@include($template, [
+@include($template, array_merge($cardData, [
     'ticket' => $ticket,
-    'qrImage' => $qrImage,
+    'qrImage' => $qrImage ?? '',
     'design' => $design,
     'compact' => $compact,
     'showQr' => $showQr,
-])
+]))

@@ -32,13 +32,41 @@ class EventResource extends JsonResource
             'cover_image' => $this->cover_image,
             'is_featured' => (bool) $this->is_featured,
             'is_private' => (bool) $this->is_private,
+            'is_free' => $this->isFreeEvent(),
+            'is_expired' => $this->isExpired(),
             'status' => $this->status,
             'starting_price' => $startingPrice !== null ? (float) $startingPrice : null,
-            'organizer' => $this->whenLoaded('organizer', fn () => [
-                'id' => $this->organizer->id,
-                'business_name' => $this->organizer->business_name,
-            ]),
+            'organizer' => $this->whenLoaded('organizer', function () {
+                $this->organizer->loadMissing('user');
+
+                return [
+                    'id' => $this->organizer->id,
+                    'business_name' => $this->organizer->business_name,
+                    'profile_image' => $this->organizer->avatarUrl(),
+                ];
+            }),
             'ticket_types' => TicketTypeResource::collection($this->whenLoaded('ticketTypes')),
+            'speakers' => $this->whenLoaded('speakers', fn () => $this->speakers->map(fn ($speaker) => [
+                'id' => $speaker->id,
+                'name' => $speaker->name,
+                'role' => $speaker->role,
+                'bio' => $speaker->bio,
+                'photo' => $speaker->photo,
+            ])->values()),
+            'programme' => $this->whenLoaded('programmeItems', fn () => $this->programmeItems->map(fn ($item) => [
+                'id' => $item->id,
+                'starts_at' => \App\Models\EventProgrammeItem::clockValue($item->starts_at),
+                'ends_at' => \App\Models\EventProgrammeItem::clockValue($item->ends_at),
+                'time_label' => $item->timeRangeLabel(),
+                'title' => $item->title,
+                'description' => $item->description,
+            ])->values()),
+            'gallery' => $this->whenLoaded('galleryImages', fn () => $this->galleryImages->map(fn ($image) => [
+                'id' => $image->id,
+                'url' => $image->path,
+            ])->values()),
+            'payment_sandbox' => (bool) config('waafipay.sandbox'),
+            'service_fee' => (float) \App\Models\Setting::getValue('service_fee', 1),
         ];
     }
 

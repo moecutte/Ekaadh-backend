@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DeviceToken;
 use App\Models\User;
+use App\Notifications\PanelAlert;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,8 @@ class PushNotificationService
 
     public const TYPE_INVITE_SEND_FAILED = 'invite_send_failed';
 
+    public const TYPE_TICKETS_READY = 'tickets_ready';
+
     public function enabled(): bool
     {
         if (! config('fcm.enabled')) {
@@ -37,8 +40,20 @@ class PushNotificationService
     /**
      * @param  array<string, string>  $data
      */
-    public function sendToUser(User $user, string $title, string $body, string $type, array $data = []): void
+    public function sendToUser(User $user, string $title, string $body, string $type, array $data = [], bool $inbox = false): void
     {
+        if ($inbox) {
+            try {
+                $user->notify(new PanelAlert($title, $body, $type, null, $data));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        if (! $user->push_notifications_enabled) {
+            return;
+        }
+
         $tokens = DeviceToken::query()
             ->where('user_id', $user->id)
             ->pluck('token')
@@ -53,7 +68,7 @@ class PushNotificationService
         $this->sendToTokens($tokens, $title, $body, $type, $data);
     }
 
-    public function sendToPhone(?string $phone, string $title, string $body, string $type, array $data = []): void
+    public function sendToPhone(?string $phone, string $title, string $body, string $type, array $data = [], bool $inbox = false): void
     {
         $variants = Phone::variants($phone);
         if ($variants === []) {
@@ -62,7 +77,7 @@ class PushNotificationService
 
         $users = User::query()->whereIn('phone', $variants)->get();
         foreach ($users as $user) {
-            $this->sendToUser($user, $title, $body, $type, $data);
+            $this->sendToUser($user, $title, $body, $type, $data, $inbox);
         }
     }
 

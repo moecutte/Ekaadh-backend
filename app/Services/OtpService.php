@@ -17,7 +17,7 @@ class OtpService
 
     public const PURPOSE_FIND_TICKETS = 'find_tickets';
 
-    public function __construct(private TextBeeSmsService $sms) {}
+    public function __construct(private TelesomSmsService $sms) {}
 
     public function normalize(string $phone): string
     {
@@ -50,21 +50,32 @@ class OtpService
         $ttl = (int) config('otp.ttl_seconds', 600);
         $key = $this->cacheKey($purpose, $normalized);
 
+        $this->assertDeliveryAllowed();
+
         Cache::put($key, [
             'hash' => hash('sha256', $code),
             'attempts' => 0,
         ], $ttl);
 
-        $minutes = max(1, (int) ceil($ttl / 60));
-        $smsBody = str_replace(
-            [':code', ':minutes'],
-            [$code, (string) $minutes],
-            (string) config('otp.sms_message', 'Your Ekaadh code is :code. Valid for :minutes minutes.')
-        );
+        // Prefer fixed/test OTP over live SMS so local/staging never hangs on Telesom.
+        if (filled(config('otp.fixed_code'))) {
+            Log::info('OTP issued (fixed code — SMS skipped)', [
+                'purpose' => $purpose,
+                'phone' => $this->redact($normalized),
+                'ttl' => $ttl,
+            ]);
+
+            return [
+                'phone' => $normalized,
+                'message' => 'Use confirmation code '.$code.' (testing — fixed OTP).',
+                'expires_in' => $ttl,
+                'debug_code' => $code,
+            ];
+        }
 
         if ($this->sms->enabled()) {
             try {
-                $this->sms->send($normalized, $smsBody);
+                $this->sms->sendOtp($normalized, $code, $ttl);
             } catch (\Throwable $e) {
                 Cache::forget($key);
                 Log::error('OTP SMS delivery failed', [
@@ -78,7 +89,7 @@ class OtpService
                 ]);
             }
 
-            Log::info('OTP issued via TextBee', [
+            Log::info('OTP issued via Telesom', [
                 'purpose' => $purpose,
                 'phone' => $this->redact($normalized),
                 'ttl' => $ttl,
@@ -91,7 +102,14 @@ class OtpService
             ];
         }
 
-        Log::info('OTP issued (stub delivery — TextBee not configured)', [
+        if (app()->environment('production')) {
+            Cache::forget($key);
+            throw ValidationException::withMessages([
+                'phone' => ['Could not send the confirmation code. Please try again.'],
+            ]);
+        }
+
+        Log::info('OTP issued (stub delivery — Telesom SMS not configured)', [
             'purpose' => $purpose,
             'phone' => $this->redact($normalized),
             'code' => $code,
@@ -104,8 +122,10 @@ class OtpService
             'expires_in' => $ttl,
         ];
 
-        // Surface code only when SMS is not configured (local/dev).
-        if (config('otp.fixed_code') || app()->environment('local')) {
+        // Surface code only when explicitly enabled — never by APP_ENV=local alone.
+        $expose = filled(config('otp.fixed_code'))
+            || filter_var(config('otp.expose_debug_code'), FILTER_VALIDATE_BOOLEAN);
+        if ($expose) {
             $payload['debug_code'] = $code;
             $payload['message'] = 'Use confirmation code '.$code.' (testing — SMS not configured).';
         }
@@ -211,20 +231,32 @@ class OtpService
             ->where(function ($q) use ($variants) {
                 $q->whereHas('orderItem.order', function ($q) use ($variants) {
                     $q->where('status', 'paid')
-                        ->whereIn('buyer_phone', $variants);
+                        ->where(function ($q) use ($variants) {
+                            $q->whereIn('buyer_phone', $variants)
+                                ->orWhereHas('payment', function ($q) use ($variants) {
+                                    $q->whereIn('phone_number', $variants);
+                                });
+                        });
                 })->orWhereHas('invitation', function ($q) use ($variants) {
                     $q->where('status', 'active')
                         ->whereIn('guest_phone', $variants);
                 });
             })
-            ->where(function ($q) {
-                $q->whereHas('event', function ($e) {
-                    $e->whereNull('event_date')
-                        ->orWhereDate('event_date', '>=', now()->toDateString());
-                });
-            })
             ->latest()
             ->get();
+    }
+
+    private function assertDeliveryAllowed(): void
+    {
+        $production = app()->environment('production');
+        $fixed = filled(config('otp.fixed_code'));
+        $expose = filter_var(config('otp.expose_debug_code'), FILTER_VALIDATE_BOOLEAN);
+
+        if ($production && ($fixed || $expose)) {
+            throw ValidationException::withMessages([
+                'phone' => ['Could not send the confirmation code. Please try again.'],
+            ]);
+        }
     }
 
     private function assertPhoneAvailableForRegister(string $normalized): void

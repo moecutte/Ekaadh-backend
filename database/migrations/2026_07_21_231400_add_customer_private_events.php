@@ -22,7 +22,13 @@ return new class extends Migration
             $table->dropForeign(['organizer_id']);
         });
 
-        DB::statement('ALTER TABLE events MODIFY organizer_id BIGINT UNSIGNED NULL');
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            Schema::table('events', function (Blueprint $table) {
+                $table->unsignedBigInteger('organizer_id')->nullable()->change();
+            });
+        } else {
+            DB::statement('ALTER TABLE events MODIFY organizer_id BIGINT UNSIGNED NULL');
+        }
 
         Schema::table('events', function (Blueprint $table) {
             $table->foreign('organizer_id')

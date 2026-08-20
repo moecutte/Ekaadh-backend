@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\OrganizerProfile;
-use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(Request $request): View
     {
         $stats = [
             'organizers' => OrganizerProfile::query()->where('approval_status', 'approved')->count(),
@@ -26,23 +26,59 @@ class DashboardController extends Controller
             ->with('user')
             ->where('approval_status', 'pending')
             ->latest()
-            ->take(10)
-            ->get();
+            ->paginate(8, ['*'], 'orgs_page')
+            ->withQueryString()
+            ->fragment('pending-orgs');
 
         $pendingEvents = Event::query()
-            ->with('organizer')
+            ->with('organizer:id,business_name')
+            ->withSum('ticketTypes as tickets_sold', 'quantity_sold')
+            ->withSum('ticketTypes as tickets_capacity', 'quantity_available')
             ->where('status', 'pending_review')
             ->latest()
-            ->take(10)
-            ->get();
+            ->paginate(8, ['*'], 'events_page')
+            ->withQueryString()
+            ->fragment('pending-events');
 
         $recentOrders = Order::query()
-            ->with(['event.organizer'])
+            ->commerce()
+            ->with('event:id,title')
             ->where('status', 'paid')
             ->latest()
-            ->take(8)
-            ->get();
+            ->paginate(10, ['*'], 'orders_page')
+            ->withQueryString()
+            ->fragment('recent-orders');
 
-        return view('admin.dashboard', compact('stats', 'pendingOrgs', 'pendingEvents', 'recentOrders'));
+        $organizers = OrganizerProfile::query()
+            ->orderBy('business_name')
+            ->toBase()
+            ->get(['id', 'business_name']);
+
+        $selectedOrganizer = null;
+        $organizerId = $request->integer('organizer_id');
+
+        if ($organizerId) {
+            $selectedOrganizer = OrganizerProfile::query()->find($organizerId);
+        }
+
+        $dashboardEvents = Event::query()
+            ->with('organizer:id,business_name')
+            ->withSum('ticketTypes as tickets_sold', 'quantity_sold')
+            ->withSum('ticketTypes as tickets_capacity', 'quantity_available')
+            ->when($selectedOrganizer, fn ($q) => $q->where('organizer_id', $selectedOrganizer->id))
+            ->latest()
+            ->paginate(10, ['*'], 'org_events_page')
+            ->withQueryString()
+            ->fragment('organizer-events');
+
+        return view('admin.dashboard', compact(
+            'stats',
+            'pendingOrgs',
+            'pendingEvents',
+            'recentOrders',
+            'organizers',
+            'selectedOrganizer',
+            'dashboardEvents'
+        ));
     }
 }

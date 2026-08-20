@@ -14,7 +14,7 @@ class SupportFaqSeeder extends Seeder
                 'locale' => 'en',
                 'sort_order' => 1,
                 'question' => 'How do I buy a ticket?',
-                'answer' => 'Browse events on the home page, open an event, choose your ticket type, and complete checkout with Zaad or eDahab.',
+                'answer' => 'Browse events on the home page, open an event, choose your ticket type, and complete checkout with Zaad, eDahab, Sahal, or EVC Plus.',
             ],
             [
                 'locale' => 'en',
@@ -50,7 +50,7 @@ class SupportFaqSeeder extends Seeder
                 'locale' => 'so',
                 'sort_order' => 1,
                 'question' => 'Sidee baan tigidh u iibsadaa?',
-                'answer' => 'Ka baadh dhacdooyinka bogga hore, fur dhacdada, dooro nooca tigidhka, oo dhammaystir lacag bixinta Zaad ama eDahab.',
+                'answer' => 'Ka baadh dhacdooyinka bogga hore, fur dhacdada, dooro nooca tigidhka, oo dhammaystir lacag bixinta Zaad, eDahab, Sahal, ama EVC Plus.',
             ],
             [
                 'locale' => 'so',

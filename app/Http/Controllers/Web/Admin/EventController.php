@@ -6,16 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\OrganizerProfile;
+use App\Services\InvitationService;
+use App\Services\PanelNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class EventController extends Controller
 {
+    public function __construct(private InvitationService $invitations) {}
+
     public function index(Request $request): View
     {
         $query = Event::query()
-            ->with(['organizer', 'owner', 'privateEventCategory', 'ticketTypes'])
+            ->with(['organizer', 'owner', 'privateEventCategory', 'ticketTypes', 'package'])
             ->latest();
 
         if ($search = $request->string('q')->trim()->toString()) {
@@ -73,9 +77,9 @@ class EventController extends Controller
             $query->whereDate('event_date', '<=', $to);
         }
 
-        $perPage = (int) $request->integer('per_page', 20);
-        if (! in_array($perPage, [10, 20, 50, 100], true)) {
-            $perPage = 20;
+        $perPage = (int) $request->integer('per_page', 15);
+        if (! in_array($perPage, [10, 15, 20, 50], true)) {
+            $perPage = 15;
         }
 
         $events = $query->paginate($perPage)->withQueryString();
@@ -101,14 +105,26 @@ class EventController extends Controller
 
     public function approve(Event $event): RedirectResponse
     {
-        $event->update(['status' => 'published']);
+        $event->load('package');
+        if ($event->needsPackagePayment()) {
+            return back()->with('error', "Cannot publish {$event->title} until the organizer pays the free-event package.");
+        }
 
-        return back()->with('success', "Published {$event->title}.");
+        $event->update(['status' => 'published']);
+        $flushed = $this->invitations->flushPending($event->fresh(['ticketTypes']));
+        $extra = $flushed['created'] > 0
+            ? " Sent {$flushed['created']} complimentary invitation(s)."
+            : ($flushed['error'] ? ' Complimentary invitations could not be sent: '.$flushed['error'] : '');
+
+        $this->notifyOrganizerEventStatus($event, 'published');
+
+        return back()->with('success', "Published {$event->title}.".$extra);
     }
 
     public function reject(Event $event): RedirectResponse
     {
         $event->update(['status' => 'cancelled']);
+        $this->notifyOrganizerEventStatus($event, 'cancelled');
 
         return back()->with('success', "Cancelled {$event->title}.");
     }
@@ -126,8 +142,52 @@ class EventController extends Controller
             'status' => ['required', 'in:draft,pending_review,published,completed,cancelled'],
         ]);
 
-        $event->update(['status' => $data['status']]);
+        $event->load('package');
+        if ($data['status'] === 'published' && $event->needsPackagePayment()) {
+            return back()->with('error', "Cannot publish {$event->title} until the organizer pays the free-event package.");
+        }
 
-        return back()->with('success', 'Event status updated.');
+        $event->update(['status' => $data['status']]);
+        $extra = '';
+        if ($data['status'] === 'published') {
+            $flushed = $this->invitations->flushPending($event->fresh(['ticketTypes']));
+            if ($flushed['created'] > 0) {
+                $extra = " Sent {$flushed['created']} complimentary invitation(s).";
+            } elseif ($flushed['error']) {
+                $extra = ' Complimentary invitations could not be sent: '.$flushed['error'];
+            }
+            $this->notifyOrganizerEventStatus($event, 'published');
+        } elseif (in_array($data['status'], ['cancelled', 'completed'], true)) {
+            $this->notifyOrganizerEventStatus($event, $data['status']);
+        }
+
+        return back()->with('success', 'Event status updated.'.$extra);
+    }
+
+    private function notifyOrganizerEventStatus(Event $event, string $status): void
+    {
+        $user = $event->organizer?->user;
+        if (! $user) {
+            $event->loadMissing('organizer.user');
+            $user = $event->organizer?->user;
+        }
+        if (! $user) {
+            return;
+        }
+
+        [$title, $body, $kind] = match ($status) {
+            'published' => ['Event published', "{$event->title} is now live.", 'event_published'],
+            'completed' => ['Event completed', "{$event->title} was marked completed.", 'event_completed'],
+            default => ['Event cancelled', "{$event->title} was cancelled.", 'event_cancelled'],
+        };
+
+        app(PanelNotifier::class)->toUser(
+            $user,
+            $title,
+            $body,
+            $kind,
+            route('organizer.events.index'),
+            ['event_id' => (string) $event->id],
+        );
     }
 }

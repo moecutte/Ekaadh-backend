@@ -70,6 +70,7 @@ class SendEventRemindersCommand extends Command
                         'event_id' => (string) $ticket->event_id,
                         'ticket_code' => (string) $ticket->ticket_code,
                     ],
+                    true,
                 );
                 $count++;
             }

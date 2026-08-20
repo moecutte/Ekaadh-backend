@@ -285,7 +285,7 @@ class PrivateEventService
         ];
     }
 
-    public function payCapacityOrder(Order $order, string $paymentMethod, ?string $phone = null, bool $forceFail = false): Order
+    public function payCapacityOrder(Order $order, string $paymentMethod, ?string $phone = null, bool $forceFail = false, ?string $walletPin = null): Order
     {
         if ($order->source !== 'private_event') {
             throw ValidationException::withMessages([
@@ -293,7 +293,7 @@ class PrivateEventService
             ]);
         }
 
-        return $this->orders->pay($order, $paymentMethod, $phone, $forceFail);
+        return $this->orders->pay($order, $paymentMethod, $phone, $forceFail, $walletPin);
     }
 
     /**

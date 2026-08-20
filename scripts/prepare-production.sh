@@ -11,4 +11,4 @@ php artisan route:cache
 php artisan view:cache
 php artisan event:cache
 
-echo "Build ready. Change seeded passwords. Do not re-seed on future deploys."
+echo "Build ready. Create an admin with ADMIN_EMAIL/ADMIN_PASSWORD on first seed. Do not re-seed on future deploys."

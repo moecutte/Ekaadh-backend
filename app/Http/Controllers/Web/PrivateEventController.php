@@ -6,9 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Event;
+use App\Models\InvitationDesign;
 use App\Models\Order;
+use App\Support\InvitationPreview;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
+use App\Services\Payments\WaafiPayGateway;
+use App\Support\PaymentMessage;
+use App\Support\Phone;
 use App\Support\PublicUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,6 +57,33 @@ class PrivateEventController extends Controller
             'defaultDesign' => \App\Support\TicketDesigns::defaultId(),
             'allDesigns' => array_values(\App\Support\TicketDesigns::all()),
         ]);
+    }
+
+    public function invitationPreview(Request $request): View
+    {
+        $this->customer();
+
+        $design = InvitationDesign::query()
+            ->with('fields')
+            ->findOrFail($request->integer('invitation_design_id'));
+
+        abort_unless($design->is_active, 404);
+
+        $fields = $request->input('fields', []);
+        if (! is_array($fields)) {
+            $fields = [];
+        }
+
+        $preview = InvitationPreview::make($design, $fields, [
+            'event_date' => $request->input('event_date'),
+            'event_time' => $request->input('event_time'),
+            'venue' => $request->input('venue'),
+            'address' => $request->input('address'),
+            'city' => $request->input('city'),
+            'guest_name' => 'Guest',
+        ]);
+
+        return view('invitations.preview-frame', $preview + ['showQr' => true]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -133,6 +165,8 @@ class PrivateEventController extends Controller
             'event' => $event->load('ticketTypes'),
             'order' => $order,
             'allowForceFail' => OrderService::allowsForceFail(),
+            'waafiSandbox' => (bool) config('waafipay.sandbox'),
+            'waafiTestWallets' => config('waafipay.test_wallets', []),
         ]);
     }
 
@@ -142,8 +176,10 @@ class PrivateEventController extends Controller
         $this->authorizeOwner($event, $user);
 
         $data = $request->validate([
-            'payment_method' => ['required', 'in:zaad,edahab'],
+            'payment_method' => ['required', 'in:waafipay'],
             'force_fail' => ['sometimes', 'boolean'],
+            'wallet_pin' => ['nullable', 'string', 'max:8'],
+            'buyer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
         $order = Order::query()
@@ -154,12 +190,30 @@ class PrivateEventController extends Controller
             ->latest()
             ->firstOrFail();
 
+        $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
+        if (config('waafipay.sandbox') && $walletPin === null) {
+            return back()->withErrors([
+                'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
+            ]);
+        }
+
+        $chargePhone = Phone::normalize($user->phone);
+        if (config('waafipay.sandbox')) {
+            $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
+            if ($chargePhone === '') {
+                return back()->withErrors([
+                    'buyer_phone' => __('ui.sandbox_charge_phone_required'),
+                ]);
+            }
+        }
+
         try {
             $order = $this->privateEvents->payCapacityOrder(
                 $order,
                 $data['payment_method'],
-                $user->phone,
-                OrderService::allowsForceFail() && $request->boolean('force_fail')
+                $chargePhone,
+                OrderService::allowsForceFail() && $request->boolean('force_fail'),
+                $walletPin
             );
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
@@ -171,9 +225,17 @@ class PrivateEventController extends Controller
                 ->with('success', 'Payment successful. Send invitations to your guests.');
         }
 
+        if ($order->status === 'pending') {
+            return redirect()
+                ->route('private-events.pay', $event)
+                ->with('success', __('ui.payment_pending_hint'));
+        }
+
+        $order->loadMissing('payment');
+
         return redirect()
             ->route('private-events.pay', $event)
-            ->with('error', 'Payment could not be completed. Try again.');
+            ->with('error', PaymentMessage::forOrder($order));
     }
 
     public function addCapacityForm(Event $event): View

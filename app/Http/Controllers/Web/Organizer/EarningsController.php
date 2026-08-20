@@ -15,8 +15,8 @@ class EarningsController extends Controller
         $profile = auth()->user()->organizerProfile;
         $eventIds = $profile?->events()->pluck('id') ?? collect();
 
-        $gross = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('subtotal');
-        $commission = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('commission_amount');
+        $gross = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('subtotal');
+        $commission = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('commission_amount');
         $net = $gross - $commission;
 
         $paidOut = $profile
@@ -40,6 +40,7 @@ class EarningsController extends Controller
                 ->with('event')
                 ->whereIn('event_id', $eventIds)
                 ->where('status', 'paid')
+                ->ticketSales()
                 ->latest()
                 ->take(20)
                 ->get();

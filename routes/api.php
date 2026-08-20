@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\PrivateEventController;
 use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\NotificationController as ApiNotificationController;
 use App\Http\Controllers\Api\SupportController as ApiSupportController;
 use App\Http\Controllers\Api\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -52,9 +53,14 @@ Route::prefix('v1')->group(function () {
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::post('/auth/password', [AuthController::class, 'changePassword']);
+        Route::delete('/auth/account', [AuthController::class, 'destroyAccount']);
         Route::post('/auth/device-token', [DeviceTokenController::class, 'store']);
         Route::delete('/auth/device-token', [DeviceTokenController::class, 'destroy']);
         Route::get('/my-tickets', [TicketController::class, 'mine']);
+        Route::get('/notifications', [ApiNotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [ApiNotificationController::class, 'unreadCount']);
+        Route::post('/notifications/read-all', [ApiNotificationController::class, 'readAll']);
+        Route::post('/notifications/{notification}/read', [ApiNotificationController::class, 'open']);
 
         Route::prefix('private-events')->group(function () {
             Route::get('/meta', [PrivateEventController::class, 'meta']);
@@ -66,7 +72,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/{event}/invitations', [PrivateEventController::class, 'invitations']);
             Route::post('/{event}/invitations', [PrivateEventController::class, 'storeInvitations']);
             Route::post('/{event}/invitations/{invitation}/resend', [PrivateEventController::class, 'resendInvitation']);
-            Route::post('/{event}/invitations/{invitation}/phone', [PrivateEventController::class, 'updateInvitationPhone']);
             Route::post('/{event}/invitations/{invitation}/revoke', [PrivateEventController::class, 'revokeInvitation']);
         });
 

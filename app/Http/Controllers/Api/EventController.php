@@ -14,11 +14,17 @@ class EventController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        $when = Event::listingWhen($request->string('when')->toString());
+
         $query = Event::query()
             ->publicListing()
-            ->with(['organizer', 'ticketTypes'])
-            ->orderBy('event_date')
-            ->orderBy('event_time');
+            ->with(['organizer.user', 'ticketTypes']);
+
+        if ($when === 'past') {
+            $query->past()->orderByDesc('event_date')->orderByDesc('event_time');
+        } else {
+            $query->upcoming()->orderBy('event_date')->orderBy('event_time');
+        }
 
         if ($search = $request->string('q')->trim()->toString()) {
             $query->where(function ($q) use ($search) {
@@ -43,12 +49,24 @@ class EventController extends Controller
             $query->where('is_featured', true);
         }
 
+        $price = strtolower($request->string('price', 'all')->toString());
+        if ($price === 'free') {
+            $query->where('pricing_type', 'free');
+        } elseif ($price === 'paid') {
+            $query->where(function ($q) {
+                $q->whereNull('pricing_type')
+                    ->orWhere('pricing_type', '!=', 'free');
+            });
+        }
+
         $events = $query->paginate(
             perPage: min((int) $request->integer('per_page', 20), 50)
         );
 
         return EventResource::collection($events)->additional([
             'filters' => [
+                'when' => $when,
+                'price' => in_array($price, ['free', 'paid'], true) ? $price : 'all',
                 'categories' => Category::activeNames(),
                 'cities' => City::activeNames(),
             ],
@@ -59,7 +77,7 @@ class EventController extends Controller
     {
         $event = Event::query()
             ->publicListing()
-            ->with(['organizer', 'ticketTypes'])
+            ->with(['organizer.user', 'ticketTypes', 'speakers', 'programmeItems', 'galleryImages'])
             ->when(
                 ctype_digit($idOrSlug),
                 fn ($q) => $q->where('id', (int) $idOrSlug),

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\Concerns\PaginatesFilteredLists;
 use App\Models\Order;
 use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\Setting;
+use App\Services\PanelNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,6 +16,8 @@ use Illuminate\View\View;
 
 class OrganizerController extends Controller
 {
+    use PaginatesFilteredLists;
+
     public function index(Request $request): View
     {
         $query = OrganizerProfile::query()->with(['user', 'package'])->latest();
@@ -33,48 +37,54 @@ class OrganizerController extends Controller
             });
         }
 
-        $organizers = $query->paginate(20)->withQueryString();
+        $organizers = $query->paginate($this->resolvePerPage($request))->withQueryString();
         $defaultRate = (float) Setting::getValue('default_commission_rate', 10);
-        $packages = OrganizerPackage::query()->ordered()->get();
+        $packages = OrganizerPackage::query()->organizerPlans()->ordered()->get();
 
         return view('admin.organizers.index', compact('organizers', 'defaultRate', 'packages'));
     }
 
     public function show(OrganizerProfile $organizer): View
     {
-        $organizer->load([
-            'user',
-            'package',
-            'approver',
-            'events' => fn ($q) => $q->latest()->limit(15),
-            'payouts' => fn ($q) => $q->latest()->limit(10),
-        ]);
+        $organizer->load(['user', 'package', 'approver']);
+
+        $events = $organizer->events()
+            ->latest()
+            ->paginate(10, ['*'], 'events_page')
+            ->withQueryString()
+            ->fragment('organizer-events');
+
+        $payouts = $organizer->payouts()
+            ->latest()
+            ->paginate(8, ['*'], 'payouts_page')
+            ->withQueryString()
+            ->fragment('organizer-payouts');
 
         $eventIds = $organizer->events()->pluck('id');
         $defaultRate = (float) Setting::getValue('default_commission_rate', 10);
-        $packages = OrganizerPackage::query()->ordered()->get();
+        $packages = OrganizerPackage::query()->organizerPlans()->ordered()->get();
 
         $stats = [
             'events' => $organizer->events()->count(),
             'published' => $organizer->events()->where('status', 'published')->count(),
             'gross' => $eventIds->isEmpty()
                 ? 0.0
-                : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('subtotal'),
+                : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('subtotal'),
             'commission' => $eventIds->isEmpty()
                 ? 0.0
-                : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('commission_amount'),
+                : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('commission_amount'),
             'orders' => $eventIds->isEmpty()
                 ? 0
-                : Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->count(),
+                : Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->count(),
         ];
 
-        return view('admin.organizers.show', compact('organizer', 'defaultRate', 'stats', 'packages'));
+        return view('admin.organizers.show', compact('organizer', 'defaultRate', 'stats', 'packages', 'events', 'payouts'));
     }
 
     public function approve(Request $request, OrganizerProfile $organizer): RedirectResponse
     {
         $data = $request->validate([
-            'package_id' => ['nullable', 'integer', Rule::exists('organizer_packages', 'id')->where('is_active', true)],
+            'package_id' => ['nullable', 'integer', Rule::exists('organizer_packages', 'id')->where('is_active', true)->where('kind', OrganizerPackage::KIND_ORGANIZER)],
         ]);
 
         $packageId = $data['package_id']
@@ -88,6 +98,19 @@ class OrganizerController extends Controller
             'rejection_reason' => null,
             'package_id' => $packageId,
         ]);
+
+        $organizer->loadMissing('user');
+
+        if ($user = $organizer->user) {
+            app(PanelNotifier::class)->toUser(
+                $user,
+                'Organizer account approved',
+                'You can now create and manage public events on Ekaadh.',
+                'organizer_approved',
+                route('organizer.dashboard'),
+                ['organizer_id' => (string) $organizer->id],
+            );
+        }
 
         return back()->with('success', "Approved {$organizer->business_name}.");
     }
@@ -105,13 +128,27 @@ class OrganizerController extends Controller
             'rejection_reason' => $data['rejection_reason'] ?? 'Application rejected by admin.',
         ]);
 
+        $organizer->loadMissing('user');
+
+        if ($user = $organizer->user) {
+            $reason = $organizer->rejection_reason ?: 'Your organizer application was rejected.';
+            app(PanelNotifier::class)->toUser(
+                $user,
+                'Organizer application rejected',
+                $reason,
+                'organizer_rejected',
+                route('organizer.application.edit'),
+                ['organizer_id' => (string) $organizer->id],
+            );
+        }
+
         return back()->with('success', "Rejected {$organizer->business_name}.");
     }
 
     public function updatePackage(Request $request, OrganizerProfile $organizer): RedirectResponse
     {
         $data = $request->validate([
-            'package_id' => ['nullable', 'integer', Rule::exists('organizer_packages', 'id')],
+            'package_id' => ['nullable', 'integer', Rule::exists('organizer_packages', 'id')->where('kind', OrganizerPackage::KIND_ORGANIZER)],
         ]);
 
         $organizer->update([

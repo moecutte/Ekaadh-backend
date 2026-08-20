@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\Concerns\PaginatesFilteredLists;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
+    use PaginatesFilteredLists;
+
     public function index(Request $request): View
     {
         $type = $request->string('type')->toString();
@@ -31,22 +34,20 @@ class CustomerController extends Controller
             ->sortByDesc(fn ($row) => $row->sort_at?->timestamp ?? 0)
             ->values();
 
-        $perPage = 20;
+        $perPage = $this->resolvePerPage($request);
         $page = LengthAwarePaginator::resolveCurrentPage();
-        $paginator = new LengthAwarePaginator(
+        $paginator = (new LengthAwarePaginator(
             $customers->forPage($page, $perPage)->values(),
             $customers->count(),
             $perPage,
             $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
+            ['path' => $request->url()]
+        ))->withQueryString();
 
         $totals = [
             'users' => User::query()->where('role', User::ROLE_CUSTOMER)->count(),
             'guests' => (int) Order::query()
+                ->commerce()
                 ->whereNull('user_id')
                 ->selectRaw('COUNT(DISTINCT buyer_phone) as aggregate')
                 ->value('aggregate'),
@@ -104,6 +105,7 @@ class CustomerController extends Controller
             ->all();
 
         $query = Order::query()
+            ->commerce()
             ->whereNull('user_id')
             ->orderByDesc('created_at');
 

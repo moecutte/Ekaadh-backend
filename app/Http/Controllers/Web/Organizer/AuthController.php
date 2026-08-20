@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\User;
+use App\Services\PanelNotifier;
 use App\Support\OrganizerDocuments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,6 +99,11 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+
+        $user->load('organizerProfile');
+        if ($profile = $user->organizerProfile) {
+            app(PanelNotifier::class)->organizerApplicationSubmitted($profile);
+        }
 
         return redirect()
             ->route('organizer.dashboard')

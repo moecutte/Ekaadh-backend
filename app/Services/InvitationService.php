@@ -25,14 +25,9 @@ class InvitationService
      * @param  array<int, array{name?: string|null, phone: string, quantity: int, ticket_type_id: int}>  $guests
      * @return array{created: int, invitations: \Illuminate\Support\Collection<int, EventInvitation>}
      */
-    public function issueAndSend(Event $event, array $guests): array
+    public function issueAndSend(Event $event, array $guests, string $channel): array
     {
-        if (! $event->is_private) {
-            throw ValidationException::withMessages([
-                'event' => ['Invitations are only available for private events.'],
-            ]);
-        }
-
+        $channel = $this->requireChannel($channel);
         if ($event->status !== 'published') {
             throw ValidationException::withMessages([
                 'event' => ['Publish the event before sending invitations.'],
@@ -45,9 +40,22 @@ class InvitationService
             ]);
         }
 
+        if (! $event->is_private) {
+            $used = $event->activeComplimentaryGuestCount();
+            $limit = Event::MAX_COMPLIMENTARY_GUESTS;
+            $left = max(0, $limit - $used);
+            if (count($guests) > $left) {
+                throw ValidationException::withMessages([
+                    'guests' => $left === 0
+                        ? "Complimentary guests are limited to {$limit} per event. Revoke one to send another."
+                        : "Only {$left} complimentary guest slot(s) left (max {$limit}).",
+                ]);
+            }
+        }
+
         $invitations = collect();
 
-        DB::transaction(function () use ($event, $guests, &$invitations) {
+        DB::transaction(function () use ($event, $guests, $channel, &$invitations) {
             foreach ($guests as $index => $guest) {
                 $phone = Phone::normalize($guest['phone'] ?? '');
                 if ($phone === '') {
@@ -120,6 +128,7 @@ class InvitationService
                     'status' => 'active',
                     'sms_status' => 'pending',
                     'whatsapp_status' => 'pending',
+                    'delivery_channel' => $channel,
                 ]);
 
                 $type->increment('quantity_sold', $qty);
@@ -141,7 +150,7 @@ class InvitationService
         });
 
         foreach ($invitations as $invitation) {
-            $this->delivery->sendForInvitation($invitation);
+            $this->delivery->sendForInvitation($invitation, $channel);
         }
 
         return [
@@ -152,7 +161,87 @@ class InvitationService
         ];
     }
 
-    public function resend(EventInvitation $invitation): EventInvitation
+    /**
+     * Send complimentary invitations queued on a public organizer event.
+     *
+     * @return array{created: int, queued: int, error: ?string}
+     */
+    public function flushPending(Event $event): array
+    {
+        $pending = $event->pending_invitations;
+        $rows = is_array($pending) ? ($pending['guests'] ?? []) : [];
+        if ($rows === []) {
+            return ['created' => 0, 'queued' => 0, 'error' => null];
+        }
+
+        if ($event->status !== 'published') {
+            return ['created' => 0, 'queued' => count($rows), 'error' => null];
+        }
+
+        $guests = $this->mapPendingGuests($event, $rows);
+        if ($guests === []) {
+            $event->update(['pending_invitations' => null]);
+
+            return ['created' => 0, 'queued' => 0, 'error' => null];
+        }
+
+        $channel = is_array($pending) ? (string) ($pending['channel'] ?? 'whatsapp') : 'whatsapp';
+
+        try {
+            $result = $this->issueAndSend($event, $guests, $channel);
+            $event->update(['pending_invitations' => null]);
+
+            return [
+                'created' => (int) $result['created'],
+                'queued' => 0,
+                'error' => null,
+            ];
+        } catch (ValidationException $e) {
+            return [
+                'created' => 0,
+                'queued' => count($guests),
+                'error' => collect($e->errors())->flatten()->first(),
+            ];
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array{name: ?string, phone: string, quantity: int, ticket_type_id: int}>
+     */
+    public function mapPendingGuests(Event $event, array $rows): array
+    {
+        $event->loadMissing('ticketTypes');
+        $byName = $event->ticketTypes->mapWithKeys(
+            fn (TicketType $t) => [mb_strtolower(trim($t->name)) => $t->id]
+        );
+        $fallback = $event->ticketTypes->first()?->id;
+        $guests = [];
+
+        foreach ($rows as $row) {
+            $phone = Phone::normalize((string) ($row['phone'] ?? ''));
+            if ($phone === '') {
+                continue;
+            }
+
+            $nameKey = mb_strtolower(trim((string) ($row['ticket_name'] ?? '')));
+            $typeId = $byName[$nameKey] ?? $fallback;
+            if (! $typeId) {
+                continue;
+            }
+
+            $guests[] = [
+                'name' => trim((string) ($row['name'] ?? '')) ?: null,
+                'phone' => $phone,
+                'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
+                'ticket_type_id' => (int) $typeId,
+            ];
+        }
+
+        return $guests;
+    }
+
+    public function resend(EventInvitation $invitation, ?string $channel = null): EventInvitation
     {
         if (! $invitation->isActive()) {
             throw ValidationException::withMessages([
@@ -160,40 +249,27 @@ class InvitationService
             ]);
         }
 
-        $this->delivery->sendForInvitation($invitation->loadMissing(['tickets', 'event', 'ticketType']));
+        $channel = $this->requireChannel($channel ?? $invitation->delivery_channel);
+        $invitation->update(['delivery_channel' => $channel]);
+
+        $this->delivery->sendForInvitation(
+            $invitation->fresh()->loadMissing(['tickets', 'event', 'ticketType']),
+            $channel
+        );
 
         return $invitation->fresh(['tickets', 'event', 'ticketType']);
     }
 
-    public function updatePhoneAndResend(EventInvitation $invitation, string $phone): EventInvitation
+    private function requireChannel(?string $channel): string
     {
-        if (! $invitation->isActive()) {
-            throw ValidationException::withMessages([
-                'invitation' => ['This invitation was revoked.'],
-            ]);
+        $channel = strtolower(trim((string) $channel));
+        if (in_array($channel, ['sms', 'whatsapp'], true)) {
+            return $channel;
         }
 
-        $normalized = Phone::normalize($phone);
-        if ($normalized === '') {
-            throw ValidationException::withMessages([
-                'phone' => ['Enter a valid phone number.'],
-            ]);
-        }
-
-        DB::transaction(function () use ($invitation, $normalized) {
-            $invitation->update([
-                'guest_phone' => $normalized,
-                'token' => $this->nextToken(),
-            ]);
-
-            if ($invitation->order_id) {
-                Order::query()->whereKey($invitation->order_id)->update([
-                    'buyer_phone' => $normalized,
-                ]);
-            }
-        });
-
-        return $this->resend($invitation->fresh());
+        throw ValidationException::withMessages([
+            'channel' => [__('ui.invite_channel_required')],
+        ]);
     }
 
     public function revoke(EventInvitation $invitation): EventInvitation

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\EventInvitation;
 use App\Models\Order;
 use App\Models\Ticket;
-use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -13,7 +12,8 @@ class TicketDeliveryService
 {
     public function __construct(
         private TicketQrService $qr,
-        private TextBeeSmsService $sms,
+        private TelesomSmsService $sms,
+        private WhatsAppCloudService $whatsapp,
         private PushNotificationService $push,
     ) {}
 
@@ -27,17 +27,23 @@ class TicketDeliveryService
         }
 
         $this->sendEmail($order, $tickets);
-        $this->sendOrderSms($order, $tickets);
-        $this->sendWhatsAppStub($order->buyer_phone, $tickets->count(), $order->order_number);
+        $this->sendPaidNotificationSms($order);
+        $this->sendOrderPush($order, $tickets);
     }
 
-    public function sendForInvitation(EventInvitation $invitation): void
+    public function sendForInvitation(EventInvitation $invitation, ?string $channel = null): void
     {
         $invitation->loadMissing(['tickets', 'event', 'ticketType']);
 
         if (! $invitation->isActive()) {
             return;
         }
+
+        $channel = in_array($channel, ['sms', 'whatsapp'], true)
+            ? $channel
+            : (in_array($invitation->delivery_channel, ['sms', 'whatsapp'], true)
+                ? $invitation->delivery_channel
+                : null);
 
         $inviteUrl = $invitation->publicUrl();
         $eventTitle = $invitation->event?->title ?? 'your event';
@@ -60,12 +66,26 @@ class TicketDeliveryService
             }
         }
 
-        $smsStatus = $this->deliverSms($invitation->guest_phone, $body);
-        $waStatus = $this->deliverWhatsAppStub($invitation->guest_phone, $qty, $inviteUrl);
+        $sendSms = $channel === null || $channel === 'sms';
+        $sendWhatsApp = $channel === null || $channel === 'whatsapp';
+
+        $smsStatus = $sendSms
+            ? $this->deliverSms($invitation->guest_phone, $body)
+            : 'skipped';
+        $waStatus = $sendWhatsApp
+            ? $this->deliverInviteWhatsApp(
+                $invitation->guest_phone,
+                $guestName,
+                $eventTitle,
+                (int) $qty,
+                $inviteUrl,
+            )
+            : 'skipped';
 
         $invitation->update([
             'sms_status' => $smsStatus,
             'whatsapp_status' => $waStatus,
+            'delivery_channel' => $channel ?? $invitation->delivery_channel,
             'last_sent_at' => now(),
         ]);
 
@@ -79,26 +99,36 @@ class TicketDeliveryService
                 'event_id' => (string) ($invitation->event_id ?? ''),
                 'token' => (string) $invitation->token,
             ],
+            true,
         );
 
-        if ($smsStatus === 'failed') {
-            $ownerId = $invitation->event?->owner_user_id;
-            if ($ownerId) {
-                $owner = User::query()->find($ownerId);
-                if ($owner) {
-                    $guest = $invitation->guest_name ?: $invitation->guest_phone ?: 'a guest';
-                    $this->push->sendToUser(
-                        $owner,
-                        'Invitation send failed',
-                        "SMS to {$guest} for {$eventTitle} failed. Try resending from Ekaadh.",
-                        PushNotificationService::TYPE_INVITE_SEND_FAILED,
-                        [
-                            'invitation_id' => (string) $invitation->id,
-                            'event_id' => (string) ($invitation->event_id ?? ''),
-                            'sms_status' => $smsStatus,
-                        ],
-                    );
-                }
+        $failedLabel = null;
+        if ($sendSms && $smsStatus === 'failed') {
+            $failedLabel = 'SMS';
+        } elseif ($sendWhatsApp && $waStatus === 'failed') {
+            $failedLabel = 'WhatsApp';
+        }
+
+        if ($failedLabel) {
+            $event = $invitation->event?->loadMissing(['owner', 'organizer.user']);
+            $notifyUser = $event?->owner
+                ?: $event?->organizer?->user;
+            if ($notifyUser) {
+                $guest = $invitation->guest_name ?: $invitation->guest_phone ?: 'a guest';
+                $url = $event?->organizer_id
+                    ? route('organizer.events.invitations.index', $event)
+                    : null;
+                app(PanelNotifier::class)->toUser(
+                    $notifyUser,
+                    'Invitation send failed',
+                    "{$failedLabel} to {$guest} for {$eventTitle} failed. Try resending from Ekaadh.",
+                    PushNotificationService::TYPE_INVITE_SEND_FAILED,
+                    $url,
+                    [
+                        'invitation_id' => (string) $invitation->id,
+                        'event_id' => (string) ($invitation->event_id ?? ''),
+                    ],
+                );
             }
         }
     }
@@ -145,29 +175,67 @@ class TicketDeliveryService
         }
     }
 
+    private function sendPaidNotificationSms(Order $order): void
+    {
+        $title = $order->event?->title ?? 'your event';
+        $number = $order->order_number;
+        $body = ((float) $order->total_amount) > 0
+            ? "Ekaadh: Payment confirmed for {$title}. Order {$number}."
+            : "Ekaadh: Your order is confirmed for {$title}. Order {$number}.";
+
+        $this->deliverSms($order->buyer_phone, $body);
+    }
+
     /**
      * @param  \Illuminate\Support\Collection<int, Ticket>  $tickets
      */
-    private function sendOrderSms(Order $order, $tickets): void
+    private function sendOrderPush(Order $order, $tickets): void
     {
-        $first = $tickets->first();
-        $url = $first ? $this->qr->publicUrl($first->ticket_code) : url('/');
-        $title = $order->event?->title ?? 'your event';
-        $body = "Ekaadh: Your tickets for {$title} ({$tickets->count()}). Open: {$url}";
+        if ($order->event?->is_private) {
+            return;
+        }
 
-        $this->deliverSms($order->buyer_phone, $body);
+        $title = $order->event?->title ?? 'your event';
+        $this->push->sendToPhone(
+            $order->buyer_phone,
+            'Tickets ready',
+            "Your tickets for {$title} are ready in Ekaadh.",
+            PushNotificationService::TYPE_TICKETS_READY,
+            [
+                'event_id' => (string) ($order->event_id ?? ''),
+                'order_number' => (string) $order->order_number,
+            ],
+            true,
+        );
+
+        if ($order->user_id) {
+            $user = $order->user_id ? \App\Models\User::query()->find($order->user_id) : null;
+            if ($user && $user->phone !== $order->buyer_phone) {
+                $this->push->sendToUser(
+                    $user,
+                    'Tickets ready',
+                    "Your tickets for {$title} are ready in Ekaadh.",
+                    PushNotificationService::TYPE_TICKETS_READY,
+                    [
+                        'event_id' => (string) ($order->event_id ?? ''),
+                        'order_number' => (string) $order->order_number,
+                    ],
+                    true,
+                );
+            }
+        }
     }
 
     private function deliverSms(?string $phone, string $body): string
     {
         if (! $phone) {
-            Log::info('Ticket delivery SMS skipped (no phone)');
+            Log::info('SMS skipped (no phone)');
 
             return 'skipped';
         }
 
         if (! $this->sms->enabled()) {
-            Log::info('Ticket delivery SMS (stub — TextBee not configured)', [
+            Log::info('SMS stub — Telesom not configured', [
                 'phone' => $this->redactPhone($phone),
             ]);
 
@@ -179,7 +247,7 @@ class TicketDeliveryService
 
             return 'sent';
         } catch (\Throwable $e) {
-            Log::warning('Ticket delivery SMS failed', [
+            Log::warning('SMS failed', [
                 'phone' => $this->redactPhone($phone),
                 'error' => $e->getMessage(),
             ]);
@@ -188,20 +256,48 @@ class TicketDeliveryService
         }
     }
 
-    private function deliverWhatsAppStub(?string $phone, int $ticketCount, string $context): string
-    {
-        Log::info('Ticket delivery WhatsApp (stub — awaiting Business API)', [
-            'phone' => $this->redactPhone($phone),
-            'ticket_count' => $ticketCount,
-            'context' => $context,
-        ]);
+    private function deliverInviteWhatsApp(
+        ?string $phone,
+        string $guestName,
+        string $eventTitle,
+        int $qty,
+        string $inviteUrl,
+    ): string {
+        if (! $phone) {
+            Log::info('Invitation WhatsApp skipped (no phone)');
 
-        return 'skipped';
-    }
+            return 'skipped';
+        }
 
-    private function sendWhatsAppStub(?string $phone, int $ticketCount, string $context): void
-    {
-        $this->deliverWhatsAppStub($phone, $ticketCount, $context);
+        if (! $this->whatsapp->canSendInvite()) {
+            Log::info('Invitation WhatsApp skipped (Cloud API not configured)', [
+                'phone' => $this->redactPhone($phone),
+            ]);
+
+            return 'skipped';
+        }
+
+        try {
+            $this->whatsapp->sendTemplate(
+                $phone,
+                $this->whatsapp->inviteTemplate(),
+                [
+                    $guestName,
+                    $eventTitle,
+                    (string) $qty,
+                    $inviteUrl,
+                ],
+            );
+
+            return 'sent';
+        } catch (\Throwable $e) {
+            Log::warning('Invitation WhatsApp failed', [
+                'phone' => $this->redactPhone($phone),
+                'error' => $e->getMessage(),
+            ]);
+
+            return 'failed';
+        }
     }
 
     private function redactPhone(?string $phone): string

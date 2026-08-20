@@ -114,16 +114,23 @@
                             </div>
                             <div>
                                 <div class="font-bold truncate max-w-[200px]">{{ $event->title }}</div>
-                                <div class="text-xs text-mute">{{ $event->category }}@if($event->city) · {{ $event->city }}@endif</div>
+                                <div class="text-xs text-mute">
+                                    {{ $event->category }}@if($event->city) · {{ $event->city }}@endif
+                                    · {{ $event->isFreeEvent() ? 'Free' : 'Priced' }}
+                                </div>
                             </div>
                         </div>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap">{{ $event->event_date?->format('M j, Y') }}</td>
                     <td class="px-4 py-4">
+                        @if($event->isExpired())
+                            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-200">{{ __('ui.expired') }}</span>
+                        @else
                         <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border
                             {{ $event->status === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : ($event->status === 'pending_review' ? 'bg-amber-50 text-amber-700 border-amber-100' : ($event->status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-200')) }}">
                             {{ $statusLabels[$event->status] ?? ucfirst(str_replace('_',' ',$event->status)) }}
                         </span>
+                        @endif
                     </td>
                     <td class="px-4 py-4">
                         <div class="flex items-center gap-2">
@@ -133,8 +140,17 @@
                     </td>
                     <td class="px-4 py-4">
                         <div class="flex items-center gap-2">
+                            @if($event->needsPackagePayment())
+                                <a href="{{ route('organizer.events.pay', $event) }}" class="text-xs font-bold text-amber-700">Pay package</a>
+                            @endif
                             <a href="{{ route('events.show', $event->slug) }}" target="_blank" class="text-xs font-bold text-mute hover:text-brand">View</a>
                             <a href="{{ route('organizer.events.edit', $event) }}" class="text-xs font-bold text-brand">Edit</a>
+                            <a href="{{ route('organizer.events.invitations.index', $event) }}" class="text-xs font-bold text-brand">
+                                Guests
+                                @if(($event->invitations_count ?? 0) > 0 || $event->pendingInviteCount() > 0)
+                                    <span class="text-mute">({{ $event->invitations_count + $event->pendingInviteCount() }})</span>
+                                @endif
+                            </a>
                             <form method="POST" action="{{ route('organizer.events.destroy', $event) }}" onsubmit="return confirm('Delete this event?')">
                                 @csrf @method('DELETE')
                                 <button class="text-xs font-bold text-red-400">Delete</button>

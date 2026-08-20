@@ -37,15 +37,26 @@ class TicketController extends Controller
         if ($isCustomer && ! $request->filled('phone') && ! $request->boolean('guest')) {
             $accountMode = true;
             $tickets = Ticket::query()
-                ->with(['event', 'orderItem.order'])
-                ->whereHas('orderItem.order', function ($q) use ($user) {
-                    $q->where('status', 'paid')
-                        ->where(function ($q) use ($user) {
-                            $q->where('user_id', $user->id);
-                            if ($user->phone) {
-                                $q->orWhereIn('buyer_phone', Phone::variants($user->phone));
-                            }
+                ->with(['event', 'orderItem.order', 'invitation'])
+                ->where(function ($q) use ($user) {
+                    $q->whereHas('orderItem.order', function ($q) use ($user) {
+                        $q->where('status', 'paid')
+                            ->where(function ($q) use ($user) {
+                                $q->where('user_id', $user->id);
+                                if ($user->phone) {
+                                    $q->orWhereIn('buyer_phone', Phone::variants($user->phone))
+                                        ->orWhereHas('payment', function ($q) use ($user) {
+                                            $q->whereIn('phone_number', Phone::variants($user->phone));
+                                        });
+                                }
+                            });
+                    });
+                    if ($user->phone) {
+                        $q->orWhereHas('invitation', function ($q) use ($user) {
+                            $q->where('status', 'active')
+                                ->whereIn('guest_phone', Phone::variants($user->phone));
                         });
+                    }
                 })
                 ->latest()
                 ->get()
@@ -89,7 +100,7 @@ class TicketController extends Controller
             ->firstOrFail();
 
         $payload = $this->qr->payload($ticket->ticket_code);
-        $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='.urlencode($payload);
+        $qrImage = $this->qr->imageUrl($ticket->ticket_code);
         $invitationUrl = $ticket->invitation?->publicUrl();
 
         $design = \App\Support\TicketDesigns::resolveForEvent($ticket->event);
@@ -111,8 +122,7 @@ class TicketController extends Controller
             ->firstOrFail();
 
         $payload = $this->qr->payload($ticket->ticket_code);
-        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='.urlencode($payload);
-        $qrDataUri = $this->imageDataUri($qrUrl) ?? $qrUrl;
+        $qrDataUri = $this->qr->pngDataUri($ticket->ticket_code, 400);
 
         $design = \App\Support\TicketDesigns::resolveForEvent($ticket->event);
         $design['field_values'] = \App\Support\InvitationDateFields::applyToValues(
@@ -151,10 +161,23 @@ class TicketController extends Controller
         return $pdf->download('Ekaadh-'.$safeCode.'.pdf');
     }
 
+    public function qrImage(string $code): Response
+    {
+        $ticket = Ticket::query()
+            ->where('ticket_code', strtoupper($code))
+            ->firstOrFail();
+
+        $png = \App\Support\QrPng::bytes($this->qr->payload($ticket->ticket_code), 400);
+
+        return response($png, 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, max-age=300',
+        ]);
+    }
+
     private function decorate(Ticket $ticket): Ticket
     {
-        $payload = $this->qr->payload($ticket->ticket_code);
-        $ticket->qr_image = 'https://api.qrserver.com/v1/create-qr-code/?size=114x114&data='.urlencode($payload);
+        $ticket->qr_image = $this->qr->imageUrl($ticket->ticket_code);
         $ticket->ticket_url = $this->qr->publicUrl($ticket->ticket_code);
 
         return $ticket;

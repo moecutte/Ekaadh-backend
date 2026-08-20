@@ -15,6 +15,7 @@ class EventController extends Controller
     {
         $featured = Event::query()
             ->publicListing()
+            ->upcoming()
             ->with('ticketTypes')
             ->where('is_featured', true)
             ->orderBy('event_date')
@@ -23,23 +24,44 @@ class EventController extends Controller
 
         $upcoming = Event::query()
             ->publicListing()
+            ->upcoming()
             ->with('ticketTypes')
             ->orderBy('event_date')
             ->take(6)
             ->get();
 
+        $homeEventsWhen = 'upcoming';
+        if ($upcoming->isEmpty()) {
+            $upcoming = Event::query()
+                ->publicListing()
+                ->past()
+                ->with('ticketTypes')
+                ->orderByDesc('event_date')
+                ->orderByDesc('event_time')
+                ->take(6)
+                ->get();
+            $homeEventsWhen = 'past';
+        }
+
         $categories = collect(Category::activeNames());
         $cities = collect(City::activeNames());
 
-        return view('events.home', compact('featured', 'upcoming', 'categories', 'cities'));
+        return view('events.home', compact('featured', 'upcoming', 'categories', 'cities', 'homeEventsWhen'));
     }
 
     public function index(Request $request): View
     {
+        $when = Event::listingWhen($request->string('when')->toString());
+
         $query = Event::query()
             ->publicListing()
-            ->with('ticketTypes')
-            ->orderBy('event_date');
+            ->with('ticketTypes');
+
+        if ($when === 'past') {
+            $query->past()->orderByDesc('event_date')->orderByDesc('event_time');
+        } else {
+            $query->upcoming()->orderBy('event_date')->orderBy('event_time');
+        }
 
         if ($search = $request->string('q')->trim()->toString()) {
             $query->where(function ($q) use ($search) {
@@ -61,15 +83,19 @@ class EventController extends Controller
         $categories = collect(Category::activeNames());
         $cities = collect(City::activeNames());
 
-        return view('events.index', compact('events', 'categories', 'cities'));
+        return view('events.index', compact('events', 'categories', 'cities', 'when'));
     }
 
     public function show(string $slug): View
     {
         $event = Event::query()
-            ->publicListing()
-            ->with(['organizer', 'ticketTypes'])
+            ->with(['organizer.user', 'ticketTypes', 'speakers', 'programmeItems', 'galleryImages'])
             ->where('slug', $slug)
+            ->when(
+                ! auth()->user()?->isAdmin(),
+                fn ($q) => $q->publicListing(),
+                fn ($q) => $q->where('is_private', false)
+            )
             ->firstOrFail();
 
         $related = Event::query()

@@ -9,32 +9,41 @@
         ?: $event->cover_image;
     $capacity = $event->ticketTypes->sum('quantity_available');
     $sold = $event->ticketTypes->sum('quantity_sold');
+    $card = 'rounded-[1.75rem] bg-white border border-slate-100 shadow-[0_18px_40px_-28px_rgba(15,26,46,0.35)] overflow-hidden';
+    $bar = 'h-1 bg-gradient-to-r from-brand via-[#4a51b8] to-brand/40';
 @endphp
 <div class="relative overflow-hidden">
-    <div class="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
-    <div class="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
-        <div class="flex flex-wrap items-start justify-between gap-5 mb-8">
-            <div class="flex items-start gap-4 min-w-0">
-                @if($thumb)
-                    <div class="w-16 h-[5.25rem] sm:w-20 sm:h-[6.5rem] rounded-xl overflow-hidden border border-slate-100 shadow-md shrink-0 bg-slate-100">
-                        <img src="{{ $thumb }}" alt="" class="w-full h-full object-cover">
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
+    <div class="relative max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-7">
+        <a href="{{ route('private-events.show', $event) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-mute hover:text-brand transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            {{ __('ui.event_details') }}
+        </a>
+
+        <header class="mt-4 mb-4 {{ $card }}">
+            <div class="{{ $bar }}"></div>
+            <div class="px-5 sm:px-6 py-4 sm:py-5">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-start gap-3.5 min-w-0">
+                        @if($thumb)
+                            <div class="w-14 h-[4.5rem] sm:w-16 sm:h-[5.25rem] rounded-xl overflow-hidden border border-slate-100 shrink-0 bg-slate-100">
+                                <img src="{{ $thumb }}" alt="" class="w-full h-full object-cover">
+                            </div>
+                        @endif
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.invitations') }}</p>
+                            <h1 class="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight text-ink leading-tight">{{ $event->title }}</h1>
+                            <p class="text-sm text-mute mt-1.5">{{ __('ui.seats_remaining_assigned', ['remaining' => $remaining, 'sold' => $sold, 'capacity' => $capacity]) }}</p>
+                        </div>
                     </div>
-                @endif
-                <div class="min-w-0">
-                    <a href="{{ route('private-events.show', $event) }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-mute hover:text-brand transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                        {{ __('ui.event_details') }}
+                    <a href="{{ route('private-events.invitations.create', $event) }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-brand text-white text-sm font-bold shadow-lg shadow-brand/20 hover:bg-brand-dark transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        {{ __('ui.send_invitations') }}
                     </a>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-2 truncate">{{ $event->title }}</h1>
-                    <p class="text-sm text-mute mt-1.5">{{ __('ui.seats_remaining_assigned', ['remaining' => $remaining, 'sold' => $sold, 'capacity' => $capacity]) }}</p>
                 </div>
             </div>
-            <a href="{{ route('private-events.invitations.create', $event) }}"
-               class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-brand text-white text-sm font-bold shadow-lg shadow-brand/25 hover:bg-brand-dark hover:-translate-y-0.5 transition-all shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                {{ __('ui.send_invitations') }}
-            </a>
-        </div>
+        </header>
 
         @if(session('success'))
             <div class="mb-5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3.5">{{ session('success') }}</div>
@@ -44,7 +53,8 @@
         @endif
 
         {{-- Mobile-friendly cards + desktop table --}}
-        <div class="hidden md:block bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
+        <div class="hidden md:block {{ $card }}">
+            <div class="{{ $bar }}"></div>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-[10px] uppercase tracking-[0.14em] text-mute bg-slate-50/90 border-b border-slate-100">
@@ -73,14 +83,29 @@
                                 </a>
                             </td>
                             <td class="px-5 py-4 text-xs">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-mute">SMS</span>
-                                    <span class="font-bold text-ink">{{ $invite->sms_status }}</span>
+                                <div class="font-extrabold text-ink">
+                                    {{ $invite->delivery_channel === 'whatsapp' ? __('ui.invite_channel_whatsapp') : ($invite->delivery_channel === 'sms' ? __('ui.invite_channel_sms') : __('ui.delivery')) }}
                                 </div>
-                                <div class="flex items-center gap-1.5 mt-0.5">
-                                    <span class="text-mute">WA</span>
-                                    <span class="font-semibold text-ink">{{ $invite->whatsapp_status }}</span>
-                                </div>
+                                @if($invite->delivery_channel === 'whatsapp')
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-mute">WA</span>
+                                        <span class="font-semibold text-ink">{{ $invite->whatsapp_status }}</span>
+                                    </div>
+                                @elseif($invite->delivery_channel === 'sms')
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-mute">SMS</span>
+                                        <span class="font-bold text-ink">{{ $invite->sms_status }}</span>
+                                    </div>
+                                @else
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-mute">SMS</span>
+                                        <span class="font-bold text-ink">{{ $invite->sms_status }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-mute">WA</span>
+                                        <span class="font-semibold text-ink">{{ $invite->whatsapp_status }}</span>
+                                    </div>
+                                @endif
                                 @if($invite->last_sent_at)
                                     <div class="text-mute mt-1.5">{{ $invite->last_sent_at->format('M j, g:ia') }}</div>
                                 @endif
@@ -94,15 +119,18 @@
                             <td class="px-5 py-4">
                                 @if($invite->status === 'active')
                                     <div class="flex flex-col gap-2.5 items-start">
-                                        <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
-                                            @csrf
-                                            <button class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend') }}</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('private-events.invitations.phone', [$event, $invite]) }}" class="flex gap-1.5 items-center">
-                                            @csrf
-                                            <input name="phone" value="{{ $invite->guest_phone }}" class="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-brand">
-                                            <button class="text-xs font-bold text-mute hover:text-brand">{{ __('ui.update') }}</button>
-                                        </form>
+                                        <div class="flex flex-wrap gap-x-3 gap-y-1">
+                                            <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
+                                                @csrf
+                                                <input type="hidden" name="channel" value="whatsapp">
+                                                <button class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend_via_whatsapp') }}</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
+                                                @csrf
+                                                <input type="hidden" name="channel" value="sms">
+                                                <button class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend_via_sms') }}</button>
+                                            </form>
+                                        </div>
                                         <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm(@js(__('ui.revoke_confirm')))">
                                             @csrf
                                             <button class="text-xs font-bold text-red-400 hover:text-red-600">{{ __('ui.revoke') }}</button>
@@ -126,11 +154,14 @@
                     @endforelse
                 </tbody>
             </table>
+            @include('partials.pager', ['paginator' => $invitations])
         </div>
 
         <div class="md:hidden space-y-3">
             @forelse($invitations as $invite)
-                <article class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+                <article class="{{ $card }}">
+                    <div class="{{ $bar }}"></div>
+                    <div class="p-4 space-y-3">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="font-bold text-ink truncate">{{ $invite->guest_name ?: __('ui.guest') }}</p>
@@ -143,14 +174,21 @@
                     </div>
                     <div class="flex items-center justify-between text-xs">
                         <span class="font-semibold">{{ $invite->quantity }} × {{ $invite->ticketType?->name }}</span>
-                        <span class="text-mute">SMS {{ $invite->sms_status }}</span>
+                        <span class="text-mute">{{ $invite->delivery_channel === 'whatsapp' ? __('ui.invite_channel_whatsapp') : __('ui.invite_channel_sms') }}
+                            {{ $invite->delivery_channel === 'whatsapp' ? $invite->whatsapp_status : $invite->sms_status }}</span>
                     </div>
                     @if($invite->status === 'active')
                         <div class="flex flex-wrap gap-3 pt-1 border-t border-slate-50">
                             <a href="{{ $invite->publicUrl() }}" target="_blank" class="text-xs font-bold text-brand">{{ __('ui.open_link') }}</a>
                             <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
                                 @csrf
-                                <button class="text-xs font-bold text-brand">{{ __('ui.resend') }}</button>
+                                <input type="hidden" name="channel" value="whatsapp">
+                                <button class="text-xs font-bold text-brand">{{ __('ui.resend_via_whatsapp') }}</button>
+                            </form>
+                            <form method="POST" action="{{ route('private-events.invitations.resend', [$event, $invite]) }}">
+                                @csrf
+                                <input type="hidden" name="channel" value="sms">
+                                <button class="text-xs font-bold text-brand">{{ __('ui.resend_via_sms') }}</button>
                             </form>
                             <form method="POST" action="{{ route('private-events.invitations.revoke', [$event, $invite]) }}" onsubmit="return confirm(@js(__('ui.revoke_confirm')))">
                                 @csrf
@@ -158,18 +196,24 @@
                             </form>
                         </div>
                     @endif
+                    </div>
                 </article>
             @empty
-                <div class="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-mute">
-                    {{ __('ui.no_invitations_yet') }}
-                    <a href="{{ route('private-events.invitations.create', $event) }}" class="block mt-2 font-bold text-brand">{{ __('ui.send_first_batch') }}</a>
+                <div class="{{ $card }}">
+                    <div class="{{ $bar }}"></div>
+                    <div class="p-10 text-center text-sm text-mute">
+                        {{ __('ui.no_invitations_yet') }}
+                        <a href="{{ route('private-events.invitations.create', $event) }}" class="block mt-2 font-bold text-brand">{{ __('ui.send_first_batch') }}</a>
+                    </div>
                 </div>
             @endforelse
+            @if($invitations->total() > 0)
+                <div class="{{ $card }}">
+                    <div class="{{ $bar }}"></div>
+                    @include('partials.pager', ['paginator' => $invitations])
+                </div>
+            @endif
         </div>
-
-        @if($invitations->hasPages())
-            <div class="mt-6">{{ $invitations->links() }}</div>
-        @endif
     </div>
 </div>
 @endsection

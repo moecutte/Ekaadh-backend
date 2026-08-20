@@ -36,8 +36,7 @@ class InvitationController extends Controller
         $event = $invitation->event;
 
         $tickets = $invitation->tickets->map(function (Ticket $ticket) {
-            $payload = $this->qr->payload($ticket->ticket_code);
-            $ticket->qr_image = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='.urlencode($payload);
+            $ticket->qr_image = $this->qr->imageUrl($ticket->ticket_code);
             $ticket->ticket_url = $this->qr->publicUrl($ticket->ticket_code);
 
             return $ticket;

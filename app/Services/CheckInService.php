@@ -15,9 +15,9 @@ class CheckInService
     /**
      * @return array{result: string, message: string, ticket: ?Ticket}
      */
-    public function scan(string $payload, User $staff, ?int $eventId = null): array
+    public function scan(string $payload, User $staff, ?int $eventId = null, bool $manual = false): array
     {
-        $code = $this->qr->verify(trim($payload));
+        $code = $this->qr->verify(trim($payload), $manual);
 
         if ($code === null) {
             return [

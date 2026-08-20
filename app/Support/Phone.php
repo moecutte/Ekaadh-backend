@@ -24,6 +24,32 @@ class Phone
         return $digits === '' ? '' : '+252'.$digits;
     }
 
+    /**
+     * Digits-only international number for WaafiPay (no +, no leading zeros).
+     * Example: 252611111111 — never +252611111111 or 0611111111.
+     */
+    public static function internationalDigits(?string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', str_replace('+', '', (string) $phone)) ?? '';
+
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
+        $digits = ltrim($digits, '0');
+        if ($digits === '') {
+            return '';
+        }
+
+        foreach (['252' => 12, '253' => 11, '971' => 12] as $cc => $minLen) {
+            if (str_starts_with($digits, $cc) && strlen($digits) >= $minLen) {
+                return $digits;
+            }
+        }
+
+        return '252'.$digits;
+    }
+
     public static function variants(?string $phone): array
     {
         $normalized = self::normalize($phone);
@@ -41,5 +67,16 @@ class Phone
             '+252 '.$local,
             (string) $phone,
         ])));
+    }
+
+    public static function matches(?string $stored, ?string $input): bool
+    {
+        if ($stored === null || $stored === '' || $input === null || $input === '') {
+            return false;
+        }
+
+        $want = self::variants($input);
+
+        return count(array_intersect(self::variants($stored), $want)) > 0;
     }
 }

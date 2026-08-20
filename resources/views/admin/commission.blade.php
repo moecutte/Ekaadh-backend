@@ -6,7 +6,7 @@
 <div class="grid lg:grid-cols-2 gap-6">
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h3 class="text-sm font-bold mb-1">Platform defaults</h3>
-        <p class="text-xs text-mute mb-5">Fallback when an organizer has no package rate and no custom override.</p>
+        <p class="text-xs text-mute mb-5">Fallback when an organizer has no package rate and no custom override. Other platform options are under <a href="{{ route('admin.settings.edit') }}" class="font-bold text-brand hover:underline">System settings</a>.</p>
         <form method="POST" action="{{ route('admin.commission.update') }}" class="space-y-4">
             @csrf
             <div>
@@ -26,7 +26,7 @@
             <h3 class="text-sm font-bold">Organizer overrides</h3>
             <p class="text-xs text-mute mt-0.5">Resolution: override → package rate → {{ $defaultRate }}% default.</p>
         </div>
-        <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+        <div class="divide-y divide-slate-50">
             @forelse($organizers as $org)
                 @php $effective = $org->effectiveCommissionRate($defaultRate); @endphp
                 <div class="px-5 py-3 flex items-center gap-3">
@@ -49,6 +49,7 @@
                 <div class="px-5 py-10 text-center text-mute text-sm">No approved organizers yet.</div>
             @endforelse
         </div>
+        @include('admin.partials.pager', ['paginator' => $organizers, 'simple' => true])
     </div>
 </div>
 @endsection

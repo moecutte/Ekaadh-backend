@@ -24,13 +24,17 @@
         'fieldRequired' => __('ui.field_required', ['field' => '{field}']),
         'chooseValidQuantity' => __('ui.choose_valid_quantity'),
     ];
+    $wizardCard = 'rounded-[1.75rem] bg-white border border-slate-100 shadow-[0_18px_40px_-28px_rgba(15,26,46,0.35)] overflow-hidden';
+    $wizardBar = 'h-1 bg-gradient-to-r from-brand via-[#4a51b8] to-brand/40';
+    $fieldClass = 'w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition';
+    $labelClass = 'text-[11px] font-bold uppercase tracking-[0.14em] text-mute block mb-1.5';
 @endphp
 <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Dancing+Script:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Great+Vibes&family=Italianno&family=Josefin+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;500;600;700&family=Mr+De+Haviland&family=Parisienne&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&family=Rouge+Script&family=Sacramento&family=Satisfy&family=Source+Sans+3:wght@400;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
 <style>[x-cloak]{display:none!important}</style>
 
 <div class="relative overflow-hidden">
-<div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
-<div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-12"
+<div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
+<div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-7"
      x-data="privateEventForm({
         unit: {{ (float) $unitPrice }},
         premiumExtra: {{ (float) $premiumSurcharge }},
@@ -43,35 +47,55 @@
         designs: @js($designsById),
         initialFieldValues: @js($oldFields),
         initialStep: {{ $errors->any() ? 0 : 0 }},
+        previewUrl: @js(route('private-events.invitation-preview')),
         i18n: @js($wizardI18n),
      })">
-    <a href="{{ route('private-events.index') }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-mute hover:text-brand transition-colors">
+    <a href="{{ route('private-events.index') }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-mute hover:text-brand transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         {{ __('ui.my_private_events') }}
     </a>
-    <div class="mt-4 mb-1">
-        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-brand mb-2">{{ __('ui.new_invitation') }}</p>
-        <div class="flex items-end justify-between gap-3">
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">{{ __('ui.create_private_event') }}</h1>
-            <span class="text-xs font-bold text-mute shrink-0 px-2.5 py-1 rounded-full bg-white border border-slate-100" x-text="stepOfLabel"></span>
-        </div>
-        <p class="text-sm text-mute mt-2">{{ __('ui.create_wizard_sub') }}</p>
-    </div>
 
-    {{-- Step indicator --}}
-    <div class="mt-6 mb-8 grid grid-cols-4 gap-2 sm:gap-3">
-        <template x-for="(label, i) in stepLabels" :key="label">
-            <div class="relative">
-                <div class="h-1.5 rounded-full overflow-hidden bg-slate-200/80">
-                    <div class="h-full rounded-full bg-brand transition-all duration-500"
-                         :style="{ width: i < step ? '100%' : (i === step ? '55%' : '0%') }"></div>
+    <header class="mt-4 mb-4 {{ $wizardCard }}">
+        <div class="{{ $wizardBar }}"></div>
+        <div class="px-5 sm:px-6 py-4 sm:py-5">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.new_invitation') }}</p>
+                    <h1 class="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight text-ink leading-tight">
+                        {{ __('ui.create_private_event') }}
+                    </h1>
                 </div>
-                <p class="mt-2 text-[10px] sm:text-[11px] font-bold text-center truncate transition-colors"
-                   :class="i === step ? 'text-brand' : (i < step ? 'text-ink' : 'text-mute')"
-                   x-text="label"></p>
+                <div class="relative sm:w-[23rem] sm:shrink-0">
+                    <div class="absolute top-3.5 left-[12%] right-[12%] h-px bg-slate-200"></div>
+                    <div class="absolute top-3.5 left-[12%] h-px bg-brand transition-all duration-500 ease-out"
+                         :style="{ width: ((step / 3) * 76) + '%' }"></div>
+                    <ol class="relative grid grid-cols-4">
+                        <template x-for="(label, i) in stepLabels" :key="i">
+                            <li class="flex flex-col items-center text-center">
+                                <button
+                                    type="button"
+                                    @click="goToStep(i)"
+                                    :disabled="i > step"
+                                    class="relative z-[1] w-7 h-7 rounded-full text-[11px] font-extrabold border transition-all duration-300 flex items-center justify-center disabled:opacity-100"
+                                    :class="i < step
+                                        ? 'bg-brand border-brand text-white cursor-pointer'
+                                        : (i === step
+                                            ? 'bg-brand border-brand text-white shadow-[0_0_0_3px_rgba(50,56,145,0.14)]'
+                                            : 'bg-white border-slate-200 text-mute cursor-default')"
+                                >
+                                    <svg x-show="i < step" x-cloak xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <span x-show="i >= step" x-text="i + 1"></span>
+                                </button>
+                                <p class="mt-1.5 text-[10px] sm:text-[11px] font-bold leading-tight px-0.5 truncate w-full transition-colors"
+                                   :class="i === step ? 'text-ink' : (i < step ? 'text-brand' : 'text-mute')"
+                                   x-text="label"></p>
+                            </li>
+                        </template>
+                    </ol>
+                </div>
             </div>
-        </template>
-    </div>
+        </div>
+    </header>
 
     @if($errors->any())
         <div class="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-4">
@@ -88,218 +112,218 @@
         <input type="hidden" name="invitation_design_id" :value="invitationDesignId">
 
         {{-- Step 1: Event info --}}
-        <div x-show="step === 0" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">{{ __('ui.create_step1_hint') }}</p>
-            <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-5">
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.category') }} *</label>
-                    <select name="private_event_category_id" x-model.number="categoryId"
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat['id'] }}" @selected((int) $defaultCategoryId === (int) $cat['id'])>{{ $cat['name'] }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.description') }} *</label>
-                    <textarea name="description" x-model="description" rows="4"
-                              class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 resize-none transition">{{ old('description') }}</textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+        <div x-show="step === 0" x-cloak>
+            <div class="{{ $wizardCard }}">
+                <div class="{{ $wizardBar }}"></div>
+                <div class="px-5 sm:px-7 pt-6 pb-7 space-y-5">
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.date') }} *</label>
-                        <input type="date" x-model="eventDate" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.event_info') }}</p>
+                        <p class="mt-1.5 text-sm text-mute leading-relaxed">{{ __('ui.create_step1_hint') }}</p>
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.time') }} *</label>
-                        <input type="time" x-model="eventTime" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
+                        <label class="{{ $labelClass }}">{{ __('ui.category') }} *</label>
+                        <select name="private_event_category_id" x-model.number="categoryId" class="{{ $fieldClass }}">
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat['id'] }}" @selected((int) $defaultCategoryId === (int) $cat['id'])>{{ $cat['name'] }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                </div>
-                <input type="hidden" name="event_date" :value="eventDate">
-                <input type="hidden" name="event_time" :value="eventTime">
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.venue') }} *</label>
-                    <input type="text" x-model="venue" placeholder="{{ __('ui.venue_name_placeholder') }}"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.cover_image') }} <span class="font-medium text-mute/70">{{ __('ui.optional') }}</span></label>
-                    <label class="flex flex-col items-center justify-center gap-2 w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-6 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/30 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        <span class="text-xs font-semibold text-mute">{{ __('ui.cover_image_hint') }}</span>
-                        <input type="file" name="cover_image" accept="image/png,image/jpeg,image/jpg,image/webp" class="sr-only">
-                    </label>
+                    <div>
+                        <label class="{{ $labelClass }}">{{ __('ui.description') }} *</label>
+                        <textarea name="description" x-model="description" rows="4" class="{{ $fieldClass }} resize-none">{{ old('description') }}</textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $labelClass }}">{{ __('ui.date') }} *</label>
+                            <input type="date" x-model="eventDate" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()" class="{{ $fieldClass }}">
+                        </div>
+                        <div>
+                            <label class="{{ $labelClass }}">{{ __('ui.time') }} *</label>
+                            <input type="time" x-model="eventTime" @change="applyBasicsToFieldValues()" @input="applyBasicsToFieldValues()" class="{{ $fieldClass }}">
+                        </div>
+                    </div>
+                    <input type="hidden" name="event_date" :value="eventDate">
+                    <input type="hidden" name="event_time" :value="eventTime">
+                    <div>
+                        <label class="{{ $labelClass }}">{{ __('ui.venue') }} *</label>
+                        <input type="text" x-model="venue" placeholder="{{ __('ui.venue_name_placeholder') }}" class="{{ $fieldClass }}">
+                    </div>
+                    <div>
+                        <label class="{{ $labelClass }}">{{ __('ui.cover_image') }} <span class="font-medium normal-case tracking-normal text-mute/70">{{ __('ui.optional') }}</span></label>
+                        <label class="flex flex-col items-center justify-center gap-2 w-full rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-7 cursor-pointer hover:border-brand/40 hover:bg-brand/5 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="text-xs font-semibold text-mute">{{ __('ui.cover_image_hint') }}</span>
+                            <input type="file" name="cover_image" accept="image/png,image/jpeg,image/jpg,image/webp" class="sr-only">
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
 
         {{-- Step 2: Design --}}
-        <div x-show="step === 1" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">{{ __('ui.create_step2_hint', ['amount' => number_format($premiumSurcharge, 2)]) }}</p>
-
-            <div x-show="!categoryDesigns.length" class="rounded-xl border border-amber-100 bg-amber-50 text-amber-900 text-sm p-4">
-                {{ __('ui.no_designs_for_category') }}
-            </div>
-
-            <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-6" x-show="categoryDesigns.length">
-                <div x-show="standardForCategory.length">
-                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.standard') }}</h4>
-                    <div class="grid grid-cols-3 gap-3">
-                        <template x-for="d in standardForCategory" :key="d.id">
-                            <button type="button"
-                                    class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
-                                    @click="selectDesign(d.id, d.invitation_design_id)"
-                                    :class="design === d.id ? 'border-brand shadow-lg shadow-brand/15 ring-2 ring-brand/20 scale-[1.02]' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'">
-                                <img :src="d.thumbnail_url || d.graphic_url"
-                                     x-show="d.thumbnail_url || d.graphic_url"
-                                     class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                     alt="{{ __('ui.invitation_design_alt') }}"
-                                     loading="lazy">
-                                <div x-show="!(d.thumbnail_url || d.graphic_url)"
-                                     class="w-full aspect-[3/4]"
-                                     :style="{ background: d.card_bg || '#f1f5f9' }"></div>
-                                <span x-show="design === d.id"
-                                      class="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
-                            </button>
-                        </template>
+        <div x-show="step === 1" x-cloak>
+            <div class="{{ $wizardCard }}">
+                <div class="{{ $wizardBar }}"></div>
+                <div class="px-5 sm:px-7 pt-6 pb-7 space-y-6">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.design') }}</p>
+                        <p class="mt-1.5 text-sm text-mute leading-relaxed">{{ __('ui.create_step2_hint', ['amount' => number_format($premiumSurcharge, 2)]) }}</p>
                     </div>
-                </div>
 
-                <div x-show="premiumForCategory.length">
-                    <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.premium') }}</h4>
-                    <div class="grid grid-cols-3 gap-3">
-                        <template x-for="d in premiumForCategory" :key="'p-'+d.id">
-                            <button type="button"
-                                    class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
-                                    @click="selectDesign(d.id, d.invitation_design_id)"
-                                    :class="design === d.id ? 'border-amber-500 shadow-lg shadow-amber-200/60 ring-2 ring-amber-200 scale-[1.02]' : 'border-slate-100 hover:border-amber-200 hover:shadow-md'">
-                                <img :src="d.thumbnail_url || d.graphic_url"
-                                     x-show="d.thumbnail_url || d.graphic_url"
-                                     class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                     alt="{{ __('ui.invitation_design_alt') }}"
-                                     loading="lazy">
-                                <div x-show="!(d.thumbnail_url || d.graphic_url)"
-                                     class="w-full aspect-[3/4]"
-                                     :style="{ background: d.card_bg || '#f1f5f9' }"></div>
-                                <p class="px-2 py-1.5 text-[10px] font-bold text-center bg-amber-50 text-amber-800">+${{ number_format($premiumSurcharge, 2) }}</p>
-                                <span x-show="design === d.id"
-                                      class="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
-                            </button>
-                        </template>
+                    <div x-show="!categoryDesigns.length" class="rounded-xl border border-amber-100 bg-amber-50 text-amber-900 text-sm p-4">
+                        {{ __('ui.no_designs_for_category') }}
+                    </div>
+
+                    <div class="space-y-6" x-show="categoryDesigns.length">
+                        <div x-show="standardForCategory.length">
+                            <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.standard') }}</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <template x-for="d in standardForCategory" :key="d.id">
+                                    <button type="button"
+                                            class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
+                                            @click="selectDesign(d.id, d.invitation_design_id)"
+                                            :class="design === d.id ? 'border-brand shadow-lg shadow-brand/15 ring-2 ring-brand/20 scale-[1.02]' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'">
+                                        <img :src="d.thumbnail_url || d.graphic_url"
+                                             x-show="d.thumbnail_url || d.graphic_url"
+                                             class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
+                                             alt="{{ __('ui.invitation_design_alt') }}"
+                                             loading="lazy">
+                                        <div x-show="!(d.thumbnail_url || d.graphic_url)"
+                                             class="w-full aspect-[3/4]"
+                                             :style="{ background: d.card_bg || '#f1f5f9' }"></div>
+                                        <span x-show="design === d.id"
+                                              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div x-show="premiumForCategory.length">
+                            <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.premium') }}</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <template x-for="d in premiumForCategory" :key="'p-'+d.id">
+                                    <button type="button"
+                                            class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
+                                            @click="selectDesign(d.id, d.invitation_design_id)"
+                                            :class="design === d.id ? 'border-amber-500 shadow-lg shadow-amber-200/60 ring-2 ring-amber-200 scale-[1.02]' : 'border-slate-100 hover:border-amber-200 hover:shadow-md'">
+                                        <img :src="d.thumbnail_url || d.graphic_url"
+                                             x-show="d.thumbnail_url || d.graphic_url"
+                                             class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
+                                             alt="{{ __('ui.invitation_design_alt') }}"
+                                             loading="lazy">
+                                        <div x-show="!(d.thumbnail_url || d.graphic_url)"
+                                             class="w-full aspect-[3/4]"
+                                             :style="{ background: d.card_bg || '#f1f5f9' }"></div>
+                                        <p class="px-2 py-1.5 text-[10px] font-bold text-center bg-amber-50 text-amber-800">+${{ number_format($premiumSurcharge, 2) }}</p>
+                                        <span x-show="design === d.id"
+                                              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         {{-- Step 3: Preview + invitation text --}}
-        <div x-show="step === 2" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">{{ __('ui.create_step3_hint') }}</p>
-
-            <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-5 sm:p-6" x-show="selectedDesign">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-sm font-bold">{{ __('ui.live_preview') }}</h3>
-                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background: #eef0f8; color: #323891;" x-text="isPremium ? i18n.premium : i18n.standard"></span>
-                </div>
-                {{-- Same 420px design canvas as admin editor + ticket overlay so text positions match --}}
-                <div class="mx-auto overflow-hidden shadow-2xl shadow-slate-300/40 rounded-xl border relative"
-                     :style="{
-                        maxWidth: '420px',
-                        aspectRatio: '3/4.2',
-                        background: selectedDesign?.card_bg,
-                        borderColor: selectedDesign?.border,
-                     }">
-                    <img x-show="selectedDesign?.graphic_url" :src="selectedDesign?.graphic_url" class="absolute inset-0 w-full h-full object-cover" alt="">
-                    <template x-for="field in overlayPreviewFields" :key="field.field_key">
-                        <div class="absolute" :style="previewFieldStyle(field)">
-                            <template x-if="field.field_type === 'qr'">
-                                <div class="flex flex-col items-center text-center bg-white/90 px-1 py-1 w-full">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=EKAADH-PREVIEW"
-                                         alt="Sample QR"
-                                         class="w-full aspect-square object-contain bg-white">
-                                    <p class="mt-0.5 text-[7px] leading-tight text-slate-600 w-full">
-                                        {{ __('ui.scan_at_entry') }} <span class="font-semibold" style="color: #323891;" x-text="i18n.valid"></span>
-                                    </p>
-                                </div>
-                            </template>
-                            <span x-show="field.field_type !== 'qr'"
-                                  class="block px-1 leading-tight"
-                                  x-text="fieldPreviewText(field)"></span>
-                        </div>
-                    </template>
-                </div>
-            </div>
-
-            <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-4" x-show="buyerDesignFields.length">
-                <div>
-                    <h3 class="text-sm font-bold">{{ __('ui.invitation_text') }}</h3>
-                    <p class="text-[11px] text-mute mt-1">{{ __('ui.invitation_text_hint') }}</p>
-                </div>
-                <template x-for="field in buyerDesignFields" :key="'edit-'+field.field_key">
+        <div x-show="step === 2" x-cloak>
+            <div class="{{ $wizardCard }}">
+                <div class="{{ $wizardBar }}"></div>
+                <div class="px-5 sm:px-7 pt-6 pb-7 space-y-5">
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">
-                            <span x-text="field.label"></span>
-                            <span x-show="field.is_required"> *</span>
-                        </label>
-                        <input :type="fieldInputType(field)"
-                               :name="'invitation_field_values[' + field.field_key + ']'"
-                               x-model="fieldValues[field.field_key]"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition"
-                               :placeholder="field.placeholder || field.default_text || ''">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.invitation_text') }}</p>
+                        <p class="mt-1.5 text-sm text-mute leading-relaxed">{{ __('ui.create_step3_hint') }}</p>
                     </div>
-                </template>
+
+                    <div x-show="selectedDesign">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-ink">{{ __('ui.live_preview') }}</h3>
+                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-brand/10 text-brand" x-text="isPremium ? i18n.premium : i18n.standard"></span>
+                        </div>
+                        <div class="mx-auto overflow-hidden rounded-xl border bg-slate-50/60"
+                             :style="{ maxWidth: '428px', borderColor: selectedDesign?.border || '#e2e8f0' }">
+                            <iframe x-ref="themePreview"
+                                    title="Invitation theme preview"
+                                    class="w-full border-0 block bg-transparent"
+                                    :style="{ height: previewHeight + 'px' }"></iframe>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4" x-show="buyerDesignFields.length">
+                        <p class="text-[11px] text-mute">{{ __('ui.invitation_text_hint') }}</p>
+                        <template x-for="field in buyerDesignFields" :key="'edit-'+field.field_key">
+                            <div>
+                                <label class="{{ $labelClass }}">
+                                    <span x-text="field.label"></span>
+                                    <span x-show="field.is_required"> *</span>
+                                </label>
+                                <input :type="fieldInputType(field)"
+                                       :name="'invitation_field_values[' + field.field_key + ']'"
+                                       x-model="fieldValues[field.field_key]"
+                                       class="{{ $fieldClass }}"
+                                       :placeholder="field.placeholder || field.default_text || ''">
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="selectedDesign && !buyerDesignFields.length" class="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-mute">
+                        {{ __('ui.auto_datetime_note') }}
+                    </div>
+                </div>
             </div>
             {{-- Auto date/time fields still submitted --}}
             <template x-for="field in autoDateFields" :key="'auto-'+field.field_key">
                 <input type="hidden" :name="'invitation_field_values[' + field.field_key + ']'" :value="fieldValues[field.field_key] || ''">
             </template>
-            <div x-show="selectedDesign && !buyerDesignFields.length" class="rounded-xl border border-slate-100 bg-white p-4 text-sm text-mute">
-                {{ __('ui.auto_datetime_note') }}
-            </div>
         </div>
 
         {{-- Step 4: Quantity + payment --}}
-        <div x-show="step === 3" x-cloak class="space-y-5">
-            <p class="text-sm text-mute">{{ __('ui.create_step4_hint') }}</p>
-            <div class="bg-white/90 backdrop-blur rounded-[1.35rem] border border-slate-100 shadow-sm shadow-slate-200/50 p-6 sm:p-7 space-y-5">
-                <div class="grid grid-cols-2 gap-4">
+        <div x-show="step === 3" x-cloak>
+            <div class="{{ $wizardCard }}">
+                <div class="{{ $wizardBar }}"></div>
+                <div class="px-5 sm:px-7 pt-6 pb-7 space-y-5">
                     <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.quantity') }} *</label>
-                        <input type="number" name="quantity" x-model.number="qty" min="1" max="{{ $maxTickets }}"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.payment') }}</p>
+                        <p class="mt-1.5 text-sm text-mute leading-relaxed">{{ __('ui.create_step4_hint') }}</p>
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.ticket_label') }}</label>
-                        <input name="ticket_label" value="{{ old('ticket_label', __('ui.invitation')) }}"
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition" placeholder="{{ __('ui.invitation') }}">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $labelClass }}">{{ __('ui.quantity') }} *</label>
+                            <input type="number" name="quantity" x-model.number="qty" min="1" max="{{ $maxTickets }}" class="{{ $fieldClass }}">
+                        </div>
+                        <div>
+                            <label class="{{ $labelClass }}">{{ __('ui.ticket_label') }}</label>
+                            <input name="ticket_label" value="{{ old('ticket_label', __('ui.invitation')) }}" class="{{ $fieldClass }}" placeholder="{{ __('ui.invitation') }}">
+                        </div>
                     </div>
-                </div>
-                <div class="rounded-2xl bg-gradient-to-br from-brand-soft to-white border border-brand/10 px-5 py-4 text-sm space-y-2">
-                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.price_per_ticket') }}</span><span class="font-bold" x-text="'$' + unitNow.toFixed(2)"></span></div>
-                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.subtotal') }}</span><span class="font-bold" x-text="'$' + subtotal.toFixed(2)"></span></div>
-                    <div class="flex justify-between"><span class="text-mute">{{ __('ui.service_fee') }}</span><span class="font-bold">${{ number_format($serviceFee, 2) }}</span></div>
-                    <div class="flex justify-between pt-2 mt-1 border-t border-brand/10"><span class="font-extrabold text-ink">{{ __('ui.total_due') }}</span><span class="font-extrabold text-brand text-base" x-text="'$' + total.toFixed(2)"></span></div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 px-5 py-4 text-sm space-y-2">
+                        <div class="flex justify-between"><span class="text-mute">{{ __('ui.price_per_ticket') }}</span><span class="font-bold" x-text="'$' + unitNow.toFixed(2)"></span></div>
+                        <div class="flex justify-between"><span class="text-mute">{{ __('ui.subtotal') }}</span><span class="font-bold" x-text="'$' + subtotal.toFixed(2)"></span></div>
+                        <div class="flex justify-between"><span class="text-mute">{{ __('ui.service_fee') }}</span><span class="font-bold">${{ number_format($serviceFee, 2) }}</span></div>
+                        <div class="flex justify-between pt-2 mt-1 border-t border-slate-200"><span class="font-extrabold text-ink">{{ __('ui.total_due') }}</span><span class="font-extrabold text-brand text-base" x-text="'$' + total.toFixed(2)"></span></div>
+                    </div>
                 </div>
             </div>
         </div>
 
         {{-- Nav --}}
-        <div class="mt-6 flex items-center gap-3 sticky bottom-0 bg-page/90 backdrop-blur-md py-4 border-t border-slate-100/80 z-10">
-            <button type="button" x-show="step > 0" x-cloak
-                    @click="backStep()"
-                    class="px-5 py-3.5 rounded-2xl border border-slate-200 bg-white text-sm font-extrabold text-ink hover:bg-slate-50 transition-colors">
-                {{ __('ui.back') }}
-            </button>
-            <button type="button" x-show="step < 3" x-cloak
-                    @click="nextStep()"
-                    class="flex-1 py-3.5 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark hover:-translate-y-0.5 transition-all">
-                {{ __('ui.continue') }}
-            </button>
-            <button type="submit" x-show="step === 3" x-cloak
-                    class="flex-1 py-3.5 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark hover:-translate-y-0.5 transition-all"
-                    x-text="i18n.continuePayment + ' · $' + total.toFixed(2)">
-            </button>
+        <div class="mt-6 sticky bottom-3 z-10 {{ $wizardCard }}">
+            <div class="flex items-center gap-3 px-4 sm:px-5 py-3.5">
+                <button type="button" x-show="step > 0" x-cloak
+                        @click="backStep()"
+                        class="px-5 py-3 rounded-2xl border border-slate-200 bg-white text-sm font-extrabold text-ink hover:bg-slate-50 transition-colors">
+                    {{ __('ui.back') }}
+                </button>
+                <button type="button" x-show="step < 3" x-cloak
+                        @click="nextStep()"
+                        class="flex-1 py-3 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark transition-colors">
+                    {{ __('ui.continue') }}
+                </button>
+                <button type="submit" x-show="step === 3" x-cloak
+                        class="flex-1 py-3 rounded-2xl bg-brand text-white font-extrabold text-sm shadow-lg shadow-brand/20 hover:bg-brand-dark transition-colors"
+                        x-text="i18n.continuePayment + ' · $' + total.toFixed(2)">
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -327,6 +351,9 @@ function privateEventForm(cfg) {
         eventDate: '',
         eventTime: '18:00',
         venue: '',
+        previewUrl: cfg.previewUrl || '',
+        previewHeight: 680,
+        previewTimer: null,
         unit: cfg.unit,
         premiumExtra: cfg.premiumExtra,
         fee: cfg.fee,
@@ -348,6 +375,14 @@ function privateEventForm(cfg) {
             this.$watch('eventDate', () => this.applyBasicsToFieldValues());
             this.$watch('eventTime', () => this.applyBasicsToFieldValues());
             this.$watch('venue', () => this.applyBasicsToFieldValues());
+            this.$watch('fieldValues', () => this.queuePreview(), { deep: true });
+            this.$watch('invitationDesignId', () => this.queuePreview());
+            this.$watch('step', (step) => { if (step === 2) this.refreshPreview(); });
+            window.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'ekaadh-invite-preview-height' && e.data.height) {
+                    this.previewHeight = Math.max(520, Number(e.data.height) || 680);
+                }
+            });
             // Ensure default time paints into the time input and card fields.
             this.$nextTick(() => this.applyBasicsToFieldValues());
         },
@@ -357,6 +392,39 @@ function privateEventForm(cfg) {
             this.seedFieldDefaults();
             this.applyBasicsToFieldValues();
             this.stepError = '';
+            this.queuePreview();
+        },
+        queuePreview() {
+            clearTimeout(this.previewTimer);
+            this.previewTimer = setTimeout(() => this.refreshPreview(), 280);
+        },
+        async refreshPreview() {
+            if (!this.invitationDesignId || this.step !== 2 || !this.previewUrl) return;
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            try {
+                const res = await fetch(this.previewUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/html',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        invitation_design_id: this.invitationDesignId,
+                        fields: this.fieldValues || {},
+                        event_date: this.eventDate,
+                        event_time: this.eventTime,
+                        venue: this.venue,
+                    }),
+                });
+                if (!res.ok) return;
+                const html = await res.text();
+                const frame = this.$refs.themePreview;
+                if (frame) {
+                    frame.srcdoc = html;
+                }
+            } catch (e) {}
         },
         seedFieldDefaults() {
             const fields = this.selectedDesign?.fields || [];
@@ -488,6 +556,12 @@ function privateEventForm(cfg) {
             this.step = Math.max(0, this.step - 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         },
+        goToStep(i) {
+            if (i > this.step) return;
+            this.stepError = '';
+            this.step = i;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
         onSubmit(e) {
             if (!this.validateStep(0) || !this.validateStep(1) || !this.validateStep(2) || !this.validateStep(3)) {
                 e.preventDefault();
@@ -515,32 +589,6 @@ function privateEventForm(cfg) {
         },
         get autoDateFields() {
             return (this.selectedDesign?.fields || []).filter(f => this.isAutoDateType(f.field_type));
-        },
-        get overlayPreviewFields() {
-            return (this.selectedDesign?.fields || []).filter(f => f.show_on_card !== false);
-        },
-        previewFieldStyle(field) {
-            const isQr = field.field_type === 'qr';
-            return {
-                left: (field.pos_x ?? (isQr ? 35 : 20)) + '%',
-                top: (field.pos_y ?? (isQr ? 75 : 30)) + '%',
-                width: (field.box_width ?? (isQr ? 25 : 60)) + '%',
-                zIndex: isQr ? 15 : 10,
-                textAlign: field.text_align || 'center',
-                fontSize: (field.font_size || 18) + 'px',
-                fontFamily: field.font_family ? `'${field.font_family}', serif` : "'Montserrat', serif",
-                fontWeight: field.font_weight || '400',
-                fontStyle: field.font_style || 'normal',
-                color: field.color || this.selectedDesign?.text || '#3d3348',
-                lineHeight: '1.25',
-            };
-        },
-        fieldPreviewText(field) {
-            const value = this.fieldValues[field.field_key];
-            if (value !== undefined && value !== null && String(value).trim() !== '') {
-                return String(value).trim();
-            }
-            return (field.default_text || field.placeholder || '').trim();
         },
         get isPremium() { return this.premiumIds.includes(this.design); },
         get unitNow() {

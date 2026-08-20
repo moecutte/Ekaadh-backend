@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-mute max-w-xl">Upload graphics, set editable text slots, and control what customers fill when creating private events.</p>
+    <p class="text-sm text-mute max-w-xl">Web themes for private invitations. Pick a layout and colors — customers fill names and venue when they create an event.</p>
     <a href="{{ route('admin.invitation-designs.create') }}" class="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-bold">New design</a>
 </div>
 
@@ -39,8 +39,10 @@
             <div class="flex-1 min-w-[180px]">
                 <div class="font-bold">{{ $design->category?->name ?? 'Design' }} · #{{ $design->id }}</div>
                 <div class="text-xs text-mute mt-0.5">
-                    {{ $design->tier }} · {{ $design->render_mode }}
-                    · {{ $design->fields_count }} fields · {{ $design->events_count }} events
+                    {{ $design->tier }} · {{ $design->blade_key ?: $design->render_mode }}
+                    @if($design->events_count)
+                        · {{ $design->events_count }} {{ \Illuminate\Support\Str::plural('event', $design->events_count) }}
+                    @endif
                 </div>
             </div>
             @if($design->is_active)
@@ -53,17 +55,17 @@
                 <form method="POST" action="{{ route('admin.invitation-designs.toggle', $design) }}">@csrf
                     <button class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold text-mute">{{ $design->is_active ? 'Deactivate' : 'Activate' }}</button>
                 </form>
-                <form method="POST" action="{{ route('admin.invitation-designs.destroy', $design) }}" onsubmit="return confirm('Delete this design?')">
+                <form method="POST" action="{{ route('admin.invitation-designs.destroy', $design) }}" onsubmit="return confirm('Delete this design? Events that used it will keep their invitation with a fallback theme.')">
                     @csrf @method('DELETE')
-                    <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold" @disabled($design->events_count > 0)>Delete</button>
+                    <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold">Delete</button>
                 </form>
             </div>
         </div>
     @empty
         <div class="px-4 py-10 text-center text-mute text-sm">
-            No invitation designs yet. Click <strong>New design</strong> to upload a graphic and add text fields.
+            No invitation designs yet. Click <strong>New design</strong> to add an HTML theme.
         </div>
     @endforelse
+    @include('admin.partials.pager', ['paginator' => $designs])
 </div>
-<div class="mt-4">{{ $designs->links() }}</div>
 @endsection

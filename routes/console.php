@@ -16,6 +16,10 @@ Schedule::command('queue:work --stop-when-empty --max-time=50')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('payments:reconcile --minutes=2 --expire-minutes=30')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
 Schedule::command('events:send-reminders')
     ->hourly()
     ->withoutOverlapping();

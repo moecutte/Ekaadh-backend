@@ -23,19 +23,24 @@ class TicketResource extends JsonResource
         $invitationDesign = null;
         if ($event?->is_private) {
             $design = TicketDesigns::resolveForEvent($event);
-            if (($design['render_mode'] ?? '') === 'overlay' && ! empty($design['graphic_url'])) {
-                $invitationDesign = [
-                    'render_mode' => 'overlay',
-                    'graphic_url' => $design['graphic_url'],
-                    'thumbnail_url' => $design['thumbnail_url'] ?? $design['graphic_url'],
-                    'card_bg' => $design['card_bg'] ?? '#ffffff',
-                    'text' => $design['text'] ?? '#0f1a2e',
-                    'muted' => $design['muted'] ?? '#64748b',
-                    'accent' => $design['accent'] ?? '#323891',
-                    'fields' => $design['fields'] ?? [],
-                    'field_values' => $design['field_values'] ?? [],
-                ];
-            }
+            $invitationDesign = [
+                'render_mode' => $design['render_mode'] ?? 'blade',
+                'graphic_url' => (($design['render_mode'] ?? '') === 'overlay') ? ($design['graphic_url'] ?? null) : null,
+                'thumbnail_url' => $design['thumbnail_url'] ?? $design['graphic_url'] ?? null,
+                'card_bg' => $design['card_bg'] ?? '#ffffff',
+                'text' => $design['text'] ?? '#0f1a2e',
+                'muted' => $design['muted'] ?? '#64748b',
+                'accent' => $design['accent'] ?? '#323891',
+                'border' => $design['border'] ?? '#e2e8f0',
+                'header_from' => $design['header_from'] ?? '#0f1a2e',
+                'header_to' => $design['header_to'] ?? '#323891',
+                'ornament' => $design['ornament'] ?? '',
+                'badge' => $design['badge'] ?? '',
+                'invite_line' => $design['invite_line'] ?? '',
+                'request_line' => $design['request_line'] ?? '',
+                'fields' => $design['fields'] ?? [],
+                'field_values' => $design['field_values'] ?? [],
+            ];
         }
 
         return [

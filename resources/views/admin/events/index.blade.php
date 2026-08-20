@@ -52,7 +52,7 @@
         @unless($isPrivateTab)
             <div>
                 <label class="text-[11px] font-bold uppercase text-mute block mb-1">Organizer</label>
-                <select name="organizer_id" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                <select name="organizer_id" onchange="this.form.submit()" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
                     <option value="">All organizers</option>
                     @foreach($filterOptions['organizers'] as $org)
                         <option value="{{ $org->id }}" @selected((string) request('organizer_id') === (string) $org->id)>{{ $org->business_name }}</option>
@@ -68,14 +68,6 @@
                 </select>
             </div>
         @endunless
-        <div>
-            <label class="text-[11px] font-bold uppercase text-mute block mb-1">Per page</label>
-            <select name="per_page" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
-                @foreach([10, 20, 50, 100] as $n)
-                    <option value="{{ $n }}" @selected((int) ($perPage ?? 20) === $n)>{{ $n }}</option>
-                @endforeach
-            </select>
-        </div>
         <div>
             <label class="text-[11px] font-bold uppercase text-mute block mb-1">Event date from</label>
             <input type="date" name="date_from" value="{{ request('date_from') }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
@@ -113,6 +105,14 @@
                             <div class="font-bold flex items-center gap-2 flex-wrap">
                                 {{ $event->title }}
                                 @if($event->is_featured)<span class="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">Featured</span>@endif
+                                @unless($isPrivateTab)
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border {{ $event->isFreeEvent() ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                                        {{ $event->isFreeEvent() ? 'Free' : 'Priced' }}
+                                    </span>
+                                    @if($event->needsPackagePayment())
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Package unpaid</span>
+                                    @endif
+                                @endunless
                             </div>
                             <div class="text-xs text-mute">
                                 {{ $isPrivateTab ? ($event->privateEventCategory?->name ?? 'Private') : $event->category }}
@@ -132,7 +132,12 @@
                                 <div class="text-mute">{{ $event->organizer?->business_name ?? '—' }}</div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-mute whitespace-nowrap">{{ $event->event_date?->format('M j, Y') }}</td>
+                        <td class="px-4 py-3 text-mute whitespace-nowrap">
+                            {{ $event->event_date?->format('M j, Y') }}
+                            @if($event->isExpired())
+                                <span class="ml-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{{ __('ui.expired') }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3">
                             <form method="POST" action="{{ route('admin.events.status', $event) }}" class="flex items-center gap-1">
                                 @csrf
@@ -157,8 +162,8 @@
                                     <form method="POST" action="{{ route('admin.events.feature', $event) }}">@csrf
                                         <button class="px-2.5 py-1 rounded-lg bg-slate-50 text-mute text-xs font-bold border border-slate-200">{{ $event->is_featured ? 'Unfeature' : 'Feature' }}</button>
                                     </form>
-                                    <a href="{{ route('events.show', $event->slug) }}" target="_blank" class="px-2.5 py-1 rounded-lg text-xs font-bold text-brand">View ↗</a>
                                 @endunless
+                                <a href="{{ $event->is_private ? route('admin.events.index', ['type' => 'private', 'q' => $event->title]) : route('events.show', $event->slug) }}" @unless($event->is_private) target="_blank" @endunless class="inline-flex items-center px-3 py-1 rounded-lg bg-brand text-white text-xs font-bold hover:bg-brand-dark">View</a>
                             </div>
                         </td>
                     </tr>
@@ -168,14 +173,6 @@
             </tbody>
         </table>
     </div>
+    @include('admin.partials.pager', ['paginator' => $events])
 </div>
-
-@if($events->total() > 0)
-    <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p class="text-xs text-mute">
-            Showing {{ $events->firstItem() }}–{{ $events->lastItem() }} of {{ number_format($events->total()) }}
-        </p>
-        <div>{{ $events->onEachSide(1)->links() }}</div>
-    </div>
-@endif
 @endsection

@@ -15,8 +15,20 @@
     $phoneLocal = preg_replace('/^\+?252/', '', preg_replace('/\s+/', '', (string) $oldPhone));
     $timeLabel = $event->event_time ? date('g:i A', strtotime($event->event_time)) : null;
     $signedIn = (bool) $customer;
+    $waafiSandbox = (bool) ($waafiSandbox ?? false);
+    $lockPhone = $signedIn && ! $waafiSandbox;
+    $eventExpired = $event->isExpired();
 @endphp
 
+@if($eventExpired)
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
+    <h1 class="text-2xl font-extrabold text-ink mb-2">{{ $event->title }}</h1>
+    <p class="text-sm text-mute mb-2">{{ $event->event_date?->format('M j, Y') }}@if($timeLabel) · {{ $timeLabel }}@endif</p>
+    <span class="inline-flex text-xs font-extrabold uppercase tracking-wide px-3 py-1 rounded-full bg-slate-100 text-slate-600 mb-4">{{ __('ui.expired') }}</span>
+    <p class="text-mute mb-6">{{ __('ui.event_expired_hint') }}</p>
+    <a href="{{ route('events.show', $event->slug) }}" class="inline-block rounded-xl bg-brand text-white font-extrabold px-6 py-3">{{ __('ui.back_to_events') }}</a>
+</div>
+@else
 <div class="max-w-2xl mx-auto px-4 sm:px-6 py-8 min-h-[70vh]" x-data="checkoutWizard()">
     <div class="mb-10">
         <div class="flex items-center">
@@ -65,15 +77,17 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('checkout.store', $event->slug) }}" @submit="prepareSubmit">
+    <form method="POST" action="{{ route('checkout.store', $event->slug) }}" x-ref="checkoutForm" @submit="prepareSubmit">
         @csrf
 
         @foreach($event->ticketTypes as $type)
             <input type="hidden" :name="'qty[{{ $type->id }}]'" :value="qty[{{ $type->id }}] || 0">
         @endforeach
-        <input type="hidden" name="buyer_phone" :value="fullPhone">
+        <input type="hidden" name="buyer_phone" :value="chargeFullPhone">
+        <input type="hidden" name="otp_phone" :value="otpFullPhone">
         <input type="hidden" name="payment_method" :value="payment || ''">
         <input type="hidden" name="otp_token" :value="otpToken">
+        <input type="hidden" name="wallet_pin" :value="walletPin">
 
         {{-- Step 1: Select Tickets --}}
         <div x-show="step === 1" x-cloak class="space-y-5">
@@ -105,7 +119,7 @@
                         <div class="flex items-center justify-between gap-3 text-sm">
                             <div class="min-w-0">
                                 <p class="font-semibold text-ink">{{ $type->name }}</p>
-                                <p class="text-xs text-mute">${{ number_format((float) $type->price, 0) }} · {{ __('ui.left', ['count' => $type->remaining()]) }}</p>
+                                <p class="text-xs text-mute">{{ $event->isFreeEvent() || (float) $type->price === 0.0 ? __('ui.free') : '$'.number_format((float) $type->price, 0) }} · {{ __('ui.left', ['count' => $type->remaining()]) }}</p>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" @click="dec({{ $type->id }})" class="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center font-bold text-ink hover:bg-page leading-none">−</button>
@@ -117,7 +131,7 @@
                 </div>
 
                 <div class="border-t border-slate-100 pt-4 space-y-2">
-                    <div class="flex items-center justify-between text-sm" x-show="ticketCount > 0">
+                    <div class="flex items-center justify-between text-sm" x-show="ticketCount > 0 && !isFree">
                         <span class="text-mute">{{ __('ui.service_fee') }}</span>
                         <span class="font-bold">${{ number_format($serviceFee, 0) }}</span>
                     </div>
@@ -211,7 +225,7 @@
                     :disabled="otpBusy"
                     class="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-colors"
                 >
-                    <span x-text="signedIn ? i18n.continueToPayment : (otpBusy ? i18n.sendingCode : i18n.continue)"></span>
+                    <span x-text="signedIn ? (isFree ? i18n.claimFreeTickets : i18n.continueToPayment) : (otpBusy ? i18n.sendingCode : i18n.continue)"></span>
                 </button>
             </div>
         </div>
@@ -256,56 +270,70 @@
         </div>
 
         {{-- Payment step (3 signed-in / 4 guest) --}}
-        <div x-show="step === paymentStep" x-cloak class="space-y-5">
+        <div x-show="!isFree && step === paymentStep" x-cloak class="space-y-5">
             <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.step_payment') }}</h2>
             <p class="text-sm text-mute">{{ __('ui.choose_mobile_money') }}</p>
 
-            <div class="grid grid-cols-2 gap-4">
+            @if(! empty($waafiSandbox) && ! empty($waafiTestWallets))
+                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
+                    <p class="font-extrabold mb-1">WaafiPay sandbox</p>
+                    @if(! config('waafipay.has_sandbox_credentials'))
+                        <p class="text-xs font-semibold text-red-700 mb-3">{{ __('ui.payment_failed_sandbox_credentials') }}</p>
+                    @endif
+                    <p class="text-xs text-mute mb-3">Use a test wallet and PIN <span class="font-bold text-ink">1212</span>. Enter the local number after +252.</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($waafiTestWallets as $wallet)
+                            <button
+                                type="button"
+                                @click="chargePhoneLocal = '{{ $wallet['local'] }}'"
+                                class="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-xs font-bold hover:border-brand"
+                            >
+                                {{ $wallet['brand'] }} · {{ $wallet['local'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <div class="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4">
                 <button
                     type="button"
-                    @click="payment = 'zaad'"
-                    class="relative border-2 rounded-2xl p-5 text-left transition-all bg-white"
-                    :class="payment === 'zaad' ? 'border-brand bg-brand/5' : 'border-slate-100 hover:border-brand/40'"
+                    @click="payment = 'waafipay'; payNotice = ''"
+                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white min-w-0"
+                    :class="payment === 'waafipay' ? 'border-brand bg-brand/5' : 'border-slate-100 hover:border-brand/40'"
                 >
-                    <div x-show="payment === 'zaad'" class="absolute top-3 right-3 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
+                    <div x-show="payment === 'waafipay'" class="absolute top-3 right-3 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     </div>
-                    <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    </div>
-                    <p class="font-extrabold text-ink text-lg">Zaad</p>
-                    <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_telesom') }}</p>
+                    @include('partials.operator-logos', ['class' => 'mb-3 pr-6'])
+                    <p class="font-extrabold text-ink text-base sm:text-lg">WaafiPay</p>
+                    <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_waafipay') }}</p>
                 </button>
 
                 <button
                     type="button"
-                    @click="payment = 'edahab'"
-                    class="relative border-2 rounded-2xl p-5 text-left transition-all bg-white"
-                    :class="payment === 'edahab' ? 'border-brand bg-brand/5' : 'border-slate-100 hover:border-brand/40'"
+                    @click="payNotice = i18n.edahabUnavailable"
+                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white border-slate-100 hover:border-brand/40 min-w-0"
                 >
-                    <div x-show="payment === 'edahab'" class="absolute top-3 right-3 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </div>
-                    <div class="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    </div>
-                    <p class="font-extrabold text-ink text-lg">eDahab</p>
+                    <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-12 sm:h-16 w-full max-w-[220px] object-contain object-left mb-3">
+                    <p class="font-extrabold text-ink text-base sm:text-lg">eDahab</p>
                     <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_somtel') }}</p>
                 </button>
             </div>
+            <p x-show="payNotice" x-cloak x-text="payNotice" class="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3"></p>
 
             <div x-show="payment" x-cloak class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
                 <p class="text-sm font-bold text-ink"
-                   x-text="(signedIn ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', payment === 'zaad' ? 'Zaad (Telesom)' : 'eDahab (Somtel)')"
+                   x-text="(lockPhone ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', 'WaafiPay')"
                 ></p>
                 <div class="flex">
                     <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
                     <input
                         type="tel"
-                        x-model="phoneLocal"
-                        :placeholder="payment === 'zaad' ? '63 XXXXXXX' : '90 XXXXXXX'"
-                        @if($signedIn) readonly @endif
-                        class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand {{ $signedIn ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page' }}"
+                        x-model="chargePhoneLocal"
+                        placeholder="611111111"
+                        @if($lockPhone) readonly @endif
+                        class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand {{ $lockPhone ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page' }}"
                     >
                 </div>
                 <div class="flex items-center justify-between bg-page rounded-xl p-4">
@@ -325,7 +353,7 @@
                     :disabled="submitting || !payment || ticketCount < 1 || (!signedIn && !otpToken)"
                     class="w-full bg-brand hover:bg-brand-dark disabled:bg-slate-100 disabled:text-mute text-white font-extrabold py-4 rounded-xl transition-colors text-base"
                 >
-                    <span x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', payment === 'zaad' ? 'Zaad' : 'eDahab')"></span>
+                    <span x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
                 </button>
                 <div class="flex items-center justify-center gap-2 text-xs text-mute pt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -338,6 +366,8 @@
             </button>
         </div>
     </form>
+
+    @include('partials.wallet-pin-modal')
 </div>
 
 <style>[x-cloak] { display: none !important; }</style>
@@ -350,6 +380,7 @@ function checkoutWizard() {
         @endforeach
     };
     const fee = {{ (float) $serviceFee }};
+    const isFree = {{ ! empty($isFreeEvent) ? 'true' : 'false' }};
     const qty = {
         @foreach($event->ticketTypes as $type)
             {{ $type->id }}: {{ (int) ($oldQty[$type->id] ?? 0) }},
@@ -358,6 +389,7 @@ function checkoutWizard() {
 
     const hasQty = Object.values(qty).some((q) => Number(q) > 0);
     const signedIn = {{ $signedIn ? 'true' : 'false' }};
+    const lockPhone = {{ $lockPhone ? 'true' : 'false' }};
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content
         || document.querySelector('input[name="_token"]')?.value
         || '';
@@ -370,6 +402,7 @@ function checkoutWizard() {
         stepConfirm: @json(__('ui.step_confirm')),
         stepPayment: @json(__('ui.step_payment')),
         continueToPayment: @json(__('ui.continue_to_payment')),
+        claimFreeTickets: @json(__('ui.claim_free_tickets')),
         sendingCode: @json(__('ui.sending_code')),
         continue: @json(__('ui.continue')),
         checking: @json(__('ui.checking')),
@@ -377,6 +410,7 @@ function checkoutWizard() {
         chargeAccountPhone: @json(__('ui.charge_account_phone')),
         enterNumberToCharge: @json(__('ui.enter_number_to_charge')),
         payWithMethod: @json(__('ui.pay_with_method')),
+        edahabUnavailable: @json(__('ui.edahab_unavailable')),
         namePhoneRequired: @json(__('ui.name_phone_required')),
         couldNotSendCode: @json(__('ui.could_not_send_code')),
         codeSent: @json(__('ui.code_sent')),
@@ -385,13 +419,21 @@ function checkoutWizard() {
         couldNotVerifyCode: @json(__('ui.could_not_verify_code')),
         invalidCode: @json(__('ui.invalid_code')),
         confirmPhoneFirst: @json(__('ui.confirm_phone_first')),
+        walletPinRequired: @json(__('ui.wallet_pin_required')),
     };
 
     return {
         step: hasQty && initialStep === 1 ? 1 : initialStep,
         signedIn,
+        lockPhone,
+        isFree,
         i18n,
         get stepLabels() {
+            if (this.isFree) {
+                return this.signedIn
+                    ? [i18n.stepSelectTickets, i18n.stepYourDetails]
+                    : [i18n.stepSelectTickets, i18n.stepYourDetails, i18n.stepConfirm];
+            }
             return this.signedIn
                 ? [i18n.stepSelectTickets, i18n.stepYourDetails, i18n.stepPayment]
                 : [i18n.stepSelectTickets, i18n.stepYourDetails, i18n.stepConfirm, i18n.stepPayment];
@@ -403,13 +445,25 @@ function checkoutWizard() {
         name: @json(old('buyer_name', $defaultName)),
         email: @json(old('buyer_email', $defaultEmail)),
         phoneLocal: @json($phoneLocal),
-        payment: @json(old('payment_method')),
+        chargePhoneLocal: @json($phoneLocal),
+        otpPhoneLocal: '',
+        payment: @json(old('payment_method', 'waafipay')),
+        payNotice: '',
         submitting: false,
         otpBusy: false,
         otpCode: '',
         otpToken: @json(old('otp_token', '')),
         otpError: '',
         otpHint: '',
+        sandbox: {{ $waafiSandbox ? 'true' : 'false' }},
+        showPinModal: {{ $errors->has('wallet_pin') ? 'true' : 'false' }},
+        walletPin: '',
+        pinError: @json($errors->first('wallet_pin') ?: ''),
+        pinReady: false,
+
+        init() {
+            if (this.showPinModal) this.openPinModal();
+        },
 
         get ticketCount() {
             return Object.values(this.qty).reduce((a, b) => a + (Number(b) || 0), 0);
@@ -422,6 +476,14 @@ function checkoutWizard() {
         },
         get fullPhone() {
             const local = String(this.phoneLocal || '').replace(/\D/g, '');
+            return local ? '+252' + local : '';
+        },
+        get chargeFullPhone() {
+            const local = String(this.chargePhoneLocal || this.phoneLocal || '').replace(/\D/g, '');
+            return local ? '+252' + local : '';
+        },
+        get otpFullPhone() {
+            const local = String(this.otpPhoneLocal || this.phoneLocal || '').replace(/\D/g, '');
             return local ? '+252' + local : '';
         },
 
@@ -443,6 +505,11 @@ function checkoutWizard() {
             }
             this.otpError = '';
             if (this.signedIn) {
+                this.chargePhoneLocal = this.chargePhoneLocal || this.phoneLocal;
+                if (this.isFree) {
+                    this.$refs.checkoutForm?.requestSubmit();
+                    return;
+                }
                 this.goStep(3);
                 return;
             }
@@ -516,6 +583,12 @@ function checkoutWizard() {
                     return;
                 }
                 this.otpToken = body.otp_token;
+                this.otpPhoneLocal = String(this.phoneLocal || '').replace(/\D/g, '');
+                this.chargePhoneLocal = this.otpPhoneLocal;
+                if (this.isFree) {
+                    this.$refs.checkoutForm?.requestSubmit();
+                    return;
+                }
                 this.goStep(4);
             } catch (e) {
                 this.otpError = e.message || i18n.couldNotVerifyCode;
@@ -524,7 +597,21 @@ function checkoutWizard() {
             }
         },
         prepareSubmit(e) {
-            if (!this.payment || this.ticketCount < 1 || !this.fullPhone) {
+            if (this.ticketCount < 1 || !this.chargeFullPhone) {
+                e.preventDefault();
+                return;
+            }
+            if (this.isFree) {
+                if (!this.signedIn && !this.otpToken) {
+                    e.preventDefault();
+                    this.otpError = i18n.confirmPhoneFirst;
+                    this.step = 3;
+                    return;
+                }
+                this.submitting = true;
+                return;
+            }
+            if (!this.payment || this.ticketCount < 1 || !this.chargeFullPhone) {
                 e.preventDefault();
                 return;
             }
@@ -534,9 +621,37 @@ function checkoutWizard() {
                 this.step = 3;
                 return;
             }
+            if (this.sandbox && !this.pinReady) {
+                e.preventDefault();
+                this.openPinModal();
+                return;
+            }
             this.submitting = true;
+        },
+        openPinModal() {
+            this.showPinModal = true;
+            this.pinError = this.pinError || '';
+            this.$nextTick(() => this.$refs.pinInput?.focus());
+        },
+        closePinModal() {
+            this.showPinModal = false;
+            this.submitting = false;
+        },
+        confirmPin() {
+            const pin = String(this.walletPin || '').replace(/\D/g, '');
+            if (pin.length !== 4) {
+                this.pinError = i18n.walletPinRequired;
+                return;
+            }
+            this.walletPin = pin;
+            this.pinError = '';
+            this.pinReady = true;
+            this.showPinModal = false;
+            this.submitting = true;
+            this.$nextTick(() => this.$refs.checkoutForm?.submit());
         },
     }
 }
 </script>
+@endif
 @endsection

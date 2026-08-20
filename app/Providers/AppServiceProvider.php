@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Services\Payments\EDahabGateway;
 use App\Services\Payments\MockGateway;
 use App\Services\Payments\PaymentGatewayInterface;
+use App\Services\Payments\WaafiPayGateway;
 use App\Services\Payments\ZaadGateway;
+use App\Support\ProductionGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,16 +18,27 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PaymentGatewayInterface::class, function () {
-            return match (config('services.payment.gateway', 'mock')) {
+            $gateway = (string) config('services.payment.gateway', 'waafipay');
+
+            if ($gateway === 'mock'
+                && app()->environment('production')
+                && ! (bool) config('services.payment.allow_mock')) {
+                throw new \RuntimeException('PAYMENT_GATEWAY=mock is not allowed in production. Set PAYMENT_GATEWAY=waafipay.');
+            }
+
+            return match ($gateway) {
                 'zaad' => new ZaadGateway,
                 'edahab' => new EDahabGateway,
-                default => new MockGateway,
+                'mock' => new MockGateway,
+                default => $this->app->make(WaafiPayGateway::class),
             };
         });
     }
 
     public function boot(): void
     {
+        ProductionGuard::assert();
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

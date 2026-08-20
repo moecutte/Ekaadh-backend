@@ -41,8 +41,13 @@
                     <option value="active" @selected(request('status')==='active')>Active</option>
                     <option value="inactive" @selected(request('status')==='inactive')>Inactive</option>
                 </select>
+                <select name="kind" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                    <option value="">All types</option>
+                    <option value="organizer" @selected(request('kind')==='organizer')>Organizer plans</option>
+                    <option value="free_event" @selected(request('kind')==='free_event')>Free event packages</option>
+                </select>
                 <button class="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-bold">Filter</button>
-                @if(collect(request()->only(['q','status']))->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty())
+                @if(collect(request()->only(['q','status','kind']))->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty())
                     <a href="{{ route('admin.packages.index') }}" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-mute hover:text-ink">Clear</a>
                 @endif
             </div>
@@ -55,6 +60,9 @@
                         <div class="flex-1 min-w-[180px]">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="font-bold">{{ $package->name }}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border {{ $package->kind === 'free_event' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                                    {{ $package->kind === 'free_event' ? 'Free event' : 'Organizer plan' }}
+                                </span>
                                 @if($package->is_highlighted)
                                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20">Highlighted</span>
                                 @endif
@@ -63,16 +71,23 @@
                                 @endif
                             </div>
                             <div class="text-xs text-mute mt-1">
-                                {{ $package->displayPrice() }} {{ $package->displayPeriod() }}
-                                · commission {{ $package->commission_rate !== null ? number_format((float) $package->commission_rate, 1).'%' : 'platform default' }}
-                                · {{ number_format($package->organizers_count) }} organizers
+                                {{ $package->displayPrice() }} {{ $package->kind === 'free_event' ? 'per event' : $package->displayPeriod() }}
+                                @if($package->kind === 'free_event')
+                                    · {{ $package->ticketRangeLabel() }}
+                                    · {{ number_format($package->events_count) }} events
+                                @else
+                                    · commission {{ $package->commission_rate !== null ? number_format((float) $package->commission_rate, 1).'%' : 'platform default' }}
+                                    · {{ number_format($package->organizers_count) }} organizers
+                                @endif
                             </div>
+                            @if($package->kind !== 'free_event')
                             <div class="text-xs text-mute mt-0.5">
                                 Limits:
                                 {{ $package->max_events_per_year ? $package->max_events_per_year.' events/year' : 'unlimited events' }}
                                 ·
                                 {{ $package->max_tickets_per_event ? number_format($package->max_tickets_per_event).' tickets/event' : 'unlimited tickets' }}
                             </div>
+                            @endif
                             @if($package->description)
                                 <p class="text-xs text-mute mt-1.5">{{ $package->description }}</p>
                             @endif
@@ -89,7 +104,7 @@
                             </form>
                             <form method="POST" action="{{ route('admin.packages.destroy', $package) }}" onsubmit="return confirm('Delete this package?')">
                                 @csrf @method('DELETE')
-                                <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold disabled:opacity-40" @disabled($package->organizers_count > 0 || $package->is_default)>Delete</button>
+                                <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold disabled:opacity-40" @disabled($package->organizers_count > 0 || $package->events_count > 0 || $package->is_default)>Delete</button>
                             </form>
                         </div>
                     </div>
@@ -108,12 +123,12 @@
                 <div class="px-4 py-10 text-center text-mute text-sm">No packages found.</div>
             @endforelse
         </div>
-        <div>{{ $packages->links() }}</div>
+        @include('admin.partials.pager', ['paginator' => $packages])
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
         <h3 class="text-sm font-bold mb-1">Add package</h3>
-        <p class="text-xs text-mute mb-4">Packages control organizer commission rates, event limits, and public pricing cards.</p>
+        <p class="text-xs text-mute mb-4">Organizer plans set commission for priced events. Free-event packages are the ticket ranges organizers pay when creating a free event.</p>
         <form method="POST" action="{{ route('admin.packages.store') }}" class="space-y-3">
             @csrf
             @include('admin.packages._form_fields', ['package' => null])

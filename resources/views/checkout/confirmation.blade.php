@@ -9,6 +9,12 @@
     $ticketCount = $order->items->sum('quantity');
     $ticketSummary = $order->items->map(fn ($i) => $i->quantity.'× '.($i->ticketType->name ?? 'Ticket'))->implode(', ');
     $paymentMethod = $order->payment_method;
+    $paymentMethodLabel = match ($paymentMethod) {
+        'waafipay' => 'WaafiPay',
+        'edahab' => 'eDahab',
+        'zaad' => 'Zaad',
+        default => $paymentMethod,
+    };
     $ticketsUrl = auth()->check() && auth()->user()->isCustomer()
         ? route('tickets.index')
         : route('tickets.index', ['phone' => $order->buyer_phone]);
@@ -57,7 +63,7 @@
             @if($paymentMethod)
             <div class="flex justify-between gap-4">
                 <span class="text-mute shrink-0">{{ __('ui.payment_method') }}</span>
-                <span class="font-semibold text-green-600 text-right capitalize">{{ $paymentMethod }}</span>
+                <span class="font-semibold text-green-600 text-right">{{ $paymentMethodLabel }}</span>
             </div>
             @endif
         </div>

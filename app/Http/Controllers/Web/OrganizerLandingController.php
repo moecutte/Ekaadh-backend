@@ -17,11 +17,16 @@ class OrganizerLandingController extends Controller
         );
 
         $packages = $showPackages
-            ? OrganizerPackage::query()->active()->ordered()->get()
+            ? OrganizerPackage::query()->active()->organizerPlans()->ordered()->get()
+            : collect();
+
+        $freeEventPackages = $showPackages
+            ? OrganizerPackage::query()->active()->freeEventPlans()->ordered()->get()
             : collect();
 
         return view('organizers.index', [
             'packages' => $packages,
+            'freeEventPackages' => $freeEventPackages,
             'showPackages' => $showPackages,
         ]);
     }

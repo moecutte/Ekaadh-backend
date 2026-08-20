@@ -75,7 +75,7 @@ return new class extends Migration
             $table->decimal('total_amount', 10, 2);
             $table->decimal('commission_amount', 10, 2)->default(0);
             $table->enum('status', ['pending', 'paid', 'failed', 'refunded', 'cancelled'])->default('pending');
-            $table->enum('payment_method', ['zaad', 'edahab'])->nullable();
+            $table->enum('payment_method', ['zaad', 'edahab', 'waafipay'])->nullable();
             $table->string('payment_reference')->nullable();
             $table->timestamps();
 
@@ -110,7 +110,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->enum('provider', ['zaad', 'edahab', 'mock']);
+            $table->enum('provider', ['zaad', 'edahab', 'mock', 'waafipay']);
             $table->string('transaction_id')->nullable()->index();
             $table->string('phone_number', 30)->nullable();
             $table->decimal('amount', 10, 2);
