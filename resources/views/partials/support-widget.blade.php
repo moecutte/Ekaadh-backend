@@ -19,7 +19,7 @@
         loading: @js(__('ui.support_loading')),
         closed: @js(__('ui.support_conversation_closed')),
     },
-})" x-cloak class="fixed bottom-5 right-5 z-[60]">
+})" x-cloak class="fixed z-[60] bottom-5 right-5 max-sm:left-4 max-sm:right-4 max-sm:bottom-[max(1.25rem,env(safe-area-inset-bottom))] max-sm:flex max-sm:flex-col max-sm:items-end">
     <button type="button" @click="toggle()"
             class="w-14 h-14 rounded-full bg-brand text-white shadow-xl shadow-brand/30 flex items-center justify-center hover:bg-brand-dark transition-colors"
             :aria-expanded="open">
@@ -28,13 +28,13 @@
     </button>
 
     <div x-show="open" x-transition
-         class="absolute bottom-16 right-0 w-[min(100vw-2rem,380px)] h-[min(70vh,540px)] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
-        <div class="px-4 py-3 bg-ink text-white flex items-center justify-between">
-            <div>
-                <div class="font-bold text-sm" x-text="labels.title"></div>
+         class="absolute bottom-16 right-0 w-[min(100vw-2rem,380px)] max-sm:w-full h-[min(70vh,540px)] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+        <div class="px-4 py-3 bg-ink text-white flex items-center justify-between gap-2">
+            <div class="min-w-0">
+                <div class="font-bold text-sm truncate" x-text="labels.title"></div>
                 <div class="text-[11px] text-slate-300">Ekaadh</div>
             </div>
-            <div class="flex rounded-lg bg-white/10 p-0.5 text-[11px] font-bold">
+            <div class="flex rounded-lg bg-white/10 p-0.5 text-[11px] font-bold shrink-0">
                 <button type="button" @click="tab = 'faq'" :class="tab === 'faq' ? 'bg-white text-ink' : 'text-slate-300'" class="px-2.5 py-1 rounded-md" x-text="labels.faq"></button>
                 <button type="button" @click="openChat()" :class="tab === 'chat' ? 'bg-white text-ink' : 'text-slate-300'" class="px-2.5 py-1 rounded-md" x-text="labels.chat"></button>
             </div>

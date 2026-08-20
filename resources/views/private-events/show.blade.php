@@ -65,17 +65,17 @@
             <div class="{{ $bar }}"></div>
             <div class="px-5 sm:px-7 py-5 sm:py-6">
                 <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand mb-4">{{ __('ui.capacity_used') }}</p>
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
-                        <div class="text-2xl font-black text-brand tabular-nums">{{ $capacity }}</div>
+                <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-2.5 sm:p-4 text-center">
+                        <div class="text-lg sm:text-2xl font-black text-brand tabular-nums">{{ $capacity }}</div>
                         <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.paid_seats') }}</div>
                     </div>
-                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
-                        <div class="text-2xl font-black text-ink tabular-nums">{{ $sold }}</div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-2.5 sm:p-4 text-center">
+                        <div class="text-lg sm:text-2xl font-black text-ink tabular-nums">{{ $sold }}</div>
                         <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.invited') }}</div>
                     </div>
-                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
-                        <div class="text-2xl font-black text-ink tabular-nums">{{ $remaining }}</div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-2.5 sm:p-4 text-center">
+                        <div class="text-lg sm:text-2xl font-black text-ink tabular-nums">{{ $remaining }}</div>
                         <div class="text-[10px] font-bold text-mute uppercase tracking-wider mt-1">{{ __('ui.remaining_label') }}</div>
                     </div>
                 </div>

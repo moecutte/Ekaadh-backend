@@ -152,6 +152,13 @@
 
     .panel-canvas { flex: 1; overflow-y: auto; padding: 1.5rem; }
 
+    @media (max-width: 768px) {
+        body.panel-app { overflow-x: hidden; }
+        .panel-header { padding: 0 1rem; gap: 0.5rem; }
+        .panel-canvas { padding: 1rem; }
+        .panel-hero { padding: 1.15rem; }
+    }
+
     .panel-canvas .bg-white.rounded-xl,
     .panel-canvas .bg-white.rounded-2xl,
     .panel-canvas .bg-white.rounded-3xl {

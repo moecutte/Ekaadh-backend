@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <h1 class="text-3xl font-extrabold mb-2">{{ __('ui.browse_events') }}</h1>
+    <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">{{ __('ui.browse_events') }}</h1>
     <p class="text-mute mb-8">{{ __('ui.browse_subtitle') }}</p>
 
     <form method="GET" class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 grid sm:grid-cols-4 gap-3 shadow-sm">
@@ -17,14 +17,14 @@
                 <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
             @endforeach
         </select>
-        <div class="flex gap-2">
-            <select name="city" class="flex-1 rounded-xl bg-page px-4 py-3 text-sm font-medium outline-none">
+        <div class="flex gap-2 min-w-0">
+            <select name="city" class="flex-1 min-w-0 rounded-xl bg-page px-4 py-3 text-sm font-medium outline-none">
                 <option value="">{{ __('ui.all_cities') }}</option>
                 @foreach($cities as $city)
                     <option value="{{ $city }}" @selected(request('city') === $city)>{{ $city }}</option>
                 @endforeach
             </select>
-            <button class="rounded-xl bg-brand text-white font-extrabold px-5 text-sm hover:bg-brand-dark transition">{{ __('ui.go') }}</button>
+            <button class="rounded-xl bg-brand text-white font-extrabold px-4 sm:px-5 text-sm hover:bg-brand-dark transition shrink-0">{{ __('ui.go') }}</button>
         </div>
     </form>
 

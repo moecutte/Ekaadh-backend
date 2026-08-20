@@ -51,8 +51,8 @@
                 $timeLabel = $event?->event_time ? date('g:i A', strtotime($event->event_time)) : null;
             @endphp
             <div class="{{ $card }}">
-                <div class="flex items-center gap-4 p-4">
-                    <div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
+                <div class="flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
                         @if($event?->cover_image)
                             <img src="{{ $event->cover_image }}" alt="{{ $event->title }}" class="w-full h-full object-cover">
                         @endif

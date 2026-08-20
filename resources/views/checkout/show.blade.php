@@ -91,7 +91,7 @@
 
         {{-- Step 1: Select Tickets --}}
         <div x-show="step === 1" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.order_summary') }}</h2>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ __('ui.order_summary') }}</h2>
 
             <div class="bg-white rounded-2xl border border-slate-100 p-5">
                 <div class="flex gap-4 pb-5 mb-5 border-b border-slate-100">
@@ -154,7 +154,7 @@
 
         {{-- Step 2: Your Details --}}
         <div x-show="step === 2" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.step_your_details') }}</h2>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ __('ui.step_your_details') }}</h2>
             @if($signedIn)
                 <div class="rounded-2xl bg-brand/5 border border-brand/20 px-4 py-3 flex items-start gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -232,7 +232,7 @@
 
         {{-- Step 3: Confirm OTP (guests only) --}}
         <div x-show="step === 3 && !signedIn" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.confirm_phone') }}</h2>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ __('ui.confirm_phone') }}</h2>
             <p class="text-sm text-mute">
                 {{ __('ui.enter_code_sent_to') }} <span class="font-bold text-ink" x-text="fullPhone"></span>.
                 <span class="block mt-1 text-brand font-semibold" x-show="otpHint" x-text="otpHint"></span>
@@ -271,7 +271,7 @@
 
         {{-- Payment step (3 signed-in / 4 guest) --}}
         <div x-show="!isFree && step === paymentStep" x-cloak class="space-y-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.step_payment') }}</h2>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ __('ui.step_payment') }}</h2>
             <p class="text-sm text-mute">{{ __('ui.choose_mobile_money') }}</p>
 
             @if(! empty($waafiSandbox) && ! empty($waafiTestWallets))

@@ -26,7 +26,10 @@
         }
     </script>
     <style>
+        html, body { overflow-x: hidden; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        img, video, svg { max-width: 100%; }
+        [x-cloak] { display: none !important; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #create-menu-dropdown { visibility: hidden; opacity: 0; pointer-events: none; }
@@ -245,7 +248,7 @@
     </main>
 
     <footer class="bg-ink text-slate-400 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-8">
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
                 <div class="sm:col-span-2 lg:col-span-1">
                     <div class="mb-3">
