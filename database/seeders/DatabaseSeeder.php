@@ -10,10 +10,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->seedDemoUsers();
         if (app()->environment('production')) {
             $this->seedProductionAdmin();
-        } else {
-            $this->seedDemoUsers();
         }
 
         Setting::setValue('platform_name', 'Ekaadh');
@@ -25,18 +24,13 @@ class DatabaseSeeder extends Seeder
         Setting::setValue('private_premium_design_surcharge', '2');
         Setting::setValue('show_organizer_packages_on_front', '0');
 
-        $calls = [
+        $this->call([
             OrganizerPackageSeeder::class,
             CategorySeeder::class,
             InvitationDesignSeeder::class,
             SupportFaqSeeder::class,
-        ];
-
-        if (! app()->environment('production')) {
-            $calls[] = EventSeeder::class;
-        }
-
-        $this->call($calls);
+            EventSeeder::class,
+        ]);
     }
 
     private function seedDemoUsers(): void
@@ -48,6 +42,17 @@ class DatabaseSeeder extends Seeder
                 'phone' => '+252630000001',
                 'password' => 'password',
                 'role' => User::ROLE_ADMIN,
+                'status' => 'active',
+            ]
+        );
+
+        User::query()->updateOrCreate(
+            ['email' => 'organizer@ekaadh.com'],
+            [
+                'name' => 'Horizon Events',
+                'phone' => '+252630000010',
+                'password' => 'password',
+                'role' => User::ROLE_ORGANIZER,
                 'status' => 'active',
             ]
         );

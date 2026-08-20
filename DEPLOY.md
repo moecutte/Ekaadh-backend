@@ -137,13 +137,13 @@ bash scripts/prepare-production.sh
 
 | Data | Source |
 |------|--------|
-| First admin (only if `ADMIN_EMAIL` + `ADMIN_PASSWORD` are set) | `DatabaseSeeder` |
+| Demo admin / organizer / customer / staff (`password`) | `DatabaseSeeder` |
+| Extra admin (only if `ADMIN_EMAIL` + `ADMIN_PASSWORD` are set) | `DatabaseSeeder` |
 | Organizer packages (Free / Pro / Enterprise) | `OrganizerPackageSeeder` |
 | Public + private categories | `CategorySeeder` |
-| Invitation designs | `InvitationDesignSeeder` |
+| Invitation designs (Aroos, Meher, Xaflad, Casho) | `InvitationDesignSeeder` |
+| Public sample events + SagalJet events | `EventSeeder` |
 | Platform settings (fees, packages hidden on front, etc.) | `DatabaseSeeder` |
-
-Production seed does **not** create `admin@ekaadh.com` / `password` or sample events.
 
 **Do not re-run `db:seed` on every deploy.** Later releases should only run:
 
