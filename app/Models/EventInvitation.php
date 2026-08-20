@@ -56,7 +56,7 @@ class EventInvitation extends Model
 
     public function publicUrl(): string
     {
-        return url('/i/'.$this->token);
+        return \App\Support\PublicUrl::to('/i/'.$this->token);
     }
 
     public function isActive(): bool

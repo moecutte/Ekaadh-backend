@@ -18,6 +18,9 @@
             <p class="text-mute text-sm mt-1">@yield('subtitle')</p>
         </div>
         <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
+            @if(session('error'))
+                <div class="mb-4 rounded-xl bg-red-50 text-red-700 text-sm p-3">{{ session('error') }}</div>
+            @endif
             @if(session('success'))
                 <div class="mb-4 rounded-xl bg-emerald-50 text-emerald-700 text-sm p-3">{{ session('success') }}</div>
             @endif

@@ -41,15 +41,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(function (Request $request) {
             $user = $request->user();
 
+            if ($user) {
+                return route($user->homeRoute());
+            }
+
             if ($request->is('admin') || $request->is('admin/*')) {
                 return route('admin.dashboard');
             }
 
-            if ($user?->isCustomer()) {
-                return route('tickets.index');
+            if ($request->is('organizer') || $request->is('organizer/*')) {
+                return route('organizer.dashboard');
             }
 
-            return route('organizer.dashboard');
+            return route('tickets.index');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

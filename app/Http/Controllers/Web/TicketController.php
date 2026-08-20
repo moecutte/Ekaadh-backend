@@ -38,6 +38,7 @@ class TicketController extends Controller
             $accountMode = true;
             $tickets = Ticket::query()
                 ->with(['event', 'orderItem.order', 'invitation'])
+                ->forPublicEvents()
                 ->where(function ($q) use ($user) {
                     $q->whereHas('orderItem.order', function ($q) use ($user) {
                         $q->where('status', 'paid')
@@ -68,6 +69,8 @@ class TicketController extends Controller
                 $normalized = $this->otp->normalize($phone);
                 $phone = $normalized;
                 $tickets = $this->otp->findableTicketsForPhone($normalized)
+                    ->filter(fn (Ticket $ticket) => ! $ticket->event?->is_private)
+                    ->values()
                     ->map(fn (Ticket $ticket) => $this->decorate($ticket));
             } catch (\Illuminate\Validation\ValidationException $e) {
                 $error = collect($e->errors())->flatten()->first() ?: 'Could not verify phone.';
@@ -87,8 +90,8 @@ class TicketController extends Controller
             'error' => $error,
             'otpMode' => true,
             'otpToken' => $searched && $tickets->isNotEmpty() ? $otpToken : '',
-            'otpSendUrl' => url('/api/v1/otp/send'),
-            'otpVerifyUrl' => url('/api/v1/otp/verify'),
+            'otpSendUrl' => route('otp.send'),
+            'otpVerifyUrl' => route('otp.verify'),
         ]);
     }
 

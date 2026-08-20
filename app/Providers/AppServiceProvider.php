@@ -38,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         ProductionGuard::assert();
+        $this->alignSessionCookieToHost();
 
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
@@ -64,5 +65,29 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('support', function (Request $request) {
             return Limit::perMinute(40)->by($request->user()?->id ?: $request->ip());
         });
+    }
+
+    /**
+     * SESSION_DOMAIN=.ekaadh.com silently drops cookies on any other host
+     * (e.g. a Coolify preview like ckaadh.mahaysaa.com), so login appears to
+     * do nothing and payment redirects lose checkout_access.
+     */
+    private function alignSessionCookieToHost(): void
+    {
+        if (app()->runningInConsole()) {
+            return;
+        }
+
+        $configured = ltrim((string) config('session.domain'), '.');
+        if ($configured === '') {
+            return;
+        }
+
+        $host = request()->getHost();
+        if ($host === '' || $host === $configured || str_ends_with($host, '.'.$configured)) {
+            return;
+        }
+
+        config(['session.domain' => null]);
     }
 }

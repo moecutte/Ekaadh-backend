@@ -173,7 +173,7 @@ class OtpService
         Cache::forget($key);
 
         $token = bin2hex(random_bytes(24));
-        Cache::put($this->verifiedKey($purpose, $normalized), $token, (int) config('otp.ttl_seconds', 600));
+        $this->storeVerified($purpose, $normalized, $token);
 
         return $token;
     }
@@ -185,15 +185,15 @@ class OtpService
     {
         $this->assertPurpose($purpose);
         $normalized = $this->normalize($phone);
+        $otpToken = is_string($otpToken) ? trim($otpToken) : '';
 
-        if (! $otpToken) {
+        if ($otpToken === '') {
             throw ValidationException::withMessages([
                 'otp_token' => ['Confirm your phone number with the code we sent.'],
             ]);
         }
 
-        $expected = Cache::get($this->verifiedKey($purpose, $normalized));
-        if (! is_string($expected) || ! hash_equals($expected, $otpToken)) {
+        if (! $this->verifiedTokenMatches($purpose, $normalized, $otpToken)) {
             throw ValidationException::withMessages([
                 'otp_token' => ['Phone confirmation expired or invalid. Request a new code.'],
             ]);
@@ -203,7 +203,7 @@ class OtpService
     public function consumeVerified(string $phone, string $purpose, ?string $otpToken): void
     {
         $this->assertVerified($phone, $purpose, $otpToken);
-        Cache::forget($this->verifiedKey($purpose, Phone::normalize($phone)));
+        $this->forgetVerified($purpose, Phone::normalize($phone), is_string($otpToken) ? trim($otpToken) : '');
     }
 
     public function guestPhoneIsRegistered(string $phone): bool
@@ -322,6 +322,98 @@ class OtpService
     private function verifiedKey(string $purpose, string $phone): string
     {
         return 'otp:verified:'.$purpose.':'.$phone;
+    }
+
+    private function tokenIndexKey(string $token): string
+    {
+        return 'otp:verified-token:'.$token;
+    }
+
+    private function sessionVerifiedKey(string $purpose, string $phone): string
+    {
+        return $this->verifiedKey($purpose, $phone);
+    }
+
+    private function sessionTokenIndexKey(string $token): string
+    {
+        return $this->tokenIndexKey($token);
+    }
+
+    private function storeVerified(string $purpose, string $phone, string $token): void
+    {
+        $ttl = (int) config('otp.ttl_seconds', 600);
+        Cache::put($this->verifiedKey($purpose, $phone), $token, $ttl);
+        Cache::put($this->tokenIndexKey($token), [
+            'purpose' => $purpose,
+            'phone' => $phone,
+        ], $ttl);
+
+        $this->withSession(function ($session) use ($purpose, $phone, $token) {
+            $session->put($this->sessionVerifiedKey($purpose, $phone), $token);
+            $session->put($this->sessionTokenIndexKey($token), [
+                'purpose' => $purpose,
+                'phone' => $phone,
+            ]);
+        });
+    }
+
+    private function forgetVerified(string $purpose, string $phone, string $token): void
+    {
+        Cache::forget($this->verifiedKey($purpose, $phone));
+        if ($token !== '') {
+            Cache::forget($this->tokenIndexKey($token));
+        }
+
+        $this->withSession(function ($session) use ($purpose, $phone, $token) {
+            $session->forget($this->sessionVerifiedKey($purpose, $phone));
+            if ($token !== '') {
+                $session->forget($this->sessionTokenIndexKey($token));
+            }
+        });
+    }
+
+    private function verifiedTokenMatches(string $purpose, string $normalized, string $otpToken): bool
+    {
+        $expected = Cache::get($this->verifiedKey($purpose, $normalized));
+        if (is_string($expected) && hash_equals($expected, $otpToken)) {
+            return true;
+        }
+
+        $fromSession = null;
+        $this->withSession(function ($session) use ($purpose, $normalized, &$fromSession) {
+            $fromSession = $session->get($this->sessionVerifiedKey($purpose, $normalized));
+        });
+        if (is_string($fromSession) && hash_equals($fromSession, $otpToken)) {
+            return true;
+        }
+
+        $meta = Cache::get($this->tokenIndexKey($otpToken));
+        if (! is_array($meta)) {
+            $this->withSession(function ($session) use ($otpToken, &$meta) {
+                $stored = $session->get($this->sessionTokenIndexKey($otpToken));
+                if (is_array($stored)) {
+                    $meta = $stored;
+                }
+            });
+        }
+
+        if (! is_array($meta) || ($meta['purpose'] ?? '') !== $purpose) {
+            return false;
+        }
+
+        return Phone::matches((string) ($meta['phone'] ?? ''), $normalized);
+    }
+
+    private function withSession(callable $callback): void
+    {
+        try {
+            $request = request();
+            if ($request->hasSession()) {
+                $callback($request->session());
+            }
+        } catch (\Throwable) {
+            // API / console requests may have no session.
+        }
     }
 
     private function redact(string $phone): string

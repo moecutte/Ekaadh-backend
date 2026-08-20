@@ -121,10 +121,13 @@
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
 function registerOtp() {
-    const otpSendUrl = @json(url('/api/v1/otp/send'));
-    const otpVerifyUrl = @json(url('/api/v1/otp/verify'));
+    const otpSendUrl = @json(route('otp.send'));
+    const otpVerifyUrl = @json(route('otp.verify'));
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+        || document.querySelector('input[name="_token"]')?.value
+        || '';
     const oldPhone = @json(old('phone', ''));
-    const localFromOld = String(oldPhone || '').replace(/^\+?252/, '').replace(/\D/g, '');
+    const localFromOld = String(oldPhone || '').replace(/^\+?252/, '').replace(/\D/g, '').replace(/^0+/, '');
     const i18n = {
         sendCode: @json(__('ui.send_confirmation_code')),
         verifyCreate: @json(__('ui.verify_create_account')),
@@ -152,8 +155,16 @@ function registerOtp() {
         busy: false,
         i18n,
         get fullPhone() {
-            const local = String(this.phoneLocal || '').replace(/\D/g, '');
+            const local = String(this.phoneLocal || '').replace(/\D/g, '').replace(/^0+/, '');
             return local ? '+252' + local : '';
+        },
+        otpHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf,
+            };
         },
         backToDetails() {
             this.otpSent = false;
@@ -187,10 +198,8 @@ function registerOtp() {
             try {
                 const res = await fetch(otpSendUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({ phone: this.fullPhone, purpose: 'register' }),
                 });
                 const text = await res.text();
@@ -224,10 +233,8 @@ function registerOtp() {
             try {
                 const res = await fetch(otpVerifyUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({
                         phone: this.fullPhone,
                         purpose: 'register',
@@ -244,8 +251,8 @@ function registerOtp() {
                     this.error = body.errors?.otp?.[0] || body.message || i18n.invalidCode;
                     return false;
                 }
-                this.otpToken = body.otp_token;
-                return true;
+                this.otpToken = body.otp_token || '';
+                return !!this.otpToken;
             } catch (e) {
                 this.error = e.message || i18n.couldNotVerifyCode;
                 return false;
@@ -265,8 +272,16 @@ function registerOtp() {
                 if (!ok) return;
             }
 
-            const hidden = form.querySelector('input[name="otp_token"]');
-            if (hidden) hidden.value = this.otpToken;
+            const set = (name, value) => {
+                const el = form.querySelector('input[name="' + name + '"]');
+                if (el) el.value = value == null ? '' : String(value);
+            };
+            set('otp_token', this.otpToken);
+            set('name', this.name);
+            set('phone', this.fullPhone);
+            set('email', this.email);
+            set('password', this.password);
+            set('password_confirmation', this.passwordConfirm);
             form.submit();
         },
     };

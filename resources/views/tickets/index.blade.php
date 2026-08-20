@@ -9,8 +9,8 @@
         'used' => 'bg-gray-100 text-gray-500',
         'cancelled' => 'bg-red-100 text-red-600',
     ];
-    $otpSendUrl = $otpSendUrl ?? url('/api/v1/otp/send');
-    $otpVerifyUrl = $otpVerifyUrl ?? url('/api/v1/otp/verify');
+    $otpSendUrl = $otpSendUrl ?? route('otp.send');
+    $otpVerifyUrl = $otpVerifyUrl ?? route('otp.verify');
     $card = 'rounded-[1.75rem] bg-white border border-slate-100 shadow-[0_18px_40px_-28px_rgba(15,26,46,0.35)] overflow-hidden';
     $bar = 'h-1 bg-gradient-to-r from-brand via-[#4a51b8] to-brand/40';
 @endphp
@@ -309,8 +309,16 @@ function findTicketsOtp(cfg) {
         busy: false,
         i18n,
         get fullPhone() {
-            const local = String(this.phoneLocal || '').replace(/\D/g, '');
+            const local = String(this.phoneLocal || '').replace(/\D/g, '').replace(/^0+/, '');
             return local ? '+252' + local : '';
+        },
+        otpHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf,
+            };
         },
         backToPhone() {
             this.otpSent = false;
@@ -328,10 +336,8 @@ function findTicketsOtp(cfg) {
             try {
                 const res = await fetch(cfg.sendUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({ phone: this.fullPhone, purpose: 'find_tickets' }),
                 });
                 const text = await res.text();
@@ -370,10 +376,8 @@ function findTicketsOtp(cfg) {
             try {
                 const res = await fetch(cfg.verifyUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({
                         phone: this.fullPhone,
                         purpose: 'find_tickets',
@@ -388,6 +392,10 @@ function findTicketsOtp(cfg) {
                 }
                 if (!res.ok) {
                     this.error = body.errors?.otp?.[0] || body.message || i18n.invalidCode;
+                    return;
+                }
+                if (!body.otp_token) {
+                    this.error = i18n.couldNotVerifyCode;
                     return;
                 }
                 const url = new URL(cfg.indexUrl, window.location.origin);

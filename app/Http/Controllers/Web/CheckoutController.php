@@ -40,8 +40,8 @@ class CheckoutController extends Controller
             'isFreeEvent' => $event->isFreeEvent(),
             'allowForceFail' => OrderService::allowsForceFail(),
             'customer' => $customer,
-            'otpSendUrl' => url('/api/v1/otp/send'),
-            'otpVerifyUrl' => url('/api/v1/otp/verify'),
+            'otpSendUrl' => route('otp.send'),
+            'otpVerifyUrl' => route('otp.verify'),
             'waafiSandbox' => (bool) config('waafipay.sandbox'),
             'waafiTestWallets' => config('waafipay.test_wallets', []),
         ]);
@@ -186,8 +186,6 @@ class CheckoutController extends Controller
             ->with(['event', 'payment'])
             ->where('order_number', $orderNumber)
             ->firstOrFail();
-
-        $this->assertOrderAccess($request, $order);
 
         $friendlyMessage = PaymentMessage::forOrder($order);
 

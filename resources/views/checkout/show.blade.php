@@ -83,11 +83,11 @@
         @foreach($event->ticketTypes as $type)
             <input type="hidden" :name="'qty[{{ $type->id }}]'" :value="qty[{{ $type->id }}] || 0">
         @endforeach
-        <input type="hidden" name="buyer_phone" :value="chargeFullPhone">
-        <input type="hidden" name="otp_phone" :value="otpFullPhone">
+        <input type="hidden" name="buyer_phone" x-ref="buyerPhone" :value="chargeFullPhone">
+        <input type="hidden" name="otp_phone" x-ref="otpPhone" :value="otpFullPhone">
         <input type="hidden" name="payment_method" :value="payment || ''">
-        <input type="hidden" name="otp_token" :value="otpToken">
-        <input type="hidden" name="wallet_pin" :value="walletPin">
+        <input type="hidden" name="otp_token" x-ref="otpTokenInput" x-model="otpToken">
+        <input type="hidden" name="wallet_pin" x-ref="walletPinInput" :value="walletPin">
 
         {{-- Step 1: Select Tickets --}}
         <div x-show="step === 1" x-cloak class="space-y-5">
@@ -395,7 +395,11 @@ function checkoutWizard() {
         || '';
     const otpSendUrl = @json($otpSendUrl);
     const otpVerifyUrl = @json($otpVerifyUrl);
-    const initialStep = {{ $errors->any() ? ($signedIn ? 3 : 4) : 1 }};
+    const hasErrors = {{ $errors->any() ? 'true' : 'false' }};
+    const otpFailed = {{ ($errors->has('otp_token') || $errors->has('otp')) ? 'true' : 'false' }};
+    const initialStep = hasErrors
+        ? (signedIn ? (isFree ? 2 : 3) : (otpFailed || isFree ? 3 : 4))
+        : 1;
     const i18n = {
         stepSelectTickets: @json(__('ui.step_select_tickets')),
         stepYourDetails: @json(__('ui.step_your_details')),
@@ -474,17 +478,43 @@ function checkoutWizard() {
         get total() {
             return this.subtotal + (this.ticketCount > 0 ? fee : 0);
         },
+        localDigits(value) {
+            return String(value || '').replace(/\D/g, '').replace(/^0+/, '');
+        },
         get fullPhone() {
-            const local = String(this.phoneLocal || '').replace(/\D/g, '');
+            const local = this.localDigits(this.phoneLocal);
             return local ? '+252' + local : '';
         },
         get chargeFullPhone() {
-            const local = String(this.chargePhoneLocal || this.phoneLocal || '').replace(/\D/g, '');
+            const local = this.localDigits(this.chargePhoneLocal || this.phoneLocal);
             return local ? '+252' + local : '';
         },
         get otpFullPhone() {
-            const local = String(this.otpPhoneLocal || this.phoneLocal || '').replace(/\D/g, '');
+            const local = this.localDigits(this.otpPhoneLocal || this.phoneLocal);
             return local ? '+252' + local : '';
+        },
+        otpHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf,
+            };
+        },
+        syncHiddenFields() {
+            const form = this.$refs.checkoutForm;
+            if (!form) return;
+            const set = (el, value) => { if (el) el.value = value == null ? '' : String(value); };
+            set(this.$refs.otpTokenInput, this.otpToken || '');
+            set(this.$refs.otpPhone, this.otpFullPhone || '');
+            set(this.$refs.buyerPhone, this.chargeFullPhone || '');
+            set(this.$refs.walletPinInput, this.walletPin || '');
+            const payment = form.querySelector('input[name="payment_method"]');
+            set(payment, this.payment || '');
+            Object.entries(this.qty || {}).forEach(([id, q]) => {
+                const el = form.querySelector('[name="qty[' + id + ']"]');
+                set(el, Number(q) || 0);
+            });
         },
 
         inc(id, max) {
@@ -507,6 +537,7 @@ function checkoutWizard() {
             if (this.signedIn) {
                 this.chargePhoneLocal = this.chargePhoneLocal || this.phoneLocal;
                 if (this.isFree) {
+                    this.syncHiddenFields();
                     this.$refs.checkoutForm?.requestSubmit();
                     return;
                 }
@@ -522,10 +553,8 @@ function checkoutWizard() {
             try {
                 const res = await fetch(otpSendUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({ phone: this.fullPhone, purpose: 'checkout' }),
                 });
                 const text = await res.text();
@@ -562,10 +591,8 @@ function checkoutWizard() {
             try {
                 const res = await fetch(otpVerifyUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'same-origin',
+                    headers: this.otpHeaders(),
                     body: JSON.stringify({
                         phone: this.fullPhone,
                         purpose: 'checkout',
@@ -582,14 +609,20 @@ function checkoutWizard() {
                     this.otpError = body.errors?.otp?.[0] || body.message || i18n.invalidCode;
                     return;
                 }
-                this.otpToken = body.otp_token;
-                this.otpPhoneLocal = String(this.phoneLocal || '').replace(/\D/g, '');
-                this.chargePhoneLocal = this.otpPhoneLocal;
+                this.otpToken = body.otp_token || '';
+                this.otpPhoneLocal = this.localDigits(this.phoneLocal);
+                this.chargePhoneLocal = this.chargePhoneLocal || this.otpPhoneLocal;
+                await this.$nextTick();
+                this.syncHiddenFields();
+                if (!this.otpToken) {
+                    this.otpError = i18n.couldNotVerifyCode;
+                    return;
+                }
                 if (this.isFree) {
                     this.$refs.checkoutForm?.requestSubmit();
                     return;
                 }
-                this.goStep(4);
+                this.goStep(this.paymentStep);
             } catch (e) {
                 this.otpError = e.message || i18n.couldNotVerifyCode;
             } finally {
@@ -597,6 +630,7 @@ function checkoutWizard() {
             }
         },
         prepareSubmit(e) {
+            this.syncHiddenFields();
             if (this.ticketCount < 1 || !this.chargeFullPhone) {
                 e.preventDefault();
                 return;
@@ -648,7 +682,10 @@ function checkoutWizard() {
             this.pinReady = true;
             this.showPinModal = false;
             this.submitting = true;
-            this.$nextTick(() => this.$refs.checkoutForm?.submit());
+            this.$nextTick(() => {
+                this.syncHiddenFields();
+                this.$refs.checkoutForm?.requestSubmit();
+            });
         },
     }
 }
