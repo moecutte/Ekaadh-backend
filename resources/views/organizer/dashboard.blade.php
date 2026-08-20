@@ -19,18 +19,27 @@
     </div>
 @endif
 
+@php
+    $firstName = explode(' ', trim((string) auth()->user()->name))[0] ?: 'there';
+@endphp
+<section class="panel-hero mb-6">
+    <p class="relative z-10 text-[11px] font-black uppercase tracking-[0.18em] text-gold-soft/90">Organizer studio</p>
+    <h2 class="relative z-10 mt-1 text-2xl font-black tracking-tight text-white">Welcome back, {{ $firstName }}</h2>
+    <p class="relative z-10 mt-1 text-sm text-white/70 max-w-xl">Your events, tickets, and earnings — with a bit more color this time.</p>
+</section>
+
 <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
     @foreach([
-        ['Total Events', $stats['events'], 'bg-brand/10 text-brand', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
-        ['Tickets Sold', number_format($stats['tickets_sold']), 'bg-sky-50 text-sky-600', 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z'],
-        ['Gross Revenue', '$'.number_format($stats['gross'], 0), 'bg-violet-50 text-violet-600', 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'],
-        ['Net Earnings', '$'.number_format($stats['net'], 0), 'bg-amber-50 text-amber-600', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
-    ] as [$label, $value, $color, $icon])
-        <div class="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-            <div class="w-9 h-9 rounded-xl {{ $color }} mb-3 flex items-center justify-center">
+        ['Total Events', $stats['events'], '#323891', 'bg-brand', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
+        ['Tickets Sold', number_format($stats['tickets_sold']), '#0284c7', 'bg-sky-500', 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z'],
+        ['Gross Revenue', '$'.number_format($stats['gross'], 0), '#7c3aed', 'bg-violet-500', 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'],
+        ['Net Earnings', '$'.number_format($stats['net'], 0), '#b8892d', 'bg-gold', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+    ] as [$label, $value, $accent, $iconBg, $icon])
+        <div class="panel-stat" style="--stat-accent: {{ $accent }}">
+            <div class="w-9 h-9 rounded-xl {{ $iconBg }} text-white mb-3 flex items-center justify-center shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
             </div>
-            <div class="text-2xl font-extrabold tracking-tight">{{ $value }}</div>
+            <div class="text-2xl font-extrabold tracking-tight text-ink">{{ $value }}</div>
             <div class="text-xs text-mute mt-1">{{ $label }}</div>
         </div>
     @endforeach

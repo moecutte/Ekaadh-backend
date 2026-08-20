@@ -82,7 +82,7 @@
                 <div class="px-4 py-10 text-center text-mute text-sm">No categories found.</div>
             @endforelse
         </div>
-        <div>{{ $categories->links() }}</div>
+        @include('admin.partials.pager', ['paginator' => $categories])
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">

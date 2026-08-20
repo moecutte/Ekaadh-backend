@@ -139,13 +139,10 @@ class TicketDesigns
 
     public static function templateView(array $design): string
     {
-        // Prefer uploaded graphic + field overlays whenever a design image exists,
-        // even if render_mode was left as "blade" in older rows.
-        if (! empty($design['graphic_url']) || ! empty($design['graphic_path'])) {
-            return 'tickets.templates.overlay';
-        }
+        $isOverlay = ($design['render_mode'] ?? '') === 'overlay'
+            && (! empty($design['graphic_url']) || ! empty($design['graphic_path']));
 
-        if (($design['render_mode'] ?? '') === 'overlay') {
+        if ($isOverlay) {
             return 'tickets.templates.overlay';
         }
 
@@ -153,5 +150,30 @@ class TicketDesigns
         $path = resource_path("views/tickets/templates/{$id}.blade.php");
 
         return is_file($path) ? "tickets.templates.{$id}" : 'tickets.templates.public';
+    }
+
+    /**
+     * Built-in HTML invitation themes (filename without .blade.php).
+     *
+     * @return array<string, string>
+     */
+    public static function bladeTemplateOptions(): array
+    {
+        return [
+            'blush_petal' => 'Aroos Blush Petal',
+            'velvet_gold' => 'Aroos Velvet Gold',
+            'sage_promise' => 'Meher Sage Promise',
+            'starlit_vow' => 'Meher Starlit Vow',
+            'lantern_garden' => 'Xaflad Lantern Garden',
+            'oasis_gala' => 'Xaflad Oasis Gala',
+            'pearl_soiree' => 'Casho Pearl Soiree',
+            'wedding' => 'Wedding',
+            'royal_gold' => 'Royal Gold',
+            'garden_romance' => 'Garden Romance',
+            'midnight_gala' => 'Midnight Gala',
+            'formal' => 'Formal',
+            'celebration' => 'Celebration',
+            'public' => 'Classic',
+        ];
     }
 }

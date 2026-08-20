@@ -150,6 +150,7 @@ class AuthController extends Controller
                 'max:255',
                 'unique:users,email,'.$user->id,
             ],
+            'push_notifications_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $updates = [
@@ -160,11 +161,54 @@ class AuthController extends Controller
             $updates['email'] = $data['email'];
         }
 
+        if (array_key_exists('push_notifications_enabled', $data)) {
+            $updates['push_notifications_enabled'] = $data['push_notifications_enabled'];
+        }
+
         $user->update($updates);
 
         return response()->json([
             'message' => 'Profile updated successfully.',
             'user' => $this->userPayload($user->fresh()),
+        ]);
+    }
+
+    public function destroyAccount(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (! $user->isCustomer()) {
+            throw ValidationException::withMessages([
+                'password' => ['This account cannot be deleted from the app.'],
+            ]);
+        }
+
+        if (! Hash::check($data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        $user->tokens()->delete();
+        $user->deviceTokens()->delete();
+        $user->notifications()->delete();
+
+        $user->update([
+            'name' => 'Deleted account',
+            'email' => 'deleted-'.$user->id.'-'.time().'@ekaadh.invalid',
+            'phone' => null,
+            'password' => str()->password(40),
+            'status' => 'inactive',
+            'avatar' => null,
+            'push_notifications_enabled' => false,
+        ]);
+
+        return response()->json([
+            'message' => 'Your account has been deleted.',
         ]);
     }
 
@@ -177,6 +221,8 @@ class AuthController extends Controller
             'phone' => $user->phone,
             'role' => $user->role,
             'status' => $user->status,
+            'avatar' => $user->avatar,
+            'push_notifications_enabled' => (bool) $user->push_notifications_enabled,
         ];
     }
 

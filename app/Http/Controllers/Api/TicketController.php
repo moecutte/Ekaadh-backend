@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Support\Phone;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
 
 class TicketController extends Controller
 {
@@ -20,18 +22,19 @@ class TicketController extends Controller
         $query = Ticket::query()
             ->with(['event', 'orderItem.order', 'invitation'])
             ->where(function ($q) use ($user, $phoneVariants) {
-                // Purchased tickets (public checkout or invitation orders on this phone)
                 $q->whereHas('orderItem.order', function ($q) use ($user, $phoneVariants) {
                     $q->where('status', 'paid')
                         ->where(function ($q) use ($user, $phoneVariants) {
                             $q->where('user_id', $user->id);
                             if ($phoneVariants !== []) {
-                                $q->orWhereIn('buyer_phone', $phoneVariants);
+                                $q->orWhereIn('buyer_phone', $phoneVariants)
+                                    ->orWhereHas('payment', function ($q) use ($phoneVariants) {
+                                        $q->whereIn('phone_number', $phoneVariants);
+                                    });
                             }
                         });
                 });
 
-                // Private invitation tickets addressed to this phone
                 if ($phoneVariants !== []) {
                     $q->orWhere(function ($q) use ($phoneVariants) {
                         $q->whereHas('invitation', function ($q) use ($phoneVariants) {
@@ -49,7 +52,6 @@ class TicketController extends Controller
                     ->orWhereHas('event', fn ($e) => $e->whereDate('event_date', '<', now()->toDateString()));
             });
         } else {
-            // Upcoming: valid tickets for today/future, or events with no date yet
             $query->where('status', 'valid')
                 ->where(function ($q) {
                     $q->whereHas('event', function ($e) {
@@ -62,13 +64,65 @@ class TicketController extends Controller
         return TicketResource::collection($query->paginate(50));
     }
 
-    public function show(string $code): TicketResource
+    public function show(Request $request, string $code): TicketResource
     {
         $ticket = Ticket::query()
-            ->with(['event', 'orderItem.order', 'invitation'])
+            ->with(['event', 'orderItem.order.payment', 'invitation'])
             ->where('ticket_code', strtoupper($code))
             ->firstOrFail();
 
+        if (! $this->viewerOwnsTicket($request, $ticket)) {
+            abort(404);
+        }
+
         return new TicketResource($ticket);
+    }
+
+    private function viewerOwnsTicket(Request $request, Ticket $ticket): bool
+    {
+        $user = $request->user('sanctum') ?: Auth::guard('sanctum')->user();
+        $phone = trim((string) $request->query('phone', ''));
+
+        if ($user instanceof User && $this->userOwnsTicket($user, $ticket)) {
+            return true;
+        }
+
+        if ($phone !== '' && $this->phoneOwnsTicket($phone, $ticket)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function userOwnsTicket(User $user, Ticket $ticket): bool
+    {
+        $order = $ticket->orderItem?->order;
+        if ($order && (int) $order->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($user->phone) {
+            return $this->phoneOwnsTicket($user->phone, $ticket);
+        }
+
+        return false;
+    }
+
+    private function phoneOwnsTicket(string $phone, Ticket $ticket): bool
+    {
+        $order = $ticket->orderItem?->order;
+        if ($order && Phone::matches($order->buyer_phone, $phone)) {
+            return true;
+        }
+        if ($order?->payment && Phone::matches($order->payment->phone_number, $phone)) {
+            return true;
+        }
+
+        $invitation = $ticket->invitation;
+        if ($invitation && Phone::matches($invitation->guest_phone, $phone)) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -32,6 +32,7 @@ class PrivateEventResource extends JsonResource
             'cover_image' => $this->cover_image,
             'status' => $this->status,
             'is_private' => (bool) $this->is_private,
+            'is_expired' => $this->isExpired(),
             'ticket_design' => $this->ticket_design,
             'invitation_design_id' => $this->invitation_design_id,
             'invitation_field_values' => $this->invitation_field_values,
@@ -59,6 +60,11 @@ class PrivateEventResource extends JsonResource
                 fn () => $this->pending_order
                     ? new OrderResource($this->pending_order)
                     : null
+            ),
+            'payment_sandbox' => (bool) config('waafipay.sandbox'),
+            'test_wallets' => $this->when(
+                (bool) config('waafipay.sandbox'),
+                array_values(config('waafipay.test_wallets', []))
             ),
         ];
     }

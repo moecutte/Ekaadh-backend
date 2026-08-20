@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Builder;
 
 class Order extends Model
 {
@@ -64,5 +65,58 @@ class Order extends Model
     public function isInvitation(): bool
     {
         return $this->source === 'invitation';
+    }
+
+    /**
+     * Real purchases only — complimentary invitation issues are invitees, not buyers.
+     */
+    public function scopeCommerce(Builder $query): Builder
+    {
+        return $query->where('source', '!=', 'invitation');
+    }
+
+    public function isPrivatePurchase(): bool
+    {
+        return $this->source === 'private_event';
+    }
+
+    public function channelLabel(): string
+    {
+        return match ($this->source) {
+            'private_event' => 'Private event',
+            'invitation' => 'Invitation',
+            'organizer_package' => 'Free event package',
+            default => 'Public tickets',
+        };
+    }
+
+    public function isPackagePurchase(): bool
+    {
+        return $this->source === 'organizer_package';
+    }
+
+    /**
+     * Ticket sales that pay out to organizers (excludes platform capacity / package fees).
+     */
+    public function scopeTicketSales(Builder $query): Builder
+    {
+        return $query->whereNotIn('source', ['invitation', 'private_event', 'organizer_package']);
+    }
+
+    public function organizerNet(): float
+    {
+        return max(0, (float) $this->subtotal - (float) $this->commission_amount);
+    }
+
+    public function whatsappUrl(): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $this->buyer_phone) ?: '';
+
+        return $digits !== '' ? 'https://wa.me/'.$digits : null;
+    }
+
+    public function needsAttention(): bool
+    {
+        return in_array($this->status, ['pending', 'failed'], true);
     }
 }

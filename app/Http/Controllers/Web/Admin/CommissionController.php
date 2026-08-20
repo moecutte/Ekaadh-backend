@@ -19,7 +19,8 @@ class CommissionController extends Controller
             ->with(['user', 'package'])
             ->where('approval_status', 'approved')
             ->orderBy('business_name')
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
         return view('admin.commission', compact('defaultRate', 'serviceFee', 'organizers'));
     }

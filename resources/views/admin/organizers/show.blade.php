@@ -40,9 +40,19 @@
     <div class="lg:col-span-2 space-y-5">
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <div>
-                    <h3 class="text-sm font-bold">Business profile</h3>
-                    <p class="text-xs text-mute mt-0.5">Joined {{ $organizer->created_at?->format('M j, Y g:i A') }}</p>
+                <div class="flex items-center gap-3 min-w-0">
+                    @include('partials.avatar', [
+                        'url' => $organizer->avatarUrl(),
+                        'label' => $organizer->business_name,
+                        'initials' => $organizer->avatarInitials(),
+                        'class' => 'w-12 h-12',
+                        'rounded' => 'rounded-xl',
+                        'text' => 'text-base',
+                    ])
+                    <div>
+                        <h3 class="text-sm font-bold">Business profile</h3>
+                        <p class="text-xs text-mute mt-0.5">Joined {{ $organizer->created_at?->format('M j, Y g:i A') }}</p>
+                    </div>
                 </div>
                 <span class="text-[11px] font-bold px-2.5 py-1 rounded-full border {{ $statusColors[$organizer->approval_status] ?? 'bg-slate-50 text-mute' }}">{{ $organizer->approval_status }}</span>
             </div>
@@ -154,9 +164,10 @@
             </dl>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-50">
+        <div id="organizer-events" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
                 <h3 class="text-sm font-bold">Events</h3>
+                <span class="text-[11px] font-bold text-mute">{{ number_format($events->total()) }}</span>
             </div>
             <table class="w-full text-sm">
                 <thead class="text-[11px] uppercase text-mute bg-slate-50/80">
@@ -167,7 +178,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($organizer->events as $event)
+                    @forelse($events as $event)
                         <tr class="border-t border-slate-50">
                             <td class="px-4 py-3 font-semibold">{{ $event->title }}</td>
                             <td class="px-4 py-3 text-mute text-xs">{{ $event->event_date?->format('M j, Y') }}</td>
@@ -180,6 +191,7 @@
                     @endforelse
                 </tbody>
             </table>
+            @include('admin.partials.pager', ['paginator' => $events, 'simple' => true])
         </div>
     </div>
 
@@ -236,12 +248,13 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-50">
+        <div id="organizer-payouts" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
                 <h3 class="text-sm font-bold">Recent payouts</h3>
+                <span class="text-[11px] font-bold text-mute">{{ number_format($payouts->total()) }}</span>
             </div>
             <div class="divide-y divide-slate-50">
-                @forelse($organizer->payouts as $payout)
+                @forelse($payouts as $payout)
                     <div class="px-5 py-3 text-sm">
                         <div class="flex items-center justify-between gap-2">
                             <span class="font-semibold">${{ number_format((float) $payout->net_payout, 0) }}</span>
@@ -255,6 +268,7 @@
                     <div class="px-5 py-8 text-center text-mute text-sm">No payouts recorded.</div>
                 @endforelse
             </div>
+            @include('admin.partials.pager', ['paginator' => $payouts, 'simple' => true])
         </div>
     </div>
 </div>

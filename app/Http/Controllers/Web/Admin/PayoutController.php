@@ -21,8 +21,8 @@ class PayoutController extends Controller
             ->get()
             ->map(function (OrganizerProfile $org) {
                 $eventIds = $org->events()->pluck('id');
-                $gross = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('subtotal');
-                $commission = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->sum('commission_amount');
+                $gross = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('subtotal');
+                $commission = $eventIds->isEmpty() ? 0 : (float) Order::query()->whereIn('event_id', $eventIds)->where('status', 'paid')->ticketSales()->sum('commission_amount');
                 $net = $gross - $commission;
                 $paidOut = (float) Payout::query()->where('organizer_id', $org->id)->where('status', 'paid')->sum('net_payout');
 
@@ -55,12 +55,14 @@ class PayoutController extends Controller
         $gross = $eventIds->isEmpty() ? 0 : (float) Order::query()
             ->whereIn('event_id', $eventIds)
             ->where('status', 'paid')
+            ->ticketSales()
             ->whereBetween('created_at', [$data['period_start'].' 00:00:00', $data['period_end'].' 23:59:59'])
             ->sum('subtotal');
 
         $commission = $eventIds->isEmpty() ? 0 : (float) Order::query()
             ->whereIn('event_id', $eventIds)
             ->where('status', 'paid')
+            ->ticketSales()
             ->whereBetween('created_at', [$data['period_start'].' 00:00:00', $data['period_end'].' 23:59:59'])
             ->sum('commission_amount');
 
@@ -90,6 +92,8 @@ class PayoutController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
+        $this->notifyOrganizerPayout($org, (float) $net);
+
         return back()->with('success', "Recorded payout of \${$net} to {$org->business_name}.");
     }
 
@@ -101,6 +105,32 @@ class PayoutController extends Controller
             'paid_by' => auth()->id(),
         ]);
 
+        $payout->loadMissing('organizer.user');
+        if ($payout->organizer) {
+            $this->notifyOrganizerPayout($payout->organizer, (float) $payout->net_payout);
+        }
+
         return back()->with('success', 'Payout marked as paid.');
+    }
+
+    private function notifyOrganizerPayout(OrganizerProfile $org, float $net): void
+    {
+        $user = $org->user;
+        if (! $user) {
+            $org->loadMissing('user');
+            $user = $org->user;
+        }
+        if (! $user) {
+            return;
+        }
+
+        app(\App\Services\PanelNotifier::class)->toUser(
+            $user,
+            'Payout sent',
+            '$'.number_format($net, 2).' was recorded as paid to your organizer account.',
+            'payout_paid',
+            route('organizer.earnings'),
+            ['organizer_id' => (string) $org->id],
+        );
     }
 }

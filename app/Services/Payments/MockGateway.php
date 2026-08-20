@@ -42,4 +42,18 @@ class MockGateway implements PaymentGatewayInterface
             ],
         ];
     }
+
+    public function inquire(string $reference, ?string $transactionId = null): array
+    {
+        return [
+            'status' => 'unknown',
+            'transaction_id' => $transactionId ?: $reference,
+            'message' => 'Mock gateway has no remote transaction to look up.',
+            'raw' => [
+                'provider' => 'mock',
+                'reference' => $reference,
+                'result' => 'NOT_SUPPORTED',
+            ],
+        ];
+    }
 }

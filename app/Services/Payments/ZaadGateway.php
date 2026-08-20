@@ -42,4 +42,18 @@ class ZaadGateway implements PaymentGatewayInterface
             ],
         ];
     }
+
+    public function inquire(string $reference, ?string $transactionId = null): array
+    {
+        return [
+            'status' => 'unknown',
+            'transaction_id' => $transactionId ?: $reference,
+            'message' => 'Zaad inquiry is not available yet.',
+            'raw' => [
+                'provider' => 'zaad',
+                'reference' => $reference,
+                'result' => 'NOT_SUPPORTED',
+            ],
+        ];
+    }
 }

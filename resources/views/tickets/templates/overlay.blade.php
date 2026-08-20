@@ -19,6 +19,7 @@
         @if($graphic)
             <img src="{{ $graphic }}" alt="" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover" style="z-index: 0; display: block;">
         @endif
+        @include('tickets.partials.overlay-motion', ['design' => $design, 'forPdf' => $forPdf ?? false])
 
         @foreach($fields as $field)
             @php

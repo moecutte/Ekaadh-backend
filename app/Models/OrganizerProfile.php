@@ -109,4 +109,22 @@ class OrganizerProfile extends Model
 
         return $platformDefault ?? (float) Setting::getValue('default_commission_rate', 10);
     }
+
+    public function avatarUrl(): ?string
+    {
+        $this->loadMissing('user');
+
+        return $this->user?->avatar;
+    }
+
+    public function avatarInitials(): string
+    {
+        $this->loadMissing('user');
+
+        if ($this->user) {
+            return $this->user->initials();
+        }
+
+        return mb_strtoupper(mb_substr((string) ($this->business_name ?: '?'), 0, 1));
+    }
 }

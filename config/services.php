@@ -36,7 +36,9 @@ return [
     ],
 
     'payment' => [
-        'gateway' => env('PAYMENT_GATEWAY', 'mock'),
+        'gateway' => env('PAYMENT_GATEWAY', 'waafipay'),
+        'allow_mock' => (bool) env('PAYMENT_ALLOW_MOCK', false),
+        'pending_ttl_minutes' => (int) env('PAYMENT_PENDING_TTL_MINUTES', 30),
     ],
 
     'zaad' => [

@@ -47,6 +47,6 @@
     @empty
         <div class="px-4 py-12 text-center text-mute text-sm">No support conversations yet.</div>
     @endforelse
+    @include('admin.partials.pager', ['paginator' => $conversations])
 </div>
-<div class="mt-4">{{ $conversations->links() }}</div>
 @endsection

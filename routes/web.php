@@ -6,12 +6,17 @@ use App\Http\Controllers\Web\Admin\CityController as AdminCityController;
 use App\Http\Controllers\Web\Admin\InvitationDesignController as AdminInvitationDesignController;
 use App\Http\Controllers\Web\Admin\CommissionController as AdminCommissionController;
 use App\Http\Controllers\Web\Admin\CustomerController as AdminCustomerController;
+use App\Http\Controllers\Web\Admin\InviteeController as AdminInviteeController;
 use App\Http\Controllers\Web\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Web\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Web\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Web\Admin\OrganizerController as AdminOrganizerController;
 use App\Http\Controllers\Web\Admin\OrganizerPackageController as AdminOrganizerPackageController;
 use App\Http\Controllers\Web\Admin\PayoutController as AdminPayoutController;
+use App\Http\Controllers\Web\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Web\Admin\ProfileController as AdminProfileController;
+use App\Http\Controllers\Web\Admin\NotificationController as AdminNotificationController;
+use App\Http\Controllers\Web\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Web\Admin\RevenueReportController as AdminRevenueReportController;
 use App\Http\Controllers\Web\AuthController as CustomerAuthController;
 use App\Http\Controllers\Web\CheckoutController;
@@ -23,6 +28,9 @@ use App\Http\Controllers\Web\Organizer\DashboardController as OrganizerDashboard
 use App\Http\Controllers\Web\Organizer\EarningsController as OrganizerEarningsController;
 use App\Http\Controllers\Web\InvitationController;
 use App\Http\Controllers\Web\Organizer\EventController as OrganizerEventController;
+use App\Http\Controllers\Web\Organizer\EventInvitationController as OrganizerEventInvitationController;
+use App\Http\Controllers\Web\Organizer\NotificationController as OrganizerNotificationController;
+use App\Http\Controllers\Web\Organizer\ProfileController as OrganizerProfileController;
 use App\Http\Controllers\Web\OrganizerLandingController;
 use App\Http\Controllers\Web\CreateTicketLandingController;
 use App\Http\Controllers\Web\OtpController as WebOtpController;
@@ -45,10 +53,12 @@ Route::get('/create-ticket', CreateTicketLandingController::class)->name('create
 Route::get('/events/{slug}/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/events/{slug}/checkout', [CheckoutController::class, 'store'])->middleware('throttle:checkout')->name('checkout.store');
 Route::get('/orders/{orderNumber}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
+Route::get('/orders/{orderNumber}/pending', [CheckoutController::class, 'pending'])->name('checkout.pending');
 Route::get('/orders/{orderNumber}/failed', [CheckoutController::class, 'failed'])->name('checkout.failed');
 
 Route::get('/my-tickets', [TicketController::class, 'index'])->middleware('throttle:tickets')->name('tickets.index');
 Route::get('/t/{code}', [TicketController::class, 'show'])->middleware('throttle:tickets')->name('tickets.show');
+Route::get('/t/{code}/qr', [TicketController::class, 'qrImage'])->middleware('throttle:tickets')->name('tickets.qr');
 Route::get('/t/{code}/pdf', [TicketController::class, 'pdf'])->middleware('throttle:tickets')->name('tickets.pdf');
 Route::get('/i/{token}', [InvitationController::class, 'show'])->middleware('throttle:tickets')->name('invitations.show');
 
@@ -78,6 +88,7 @@ Route::post('/logout', [CustomerAuthController::class, 'logout'])
 Route::middleware(['auth'])->prefix('private-events')->name('private-events.')->group(function () {
     Route::get('/', [PrivateEventController::class, 'index'])->name('index');
     Route::get('/create', [PrivateEventController::class, 'create'])->name('create');
+    Route::post('/invitation-preview', [PrivateEventController::class, 'invitationPreview'])->name('invitation-preview');
     Route::post('/', [PrivateEventController::class, 'store'])->name('store');
     Route::get('/{event}', [PrivateEventController::class, 'show'])->name('show');
     Route::get('/{event}/pay', [PrivateEventController::class, 'payForm'])->name('pay');
@@ -89,7 +100,6 @@ Route::middleware(['auth'])->prefix('private-events')->name('private-events.')->
     Route::get('/{event}/invitations/create', [PrivateEventInvitationController::class, 'create'])->name('invitations.create');
     Route::post('/{event}/invitations', [PrivateEventInvitationController::class, 'store'])->name('invitations.store');
     Route::post('/{event}/invitations/{invitation}/resend', [PrivateEventInvitationController::class, 'resend'])->name('invitations.resend');
-    Route::post('/{event}/invitations/{invitation}/phone', [PrivateEventInvitationController::class, 'updatePhone'])->name('invitations.phone');
     Route::post('/{event}/invitations/{invitation}/revoke', [PrivateEventInvitationController::class, 'revoke'])->name('invitations.revoke');
 });
 
@@ -104,6 +114,11 @@ Route::prefix('organizer')->name('organizer.')->group(function () {
     Route::middleware(['auth', 'role:organizer,admin'])->group(function () {
         Route::post('/logout', [OrganizerAuthController::class, 'logout'])->name('logout');
         Route::get('/', OrganizerDashboardController::class)->name('dashboard');
+        Route::get('/notifications', [OrganizerNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/{notification}', [OrganizerNotificationController::class, 'open'])->name('notifications.open');
+        Route::post('/notifications/read-all', [OrganizerNotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::get('/profile', [OrganizerProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [OrganizerProfileController::class, 'update'])->name('profile.update');
         Route::get('/earnings', OrganizerEarningsController::class)->name('earnings');
         Route::get('/application', [OrganizerApplicationController::class, 'edit'])->name('application.edit');
         Route::post('/application', [OrganizerApplicationController::class, 'update'])->name('application.update');
@@ -114,6 +129,14 @@ Route::prefix('organizer')->name('organizer.')->group(function () {
             Route::post('/events', [OrganizerEventController::class, 'store'])->name('events.store');
             Route::get('/events/{event}/edit', [OrganizerEventController::class, 'edit'])->name('events.edit');
             Route::put('/events/{event}', [OrganizerEventController::class, 'update'])->name('events.update');
+            Route::get('/events/{event}/pay', [OrganizerEventController::class, 'payForm'])->name('events.pay');
+            Route::post('/events/{event}/pay', [OrganizerEventController::class, 'pay'])->middleware('throttle:checkout')->name('events.pay.store');
+            Route::get('/events/{event}/invitations', [OrganizerEventInvitationController::class, 'index'])->name('events.invitations.index');
+            Route::get('/events/{event}/invitations/create', [OrganizerEventInvitationController::class, 'create'])->name('events.invitations.create');
+            Route::post('/events/{event}/invitations', [OrganizerEventInvitationController::class, 'store'])->name('events.invitations.store');
+            Route::post('/events/{event}/invitations/flush', [OrganizerEventInvitationController::class, 'flush'])->name('events.invitations.flush');
+            Route::post('/events/{event}/invitations/{invitation}/resend', [OrganizerEventInvitationController::class, 'resend'])->name('events.invitations.resend');
+            Route::post('/events/{event}/invitations/{invitation}/revoke', [OrganizerEventInvitationController::class, 'revoke'])->name('events.invitations.revoke');
             Route::delete('/events/{event}', [OrganizerEventController::class, 'destroy'])->name('events.destroy');
         });
     });
@@ -128,6 +151,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
         Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/{notification}', [AdminNotificationController::class, 'open'])->name('notifications.open');
+        Route::post('/notifications/read-all', [AdminNotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::get('/settings', [AdminSettingController::class, 'edit'])->name('settings.edit');
+        Route::put('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+        Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
 
         Route::get('/organizers', [AdminOrganizerController::class, 'index'])->name('organizers.index');
         Route::get('/organizers/{organizer}', [AdminOrganizerController::class, 'show'])->name('organizers.show');
@@ -137,6 +167,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/organizers/{organizer}/commission', [AdminOrganizerController::class, 'updateCommission'])->name('organizers.commission');
 
         Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/invitees', [AdminInviteeController::class, 'index'])->name('invitees.index');
 
         Route::get('/events', [AdminEventController::class, 'index'])->name('events.index');
         Route::post('/events/{event}/approve', [AdminEventController::class, 'approve'])->name('events.approve');
@@ -163,6 +194,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/invitation-designs/create', [AdminInvitationDesignController::class, 'create'])->name('invitation-designs.create');
         Route::post('/invitation-designs', [AdminInvitationDesignController::class, 'store'])->name('invitation-designs.store');
         Route::get('/invitation-designs/{invitationDesign}/edit', [AdminInvitationDesignController::class, 'edit'])->name('invitation-designs.edit');
+        Route::get('/invitation-designs/{invitationDesign}/preview', [AdminInvitationDesignController::class, 'preview'])->name('invitation-designs.preview');
         Route::put('/invitation-designs/{invitationDesign}', [AdminInvitationDesignController::class, 'update'])->name('invitation-designs.update');
         Route::post('/invitation-designs/{invitationDesign}/toggle', [AdminInvitationDesignController::class, 'toggle'])->name('invitation-designs.toggle');
         Route::delete('/invitation-designs/{invitationDesign}', [AdminInvitationDesignController::class, 'destroy'])->name('invitation-designs.destroy');
@@ -178,6 +210,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/packages/{package}', [AdminOrganizerPackageController::class, 'destroy'])->name('packages.destroy');
 
         Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments.index');
+        Route::get('/payments/{payment}', [AdminPaymentController::class, 'show'])->name('payments.show');
 
         Route::get('/revenue', [AdminRevenueReportController::class, 'index'])->name('revenue.index');
 

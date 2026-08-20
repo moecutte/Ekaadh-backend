@@ -74,7 +74,7 @@
                 <div class="px-4 py-10 text-center text-mute text-sm">No cities found.</div>
             @endforelse
         </div>
-        <div>{{ $cities->links() }}</div>
+        @include('admin.partials.pager', ['paginator' => $cities])
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Organizer;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrganizerProfile;
+use App\Services\PanelNotifier;
 use App\Support\OrganizerDocuments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -88,6 +89,8 @@ class ApplicationController extends Controller
             'approved_at' => null,
             'approved_by' => null,
         ]);
+
+        app(PanelNotifier::class)->organizerApplicationSubmitted($profile);
 
         return redirect()
             ->route('organizer.dashboard')

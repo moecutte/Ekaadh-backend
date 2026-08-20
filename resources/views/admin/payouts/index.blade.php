@@ -107,6 +107,6 @@
             @endforelse
         </tbody>
     </table>
+    @include('admin.partials.pager', ['paginator' => $payouts])
 </div>
-<div class="mt-4">{{ $payouts->links() }}</div>
 @endsection

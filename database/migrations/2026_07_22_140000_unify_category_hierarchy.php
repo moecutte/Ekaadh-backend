@@ -156,6 +156,9 @@ return new class extends Migration
 
     private function dropFkIfExists(string $table, string $constraint): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
         if (! Schema::hasTable($table)) {
             return;
         }

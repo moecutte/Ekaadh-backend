@@ -49,12 +49,14 @@ class CheckInController extends Controller
         $data = $request->validate([
             'payload' => ['required', 'string', 'max:500'],
             'event_id' => ['required', 'integer', 'exists:events,id'],
+            'manual' => ['sometimes', 'boolean'],
         ]);
 
         $outcome = $checkIn->scan(
             $data['payload'],
             $request->user(),
             (int) $data['event_id'],
+            $request->boolean('manual'),
         );
 
         $status = match ($outcome['result']) {

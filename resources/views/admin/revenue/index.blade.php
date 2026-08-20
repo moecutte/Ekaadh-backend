@@ -212,9 +212,7 @@
                 </tbody>
             </table>
         </div>
-        @if($byOrganizer->hasPages())
-            <div class="px-4 py-3 border-t border-slate-50">{{ $byOrganizer->links() }}</div>
-        @endif
+        @include('admin.partials.pager', ['paginator' => $byOrganizer])
     </div>
 </div>
 
@@ -262,9 +260,7 @@
             </tbody>
         </table>
     </div>
-    @if($byEvent->hasPages())
-        <div class="px-4 py-3 border-t border-slate-50">{{ $byEvent->links() }}</div>
-    @endif
+    @include('admin.partials.pager', ['paginator' => $byEvent])
 </div>
 
 {{-- Orders detail --}}
@@ -332,9 +328,7 @@
             </tbody>
         </table>
     </div>
-    @if($orders->hasPages())
-        <div class="px-4 py-3 border-t border-slate-50">{{ $orders->links() }}</div>
-    @endif
+    @include('admin.partials.pager', ['paginator' => $orders])
 </div>
 
 {{-- Private tickets issued --}}
@@ -387,9 +381,7 @@
             </tbody>
         </table>
     </div>
-    @if($privateTickets->hasPages())
-        <div class="px-4 py-3 border-t border-slate-50">{{ $privateTickets->links() }}</div>
-    @endif
+    @include('admin.partials.pager', ['paginator' => $privateTickets])
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

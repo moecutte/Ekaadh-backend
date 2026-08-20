@@ -234,6 +234,7 @@ class RevenueReportController extends Controller
         ?string $search,
     ): Builder {
         return Order::query()
+            ->commerce()
             ->where('orders.status', 'paid')
             ->whereDate('orders.created_at', '>=', $from->toDateString())
             ->whereDate('orders.created_at', '<=', $to->toDateString())

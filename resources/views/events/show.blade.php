@@ -52,6 +52,9 @@
             <span class="inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full {{ $catBadge[$event->category] ?? 'bg-white/90 text-ink' }}">{{ $event->category }}</span>
         @endif
         <h1 class="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-3 leading-tight">{{ $event->title }}</h1>
+        @if($event->isExpired())
+            <span class="inline-flex text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 text-white mb-3">{{ __('ui.expired') }}</span>
+        @endif
         <div class="flex flex-wrap gap-4 text-white/80 text-sm">
             <span class="flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -75,13 +78,81 @@
                 <div class="text-mute leading-relaxed text-sm whitespace-pre-line">{{ $event->description }}</div>
             </div>
 
+            @if($event->speakers->isNotEmpty())
+            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+                <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.speakers_guests') }}</h2>
+                <div class="space-y-4">
+                    @foreach($event->speakers as $speaker)
+                        <div class="flex items-start gap-3">
+                            @if($speaker->photo)
+                                <img src="{{ $speaker->photo }}" alt="{{ $speaker->name }}" class="w-14 h-14 rounded-full object-cover shrink-0">
+                            @else
+                                <div class="w-14 h-14 rounded-full bg-brand/10 text-brand font-extrabold flex items-center justify-center shrink-0 text-sm">
+                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($speaker->name, 0, 1)) }}
+                                </div>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="font-bold text-ink">{{ $speaker->name }}</p>
+                                @if($speaker->role)
+                                    <p class="text-xs font-semibold text-brand mt-0.5">{{ $speaker->role }}</p>
+                                @endif
+                                @if($speaker->bio)
+                                    <p class="text-sm text-mute mt-1 leading-relaxed">{{ $speaker->bio }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            @if($event->programmeItems->isNotEmpty())
+            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+                <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.event_programme') }}</h2>
+                <ol class="space-y-3">
+                    @foreach($event->programmeItems as $item)
+                        <li class="flex gap-3">
+                            <div class="w-28 shrink-0 text-xs font-extrabold text-brand pt-0.5">{{ $item->timeRangeLabel() }}</div>
+                            <div class="min-w-0">
+                                <p class="font-bold text-ink text-sm">{{ $item->title }}</p>
+                                @if($item->description)
+                                    <p class="text-sm text-mute mt-0.5">{{ $item->description }}</p>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ol>
+            </div>
+            @endif
+
+            @if($event->galleryImages->isNotEmpty())
+            <div class="bg-white rounded-2xl border border-slate-100 p-6" x-data="{ open: null }">
+                <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.event_gallery') }}</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    @foreach($event->galleryImages as $image)
+                        <button type="button" @click="open = @js($image->path)" class="aspect-square rounded-xl overflow-hidden bg-slate-100">
+                            <img src="{{ $image->path }}" alt="{{ $event->title }}" class="w-full h-full object-cover hover:scale-105 transition">
+                        </button>
+                    @endforeach
+                </div>
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" @click="open = null" @keydown.escape.window="open = null">
+                    <img :src="open" alt="" class="max-h-[90vh] max-w-full rounded-xl shadow-2xl" @click.stop>
+                </div>
+            </div>
+            @endif
+
             @if($event->organizer)
             <div class="bg-white rounded-2xl border border-slate-100 p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.organizer') }}</h2>
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center shrink-0 text-brand font-black">
-                        {{ substr($event->organizer->business_name, 0, 1) }}
-                    </div>
+                    @include('partials.avatar', [
+                        'url' => $event->organizer->avatarUrl(),
+                        'label' => $event->organizer->business_name,
+                        'initials' => $event->organizer->avatarInitials(),
+                        'class' => 'w-12 h-12',
+                        'rounded' => 'rounded-xl',
+                        'text' => 'text-base',
+                    ])
                     <div>
                         <p class="font-bold text-ink">{{ $event->organizer->business_name }}</p>
                         <p class="text-sm text-mute">{{ __('ui.verified_organizer') }}</p>
@@ -113,13 +184,25 @@
             <div class="bg-white rounded-2xl border border-slate-100 shadow-lg p-5 sticky top-24">
                 <div class="flex items-center justify-between mb-1">
                     <p class="text-xs text-mute">{{ __('ui.starting_from') }}</p>
-                    <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{{ __('ui.tickets_available') }}</span>
+                    @if($event->isExpired())
+                        <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{{ __('ui.expired') }}</span>
+                    @else
+                        <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{{ __('ui.tickets_available') }}</span>
+                    @endif
                 </div>
                 <p class="text-3xl font-extrabold text-ink mb-5">
-                    ${{ number_format((float) ($starting ?? 0), 0) }}
-                    <span class="text-sm font-normal text-mute">{{ __('ui.per_ticket') }}</span>
+                    @if($event->isFreeEvent() || (float) ($starting ?? 0) === 0.0)
+                        {{ __('ui.free') }}
+                    @else
+                        ${{ number_format((float) ($starting ?? 0), 0) }}
+                        <span class="text-sm font-normal text-mute">{{ __('ui.per_ticket') }}</span>
+                    @endif
                 </p>
 
+                @if($event->isExpired())
+                    <p class="text-sm text-mute mb-4">{{ __('ui.event_expired_hint') }}</p>
+                    <span class="w-full block text-center rounded-xl font-bold py-3.5 text-sm bg-slate-100 text-mute">{{ __('ui.expired') }}</span>
+                @else
                 <div class="space-y-3 mb-4">
                     @foreach($event->ticketTypes as $type)
                         @php $max = min(20, $type->remaining()); @endphp
@@ -127,7 +210,7 @@
                             <div class="flex items-center justify-between mb-1.5 gap-2">
                                 <div class="min-w-0">
                                     <p class="font-bold text-sm text-ink">{{ $type->name }}</p>
-                                    <p class="text-brand font-extrabold text-sm">${{ number_format((float) $type->price, 0) }}</p>
+                                    <p class="text-brand font-extrabold text-sm">{{ $event->isFreeEvent() || (float) $type->price === 0.0 ? __('ui.free') : '$'.number_format((float) $type->price, 0) }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <button type="button" @click="dec({{ $type->id }})" class="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-ink hover:bg-page text-base font-bold leading-none">−</button>
@@ -154,8 +237,9 @@
 
                 <div class="flex items-center justify-center gap-1.5 mt-3 text-xs text-mute">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    {{ __('ui.secure_checkout') }}
+                    {{ $event->isFreeEvent() ? __('ui.claim_free_tickets') : __('ui.secure_checkout') }}
                 </div>
+                @endif
 
                 <div
                     class="mt-5 pt-5 border-t border-slate-100"
@@ -216,8 +300,8 @@
 {{-- Mobile CTA --}}
 <div class="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-100 px-4 py-3 flex items-center gap-3 shadow-xl z-40" x-data="eventTickets()">
     <div class="shrink-0">
-        <p class="text-xs text-mute">{{ __('ui.from') }}</p>
-        <p class="font-extrabold text-ink">${{ number_format((float) ($starting ?? 0), 0) }}</p>
+        <p class="text-xs text-mute">{{ $event->isFreeEvent() ? __('ui.free') : __('ui.from') }}</p>
+        <p class="font-extrabold text-ink">{{ $event->isFreeEvent() || (float) ($starting ?? 0) === 0.0 ? __('ui.free') : '$'.number_format((float) ($starting ?? 0), 0) }}</p>
     </div>
     <a href="{{ route('checkout.show', $event->slug) }}" class="flex-1 bg-brand text-white font-bold py-3 rounded-xl text-sm text-center">
         {{ __('ui.get_tickets') }}
@@ -280,6 +364,7 @@ function eventTickets() {
     const base = @json(route('checkout.show', $event->slug));
     const i18n = {
         selectTickets: @json(__('ui.select_tickets_continue')),
+        claimFreeTickets: @json(__('ui.claim_free_tickets')),
         proceedCheckout: @json(__('ui.proceed_checkout')),
         subtotalTicket: @json(__('ui.subtotal_ticket')),
         subtotalTickets: @json(__('ui.subtotal_tickets')),
@@ -310,7 +395,11 @@ function eventTickets() {
         },
         get checkoutLabel() {
             if (this.ticketCount === 0) return i18n.selectTickets;
+            @if($event->isFreeEvent())
+            return i18n.claimFreeTickets;
+            @else
             return i18n.proceedCheckout.replace(':amount', this.subtotal.toFixed(0));
+            @endif
         },
         inc(id, max) {
             if ((this.qty[id] || 0) < max) this.qty[id] = (this.qty[id] || 0) + 1;

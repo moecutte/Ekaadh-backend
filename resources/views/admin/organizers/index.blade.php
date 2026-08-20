@@ -37,8 +37,17 @@
                 @php $effectiveRate = $org->effectiveCommissionRate($defaultRate); @endphp
                 <tr class="border-t border-slate-50 align-top">
                     <td class="px-4 py-3">
-                        <div class="font-bold">{{ $org->business_name }}</div>
-                        <div class="text-xs text-mute">Joined {{ $org->created_at?->format('M j, Y') }}</div>
+                        <div class="flex items-center gap-2.5">
+                            @include('partials.avatar', [
+                                'url' => $org->avatarUrl(),
+                                'label' => $org->business_name,
+                                'initials' => $org->avatarInitials(),
+                            ])
+                            <div class="min-w-0">
+                                <div class="font-bold truncate">{{ $org->business_name }}</div>
+                                <div class="text-xs text-mute">Joined {{ $org->created_at?->format('M j, Y') }}</div>
+                            </div>
+                        </div>
                     </td>
                     <td class="px-4 py-3 text-mute">
                         <div>{{ $org->user?->name }}</div>
@@ -114,6 +123,6 @@
             @endforelse
         </tbody>
     </table>
+    @include('admin.partials.pager', ['paginator' => $organizers])
 </div>
-<div class="mt-4">{{ $organizers->links() }}</div>
 @endsection

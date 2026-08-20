@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
 {
+    public const MAX_COMPLIMENTARY_GUESTS = 15;
+
     protected $fillable = [
         'organizer_id',
         'owner_user_id',
@@ -24,12 +26,16 @@ class Event extends Model
         'cover_image',
         'is_featured',
         'is_private',
+        'pricing_type',
+        'package_id',
+        'package_paid_at',
         'ticket_design',
         'invitation_design_id',
         'private_event_category_id',
         'couple_name_1',
         'couple_name_2',
         'invitation_field_values',
+        'pending_invitations',
         'status',
     ];
 
@@ -39,8 +45,18 @@ class Event extends Model
             'event_date' => 'date',
             'is_featured' => 'boolean',
             'is_private' => 'boolean',
+            'package_paid_at' => 'datetime',
             'invitation_field_values' => 'array',
+            'pending_invitations' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Event $event) {
+            $event->speakers()->get()->each->delete();
+            $event->galleryImages()->get()->each->delete();
+        });
     }
 
     /**
@@ -67,6 +83,85 @@ class Event extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(OrganizerProfile::class, 'organizer_id');
+    }
+
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(OrganizerPackage::class, 'package_id');
+    }
+
+    public function isFreeEvent(): bool
+    {
+        return $this->pricing_type === 'free';
+    }
+
+    public function packageIsPaid(): bool
+    {
+        if (! $this->isFreeEvent()) {
+            return true;
+        }
+
+        $price = (float) ($this->package?->price ?? 0);
+        if ($price <= 0) {
+            return true;
+        }
+
+        return $this->package_paid_at !== null;
+    }
+
+    public function needsPackagePayment(): bool
+    {
+        return $this->isFreeEvent() && ! $this->packageIsPaid();
+    }
+
+    public function pricingIsLocked(): bool
+    {
+        if ($this->isFreeEvent() && $this->package_paid_at) {
+            return true;
+        }
+
+        return Order::query()
+            ->where('event_id', $this->id)
+            ->where('status', 'paid')
+            ->ticketSales()
+            ->exists();
+    }
+
+    public function pendingInviteCount(): int
+    {
+        $guests = is_array($this->pending_invitations) ? ($this->pending_invitations['guests'] ?? []) : [];
+
+        return count($guests);
+    }
+
+    public function hasPendingInvitations(): bool
+    {
+        return $this->pendingInviteCount() > 0;
+    }
+
+    public function activeComplimentaryGuestCount(): int
+    {
+        return $this->invitations()->where('status', 'active')->count();
+    }
+
+    public function complimentaryGuestSlotsLeft(): int
+    {
+        if ($this->is_private) {
+            return PHP_INT_MAX;
+        }
+
+        return max(0, self::MAX_COMPLIMENTARY_GUESTS - $this->activeComplimentaryGuestCount());
+    }
+
+    public function inviteHostName(): string
+    {
+        if ($this->is_private) {
+            return $this->owner?->name ?: 'Host';
+        }
+
+        return $this->organizer?->business_name
+            ?: $this->organizer?->user?->name
+            ?: 'Organizer';
     }
 
     public function owner(): BelongsTo
@@ -126,6 +221,20 @@ class Event extends Model
         return $this->is_private && $this->owner_user_id !== null;
     }
 
+    public function isExpired(): bool
+    {
+        if (! $this->event_date) {
+            return false;
+        }
+
+        return $this->event_date->copy()->startOfDay()->lt(now()->startOfDay());
+    }
+
+    public function isUpcoming(): bool
+    {
+        return ! $this->isExpired();
+    }
+
     public function ticketTypes(): HasMany
     {
         return $this->hasMany(TicketType::class);
@@ -146,6 +255,21 @@ class Event extends Model
         return $this->hasMany(EventInvitation::class);
     }
 
+    public function speakers(): HasMany
+    {
+        return $this->hasMany(EventSpeaker::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function galleryImages(): HasMany
+    {
+        return $this->hasMany(EventGalleryImage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function programmeItems(): HasMany
+    {
+        return $this->hasMany(EventProgrammeItem::class)->orderBy('sort_order')->orderBy('starts_at')->orderBy('id');
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', 'published');
@@ -155,5 +279,24 @@ class Event extends Model
     public function scopePublicListing($query)
     {
         return $query->where('status', 'published')->where('is_private', false);
+    }
+
+    public function scopeUpcoming($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('event_date')
+                ->orWhereDate('event_date', '>=', now()->toDateString());
+        });
+    }
+
+    public function scopePast($query)
+    {
+        return $query->whereNotNull('event_date')
+            ->whereDate('event_date', '<', now()->toDateString());
+    }
+
+    public static function listingWhen(?string $when): string
+    {
+        return strtolower(trim((string) $when)) === 'past' ? 'past' : 'upcoming';
     }
 }

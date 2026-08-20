@@ -8,6 +8,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /** @mixin \App\Models\Order */
 class OrderResource extends JsonResource
 {
+    /** Hide mock / unconfigured gateway IDs from API clients. */
+    private function publicTransactionId(?string $id): ?string
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        if (preg_match('/^(MOCK-|ZAAD-|EDAHAB-|WAAFI-UNCONFIGURED|WAAFI-PENDING|WAAFI-FORCE|WAAFI-INVALID|WAAFI-FAILED|WAAFI-TIMEOUT|WAAFI-SSL|WAAFI-PIN)/i', $id)) {
+            return null;
+        }
+
+        return $id;
+    }
+
     public function toArray(Request $request): array
     {
         $tickets = $this->whenLoaded('items', function () {
@@ -27,7 +41,7 @@ class OrderResource extends JsonResource
             'service_fee' => (float) $this->service_fee,
             'total_amount' => (float) $this->total_amount,
             'payment_method' => $this->payment_method,
-            'payment_reference' => $this->payment_reference,
+            'payment_reference' => $this->publicTransactionId($this->payment_reference),
             'created_at' => $this->created_at?->toIso8601String(),
             'event' => $this->whenLoaded('event', fn () => [
                 'id' => $this->event->id,
@@ -64,7 +78,7 @@ class OrderResource extends JsonResource
             })),
             'payment' => $this->whenLoaded('payment', fn () => $this->payment ? [
                 'provider' => $this->payment->provider,
-                'transaction_id' => $this->payment->transaction_id,
+                'transaction_id' => $this->publicTransactionId($this->payment->transaction_id),
                 'status' => $this->payment->status,
                 'amount' => (float) $this->payment->amount,
             ] : null),

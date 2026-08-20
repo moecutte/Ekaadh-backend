@@ -29,15 +29,25 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #create-menu-dropdown { visibility: hidden; opacity: 0; pointer-events: none; }
+        #create-menu:hover #create-menu-dropdown,
+        #create-menu.create-open #create-menu-dropdown {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #create-menu:hover #create-menu-chevron,
+        #create-menu.create-open #create-menu-chevron { transform: rotate(180deg); }
     </style>
     @livewireStyles
     @stack('head')
+    <script src="{{ asset('js/locale-switch.js') }}"></script>
 </head>
 <body class="bg-page text-ink antialiased min-h-screen flex flex-col">
     @php
-        $locale = app()->getLocale();
         $onOrganizers = request()->routeIs('organizers');
         $onCreateTicket = request()->routeIs('create-ticket') || request()->routeIs('private-events.*');
+        $onCreateMenu = $onOrganizers || $onCreateTicket;
         $authUser = auth()->user();
         $isCustomer = $authUser && $authUser->isCustomer();
         $isPortalUser = $authUser && ($authUser->isAdmin() || $authUser->isOrganizer());
@@ -52,16 +62,31 @@
                 <div class="hidden md:flex items-center gap-7">
                     <a href="{{ route('events.index') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ request()->routeIs('events.index') ? 'text-white' : '' }}">{{ __('ui.browse_events') }}</a>
                     @unless($isCustomer)
-                        <a href="{{ route('organizers') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onOrganizers ? 'text-white' : '' }}">{{ __('ui.create_event') }}</a>
-                        <a href="{{ route('create-ticket') }}" class="text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onCreateTicket ? 'text-white' : '' }}">{{ __('ui.create_ticket') }}</a>
+                        <div class="relative" id="create-menu">
+                            <button type="button" id="create-menu-toggle"
+                                class="inline-flex items-center gap-1 text-slate-300 hover:text-white text-sm font-medium transition-colors {{ $onCreateMenu ? 'text-white' : '' }}"
+                                aria-expanded="false" aria-haspopup="true">
+                                {{ __('ui.create') }}
+                                <svg id="create-menu-chevron" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div id="create-menu-dropdown" class="absolute left-1/2 -translate-x-1/2 top-full pt-3 transition-opacity duration-150 z-50">
+                                <div class="w-64 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1">
+                                    <a href="{{ route('organizers') }}" class="block px-4 py-3 hover:bg-page transition-colors {{ $onOrganizers ? 'bg-brand/5' : '' }}">
+                                        <span class="block text-sm font-bold text-ink">{{ __('ui.create_public') }}</span>
+                                        <span class="block text-[11px] text-mute mt-0.5 leading-snug">{{ __('ui.create_public_sub') }}</span>
+                                    </a>
+                                    <a href="{{ route('create-ticket') }}" class="block px-4 py-3 hover:bg-page transition-colors {{ $onCreateTicket ? 'bg-brand/5' : '' }}">
+                                        <span class="block text-sm font-bold text-ink">{{ __('ui.create_private') }}</span>
+                                        <span class="block text-[11px] text-mute mt-0.5 leading-snug">{{ __('ui.create_private_sub') }}</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     @endunless
                 </div>
 
                 <div class="hidden md:flex items-center gap-3">
-                    <div class="flex items-center rounded-lg bg-white/10 p-0.5 text-xs font-bold" role="group" aria-label="{{ __('ui.language') }}">
-                        <a href="{{ route('locale.switch', 'en') }}" class="px-2.5 py-1 rounded-md transition-colors {{ $locale === 'en' ? 'bg-white text-ink' : 'text-slate-300 hover:text-white' }}">{{ __('ui.english') }}</a>
-                        <a href="{{ route('locale.switch', 'so') }}" class="px-2.5 py-1 rounded-md transition-colors {{ $locale === 'so' ? 'bg-white text-ink' : 'text-slate-300 hover:text-white' }}">{{ __('ui.somali') }}</a>
-                    </div>
+                    @include('partials.locale-toggle', ['variant' => 'nav'])
                     @if(! $onOrganizers)
                         <a href="{{ route('tickets.index') }}" class="flex items-center gap-1.5 text-slate-300 hover:text-white text-sm font-medium transition-colors px-1 {{ request()->routeIs('tickets.*') ? 'text-white' : '' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -116,10 +141,7 @@
                 </div>
 
                 <div class="flex md:hidden items-center gap-1">
-                    <div class="flex items-center rounded-lg bg-white/10 p-0.5 text-[11px] font-bold" role="group" aria-label="{{ __('ui.language') }}">
-                        <a href="{{ route('locale.switch', 'en') }}" class="px-2 py-1 rounded-md transition-colors {{ $locale === 'en' ? 'bg-white text-ink' : 'text-slate-300' }}">{{ __('ui.english') }}</a>
-                        <a href="{{ route('locale.switch', 'so') }}" class="px-2 py-1 rounded-md transition-colors {{ $locale === 'so' ? 'bg-white text-ink' : 'text-slate-300' }}">{{ __('ui.somali') }}</a>
-                    </div>
+                    @include('partials.locale-toggle', ['variant' => 'nav-mobile'])
                     @if(! $onOrganizers)
                         <a href="{{ route('tickets.index') }}" class="text-slate-300 p-2" aria-label="{{ __('ui.booked_events') }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -134,8 +156,15 @@
         <div id="mobile-nav" class="hidden md:hidden bg-[#0a1220] border-t border-white/10 px-4 pb-4 pt-2 space-y-1">
             <a href="{{ route('events.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.browse_events') }}</a>
             @unless($isCustomer)
-                <a href="{{ route('organizers') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.create_event') }}</a>
-                <a href="{{ route('create-ticket') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.create_ticket') }}</a>
+                <p class="text-slate-500 text-[11px] uppercase tracking-wider font-bold pt-2 pb-1">{{ __('ui.create') }}</p>
+                <a href="{{ route('organizers') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium {{ $onOrganizers ? 'text-white' : '' }}">
+                    <span class="font-semibold">{{ __('ui.create_public') }}</span>
+                    <span class="block text-[11px] text-slate-500 mt-0.5">{{ __('ui.create_event') }}</span>
+                </a>
+                <a href="{{ route('create-ticket') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium {{ $onCreateTicket ? 'text-white' : '' }}">
+                    <span class="font-semibold">{{ __('ui.create_private') }}</span>
+                    <span class="block text-[11px] text-slate-500 mt-0.5">{{ __('ui.create_ticket') }}</span>
+                </a>
             @endunless
             @if(! $onOrganizers)
                 <a href="{{ route('tickets.index') }}" class="block text-slate-300 hover:text-white py-2.5 text-sm font-medium">{{ __('ui.booked_events') }}</a>
@@ -166,6 +195,26 @@
         document.getElementById('mobile-nav-toggle')?.addEventListener('click', function () {
             document.getElementById('mobile-nav')?.classList.toggle('hidden');
         });
+
+        (function () {
+            const root = document.getElementById('create-menu');
+            const toggle = document.getElementById('create-menu-toggle');
+            if (!root || !toggle) return;
+
+            function setOpen(open) {
+                root.classList.toggle('create-open', open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                setOpen(!root.classList.contains('create-open'));
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!root.contains(e.target)) setOpen(false);
+            });
+        })();
 
         (function () {
             const root = document.getElementById('profile-menu');
@@ -216,8 +265,8 @@
                     <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">{{ __('ui.host_organize') }}</p>
                     <div class="flex flex-col gap-2 text-sm">
                         @unless($isCustomer)
-                            <a href="{{ route('organizers') }}" class="hover:text-white transition">{{ __('ui.create_event') }}</a>
-                            <a href="{{ route('create-ticket') }}" class="hover:text-white transition">{{ __('ui.create_ticket') }}</a>
+                            <a href="{{ route('organizers') }}" class="hover:text-white transition">{{ __('ui.create_public') }} — {{ __('ui.create_event') }}</a>
+                            <a href="{{ route('create-ticket') }}" class="hover:text-white transition">{{ __('ui.create_private') }} — {{ __('ui.create_ticket') }}</a>
                         @endunless
                         <a href="{{ route('tickets.index') }}" class="hover:text-white transition">{{ __('ui.booked_events') }}</a>
                         @guest
@@ -232,7 +281,7 @@
                 </div>
                 <div>
                     <p class="font-bold mb-3 text-xs uppercase tracking-wider text-slate-500">{{ __('ui.pay_with') }}</p>
-                    <p class="text-sm">Zaad · eDahab</p>
+                    @include('partials.operator-logos', ['size' => 'footer'])
                     <p class="text-xs mt-2 text-slate-500">{{ __('ui.your_event_ticket') }}</p>
                 </div>
             </div>

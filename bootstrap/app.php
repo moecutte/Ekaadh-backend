@@ -25,10 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'organizer.approved' => \App\Http\Middleware\EnsureApprovedOrganizer::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
-            'otp/send',
-            'otp/verify',
-        ]);
         $middleware->throttleApi('api');
         $middleware->trustProxies(at: '*');
         $middleware->redirectGuestsTo(function (Request $request) {
@@ -60,4 +56,25 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Never leak stack traces / SQL to API clients (even when APP_DEBUG=true).
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            if ($e instanceof \Illuminate\Validation\ValidationException
+                || $e instanceof \Illuminate\Auth\AuthenticationException
+                || $e instanceof \Illuminate\Auth\Access\AuthorizationException
+                || $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                || $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+                return null;
+            }
+
+            report($e);
+
+            return response()->json([
+                'message' => 'Something went wrong. Please try again later.',
+            ], 500);
+        });
     })->create();

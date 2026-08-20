@@ -51,6 +51,7 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://YOUR_DOMAIN
 APP_KEY=                    # generate once (see below)
+# Boot fails if production has APP_DEBUG, WAAFIPAY_MODE=sandbox, CORS *, OTP_FIXED_CODE, or empty TICKET_QR_SECRET.
 
 DB_CONNECTION=mysql
 DB_HOST=...                 # Coolify MySQL hostname
@@ -66,7 +67,11 @@ QUEUE_CONNECTION=database
 CACHE_STORE=database
 FILESYSTEM_DISK=local
 
-PAYMENT_GATEWAY=mock
+PAYMENT_GATEWAY=waafipay
+WAAFIPAY_MODE=live
+ADMIN_EMAIL=you@YOUR_DOMAIN
+ADMIN_PASSWORD=           # min 8 chars; used only on first seed
+ADMIN_PHONE=+2526...
 DEFAULT_COMMISSION_RATE=10
 SERVICE_FEE=1
 TICKET_QR_SECRET=           # long random string; keep stable after tickets exist
@@ -81,6 +86,24 @@ MAIL_MAILER=log
 # MAIL_PASSWORD=...
 # MAIL_FROM_ADDRESS=tickets@YOUR_DOMAIN
 # MAIL_FROM_NAME=Ekaadh
+
+# Meta WhatsApp Cloud API (optional until templates approved)
+WHATSAPP_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_API_VERSION=v21.0
+WHATSAPP_TIMEOUT=20
+WHATSAPP_TEMPLATE_TICKET=ekaadh_ticket_ready
+WHATSAPP_TEMPLATE_INVITE=ekaadh_invitation
+WHATSAPP_TEMPLATE_LANG=en
+
+# Telesom Prepaid SMS Gateway (OTP + ticket/invitation SMS)
+TELESOM_BASE_URL=https://sms.mytelesom.com
+TELESOM_SENDER_ID=
+TELESOM_USERNAME=
+TELESOM_PASSWORD=
+TELESOM_SECRET_KEY=
+TELESOM_CLIENT_REF=
+TELESOM_TIMEOUT=20
 ```
 
 Generate `APP_KEY` once (local or Coolify terminal):
@@ -114,12 +137,13 @@ bash scripts/prepare-production.sh
 
 | Data | Source |
 |------|--------|
-| Admin / customer / staff users | `DatabaseSeeder` |
+| First admin (only if `ADMIN_EMAIL` + `ADMIN_PASSWORD` are set) | `DatabaseSeeder` |
 | Organizer packages (Free / Pro / Enterprise) | `OrganizerPackageSeeder` |
 | Public + private categories | `CategorySeeder` |
 | Invitation designs | `InvitationDesignSeeder` |
-| Approved organizer + sample published events | `EventSeeder` |
 | Platform settings (fees, packages hidden on front, etc.) | `DatabaseSeeder` |
+
+Production seed does **not** create `admin@ekaadh.com` / `password` or sample events.
 
 **Do not re-run `db:seed` on every deploy.** Later releases should only run:
 
@@ -131,7 +155,7 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### Seed accounts (change immediately on production)
+Local/dev seed accounts (never use these in production):
 
 | Role | Login | Password |
 |------|-------|----------|
@@ -198,24 +222,89 @@ FCM_CREDENTIALS=/app/storage/app/firebase-credentials.json
 ## 8. Post-deploy smoke checklist
 
 - [ ] `GET /up` health OK
-- [ ] Home / browse / event detail load (seeded events + cover images under `public/images/events`)
-- [ ] Checkout mock payment succeeds
+- [ ] Home / browse / event detail load
+- [ ] Checkout WaafiPay (sandbox or live) succeeds
 - [ ] Confirmation + `/t/{code}` ticket QR
-- [ ] My Tickets with phone + order number
+- [ ] My Tickets with phone OTP
 - [ ] Organizer login + dashboard
 - [ ] Admin login + approvals + packages screen
 - [ ] Staff API login + check-in
 - [ ] Support widget FAQ + test message in admin inbox
 - [ ] FCM: device token registered + test support reply push (when enabled)
-- [ ] Seeded passwords changed
+- [ ] Production admin password is unique (not `password`)
 
 ## 9. Payment gateways
 
 | Mode | Env | Behavior |
 |------|-----|----------|
 | Mock (MVP) | `PAYMENT_GATEWAY=mock` | Instant success |
-| Zaad stub | `PAYMENT_GATEWAY=zaad` + `ZAAD_ENABLED=true` + keys | Ready when merchant API is plugged in |
-| eDahab stub | `PAYMENT_GATEWAY=edahab` + `EDAHAB_ENABLED=true` + keys | Ready when merchant API is plugged in |
+| **WaafiPay (recommended live)** | `PAYMENT_GATEWAY=waafipay` + keys below | Charges Zaad / EVC / Sahal wallets via [Purchase API](https://docs.waafipay.com/purchase-api) |
+| Zaad stub | `PAYMENT_GATEWAY=zaad` + `ZAAD_ENABLED=true` + keys | Direct Telesom API when available |
+| eDahab stub | `PAYMENT_GATEWAY=edahab` + `EDAHAB_ENABLED=true` + keys | Direct Somtel API when available |
+
+### WaafiPay setup
+
+1. Set purchase credentials from WaafiPay merchant onboarding:
+
+```env
+PAYMENT_GATEWAY=waafipay
+WAAFIPAY_MODE=sandbox
+
+WAAFIPAY_SANDBOX_URL=https://sandbox.waafipay.com/asm
+WAAFIPAY_SANDBOX_MERCHANT_UID=
+WAAFIPAY_SANDBOX_API_USER_ID=
+WAAFIPAY_SANDBOX_API_KEY=
+
+WAAFIPAY_LIVE_URL=https://api.waafipay.net/asm
+WAAFIPAY_LIVE_MERCHANT_UID=
+WAAFIPAY_LIVE_API_USER_ID=
+WAAFIPAY_LIVE_API_KEY=
+WAAFIPAY_CURRENCY=USD
+```
+
+Keep both credential sets in `.env`. Switch with **`WAAFIPAY_MODE=sandbox`** or **`WAAFIPAY_MODE=live`** — do not edit PHP. After changing `.env`, run `php artisan config:clear` if config is cached.
+
+Sandbox **does not accept live merchant keys** (`params.description`: Authentication failed). Fill `WAAFIPAY_SANDBOX_MERCHANT_UID` / `API_USER_ID` / `API_KEY` from the WaafiPay sandbox dashboard.
+
+Test wallets ([quickstart](https://docs.waafipay.com/quickstart)) work **only** in sandbox. PIN is `1212`. On checkout enter the local part after `+252` (WaafiPay `accountNo` is sent as `252611111111`, no `+`):
+
+| Wallet | Checkout number | PIN |
+|--------|-----------------|-----|
+| EVCPlus (Hormuud) | `611111111` | 1212 |
+| ZAAD (Telesom) | `631111111` | 1212 |
+| SAHAL (Golis) | `901111111` | 1212 |
+
+Checkout still lets the buyer pick **WaafiPay** or **eDahab**; WaafiPay routes `MWALLET_ACCOUNT` from the phone number. Immediate `APPROVED` issues tickets in the same request. Timeouts and any non-approved response fail the order so the buyer can retry.
+
+## 10. WhatsApp Cloud API
+
+Outbound ticket and invitation delivery uses Meta Graph templates (no webhook in this phase).
+
+1. In Meta Business Manager, create **Utility** templates whose bodies match parameter order:
+
+| Env | Suggested name | Body |
+|-----|----------------|------|
+| `WHATSAPP_TEMPLATE_TICKET` | `ekaadh_ticket_ready` | `Your Ekaadh tickets for {{1}} ({{2}}) are ready. Open {{3}} to view them.` |
+| `WHATSAPP_TEMPLATE_INVITE` | `ekaadh_invitation` | `Ekaadh: Hi {{1}}, you're invited to {{2}}. {{3}} ticket(s). Open {{4}} to view your invitation.` |
+
+2. After approval, set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and the matching template name(s). Ticket send needs the ticket template; invite send needs the invite template. Sending stays **skipped** until token, phone number ID, and that template are set.
+3. Paid public checkout → ticket template. Private invite send/resend → invite template. Capacity purchase does not send WhatsApp.
+4. Webhook verify / delivery receipts are not implemented yet; sync API errors only update invitation `whatsapp_status` to `sent` / `failed` / `skipped`.
+
+## 11. Telesom Prepaid SMS Gateway
+
+OTP verification, ticket SMS, and invitation SMS use Telesom (`sms.mytelesom.com`).
+
+1. Put the SenderID, username, password, HMAC secret, and registered `client_ref` from Telesom into Coolify env (`TELESOM_*` above).
+2. Signature: `X-Auth-Key = Base64(HMAC-SHA256(SenderID + Timestamp + Username + Password))` with `TELESOM_SECRET_KEY` as the HMAC key (falls back to `TELESOM_PASSWORD` if the secret is empty). Timestamp is today's date in `Africa/Mogadishu` (`YYYY-MM-DD`).
+3. This account is **standard prepaid SMS** until Telesom enables OTP prepaid. Confirmation codes currently go out on `/smsapi/v1/messages` as a normal text. Switch to `/smsotpapi/v1/messages` after the OTP product is active.
+4. Leave `OTP_FIXED_CODE` empty in production so random 6-digit codes go out as SMS. Local/staging can keep a fixed code to skip live SMS.
+5. Smoke test from the Coolify terminal:
+
+```bash
+php artisan telesom:test 063XXXXXXX
+php artisan telesom:test 063XXXXXXX --otp
+```
 
 ## Bluehost / shared hosting (legacy)
 

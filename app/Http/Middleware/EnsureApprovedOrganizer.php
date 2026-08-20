@@ -12,11 +12,17 @@ class EnsureApprovedOrganizer
     {
         $user = $request->user();
 
-        if ($user?->isAdmin()) {
-            return $next($request);
-        }
-
         $profile = $user?->organizerProfile;
+
+        if ($user?->isAdmin()) {
+            if ($profile) {
+                return $next($request);
+            }
+
+            return redirect()
+                ->route('admin.dashboard')
+                ->with('error', 'Create public events from an organizer account. Review them under Admin → Events.');
+        }
 
         if (! $profile || ! $profile->isApproved()) {
             return redirect()

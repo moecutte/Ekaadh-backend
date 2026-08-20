@@ -11,23 +11,36 @@
     ];
     $otpSendUrl = $otpSendUrl ?? url('/api/v1/otp/send');
     $otpVerifyUrl = $otpVerifyUrl ?? url('/api/v1/otp/verify');
+    $card = 'rounded-[1.75rem] bg-white border border-slate-100 shadow-[0_18px_40px_-28px_rgba(15,26,46,0.35)] overflow-hidden';
+    $bar = 'h-1 bg-gradient-to-r from-brand via-[#4a51b8] to-brand/40';
 @endphp
 
 @if($accountMode)
-<div class="max-w-2xl mx-auto px-4 sm:px-6 py-8" x-data="{ expanded: null, labels: { viewQr: @js(__('ui.view_qr')), hideQr: @js(__('ui.hide_qr')) } }">
+<div class="relative overflow-hidden" x-data="{ expanded: null, labels: { viewQr: @js(__('ui.view_qr')), hideQr: @js(__('ui.hide_qr')) } }">
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
+    <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-7">
     @if(session('success'))
-        <div class="mb-6 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3">{{ session('success') }}</div>
+        <div class="mb-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3.5">{{ session('success') }}</div>
     @endif
 
-    <div class="flex items-center justify-between mb-6 gap-3">
-        <div>
-            <h1 class="text-2xl font-extrabold text-ink">{{ __('ui.booked_events') }}</h1>
-            <p class="text-sm text-mute">{{ auth()->user()->name }} · {{ auth()->user()->phone }}</p>
+    <header class="mb-4 {{ $card }}">
+        <div class="{{ $bar }}"></div>
+        <div class="px-5 sm:px-6 py-4 sm:py-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.my_tickets') }}</p>
+                    <h1 class="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight text-ink leading-tight">{{ __('ui.booked_events') }}</h1>
+                    <p class="text-sm text-mute mt-1.5">{{ __('ui.booked_events_sub') }}</p>
+                </div>
+                <a href="{{ route('events.index') }}"
+                   class="inline-flex items-center px-4 py-2 rounded-2xl border border-slate-200 bg-white text-ink text-sm font-bold hover:bg-slate-50 transition-colors shrink-0">
+                    {{ __('ui.browse_events_cta') }}
+                </a>
+            </div>
         </div>
-        <span class="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full shrink-0">{{ __('ui.signed_in') }}</span>
-    </div>
+    </header>
 
-    <div class="space-y-4">
+    <div class="space-y-3">
         @forelse($tickets as $ticket)
             @php
                 $status = strtolower((string) $ticket->status);
@@ -37,7 +50,7 @@
                 $dateLabel = $event?->event_date?->format('M j, Y');
                 $timeLabel = $event?->event_time ? date('g:i A', strtotime($event->event_time)) : null;
             @endphp
-            <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+            <div class="{{ $card }}">
                 <div class="flex items-center gap-4 p-4">
                     <div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
                         @if($event?->cover_image)
@@ -53,7 +66,12 @@
                         <p class="text-xs text-mute">{{ $ticket->ticket_type_name }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2 shrink-0">
-                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full {{ $badge }}">{{ $status === 'valid' ? __('ui.valid') : ucfirst($ticket->status) }}</span>
+                        @php
+                            $eventExpired = $event && $event->isExpired();
+                            $badgeLabel = $eventExpired ? __('ui.expired') : ($status === 'valid' ? __('ui.valid') : ucfirst($ticket->status));
+                            $badge = $eventExpired ? 'bg-slate-200 text-slate-600' : $badge;
+                        @endphp
+                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full {{ $badge }}">{{ $badgeLabel }}</span>
                         @if($status === 'valid')
                             <button
                                 type="button"
@@ -102,7 +120,7 @@
                                     <p class="font-semibold text-ink text-xs">{{ $ticket->ticket_type_name }}</p>
                                 </div>
                                 <div class="col-span-2">
-                                    <p class="text-xs text-mute">{{ __('ui.buyer') }}</p>
+                                    <p class="text-xs text-mute">{{ $ticket->invitation_id ? __('ui.invitee') : __('ui.buyer') }}</p>
                                     <p class="font-semibold text-ink text-xs">{{ $ticket->holder_name ?: ($order?->buyer_name ?: auth()->user()->name) }}</p>
                                 </div>
                             </div>
@@ -119,25 +137,23 @@
                 </div>
             </div>
         @empty
-            <div class="text-center py-14 bg-white rounded-2xl border border-slate-100 text-mute">
-                <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_yet') }}</p>
-                <p class="text-sm mb-5">{{ __('ui.tickets_empty_hint') }}</p>
-                <a href="{{ route('events.index') }}" class="inline-flex rounded-xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.browse_events_cta') }}</a>
+            <div class="{{ $card }}">
+                <div class="{{ $bar }}"></div>
+                <div class="text-center py-12 px-5 text-mute">
+                    <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_yet') }}</p>
+                    <p class="text-sm mb-5">{{ __('ui.tickets_empty_hint') }}</p>
+                    <a href="{{ route('events.index') }}" class="inline-flex rounded-2xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.browse_events_cta') }}</a>
+                </div>
             </div>
         @endforelse
     </div>
-
-    @if($tickets->isNotEmpty())
-        <div class="mt-8 text-center">
-            <a href="{{ route('events.index') }}" class="text-sm text-brand font-bold hover:underline">{{ __('ui.browse_more_events') }}</a>
-        </div>
-    @endif
+    </div>
 </div>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>[x-cloak]{display:none!important}</style>
 @else
 <div
-    class="max-w-3xl mx-auto px-4 sm:px-6 py-10"
+    class="relative overflow-hidden"
     x-data="findTicketsOtp(@js([
         'phone' => preg_replace('/^\+?252/', '', preg_replace('/\s+/', '', (string) $phone)),
         'otpToken' => $otpToken ?? '',
@@ -158,33 +174,61 @@
         ],
     ]))"
 >
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
+    <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-7">
     @if(session('success'))
-        <div class="mb-6 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3">{{ session('success') }}</div>
+        <div class="mb-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-semibold px-4 py-3.5">{{ session('success') }}</div>
     @endif
 
-    <h1 class="text-3xl font-extrabold mb-2">{{ __('ui.booked_events') }}</h1>
-    <p class="text-mute mb-8">
-        @guest
-            <a href="{{ route('customer.login') }}" class="font-bold text-brand hover:underline">{{ __('ui.sign_in') }}</a>
-            {{ __('ui.find_tickets_guest_hint') }}
-        @else
-            {{ __('ui.find_tickets_phone_hint') }}
-        @endguest
-    </p>
-
-    <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-8 space-y-3">
-        <label class="block text-sm font-bold text-ink">{{ __('ui.phone_number') }}</label>
-        <div class="flex">
-            <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
-            <input
-                type="tel"
-                x-model="phoneLocal"
-                placeholder="63 234 5678"
-                class="flex-1 rounded-r-xl bg-page border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand"
-            >
+    <header class="mb-4 {{ $card }}">
+        <div class="{{ $bar }}"></div>
+        <div class="px-5 sm:px-6 py-4 sm:py-5">
+            <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.my_tickets') }}</p>
+            <h1 class="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight text-ink leading-tight">{{ __('ui.booked_events') }}</h1>
+            <p class="text-sm text-mute mt-1.5">
+                @guest
+                    <a href="{{ route('customer.login') }}" class="font-bold text-brand hover:underline">{{ __('ui.sign_in') }}</a>
+                    {{ __('ui.find_tickets_guest_hint') }}
+                @else
+                    {{ __('ui.find_tickets_phone_hint') }}
+                @endguest
+            </p>
         </div>
+    </header>
 
-        <div x-show="otpSent" x-cloak class="space-y-2 pt-1">
+    <div class="{{ $card }} mb-4">
+        <div class="{{ $bar }}"></div>
+        <div class="px-5 sm:px-6 py-5 space-y-3">
+        <form x-show="!otpSent" class="space-y-3" @submit.prevent="sendOtp">
+            <label class="block text-sm font-bold text-ink">{{ __('ui.phone_number') }}</label>
+            <div class="flex">
+                <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
+                <input
+                    type="tel"
+                    x-model="phoneLocal"
+                    placeholder="63 234 5678"
+                    class="flex-1 rounded-r-xl bg-page border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand"
+                >
+            </div>
+            <p x-show="error" x-cloak class="text-sm text-amber-800 font-semibold" x-text="error"></p>
+            @if($error)
+                <div class="rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-semibold px-4 py-3">{{ $error }}</div>
+            @endif
+            <button
+                type="submit"
+                :disabled="busy"
+                class="w-full sm:w-auto rounded-xl bg-brand text-white font-extrabold px-6 py-3 hover:bg-brand-dark transition disabled:opacity-60"
+            >
+                <span x-text="busy ? i18n.pleaseWait : i18n.findTickets"></span>
+            </button>
+        </form>
+
+        <form x-show="otpSent" x-cloak class="space-y-3" @submit.prevent="continueLookup">
+            <h2 class="text-lg font-extrabold text-ink">{{ __('ui.confirm_phone') }}</h2>
+            <p class="text-sm text-mute">
+                {{ __('ui.enter_code_sent_to') }}
+                <span class="font-bold text-ink" x-text="fullPhone"></span>.
+            </p>
             <label class="block text-sm font-bold text-ink">{{ __('ui.confirmation_code') }}</label>
             <input
                 type="text"
@@ -192,30 +236,28 @@
                 maxlength="6"
                 x-model="otpCode"
                 placeholder="123456"
+                autocomplete="one-time-code"
                 class="w-full rounded-xl bg-page border border-slate-200 px-4 py-3 tracking-[0.35em] text-center font-bold outline-none focus:border-brand"
             >
             <p class="text-xs text-brand font-semibold" x-show="otpHint" x-text="otpHint"></p>
-            <button type="button" @click="sendOtp" :disabled="busy" class="text-xs font-bold text-brand hover:underline">{{ __('ui.resend_code') }}</button>
+            <p x-show="error" x-cloak class="text-sm text-amber-800 font-semibold" x-text="error"></p>
+            <button
+                type="submit"
+                :disabled="busy"
+                class="w-full sm:w-auto rounded-xl bg-brand text-white font-extrabold px-6 py-3 hover:bg-brand-dark transition disabled:opacity-60"
+            >
+                <span x-text="busy ? i18n.pleaseWait : i18n.verifyShowTickets"></span>
+            </button>
+            <button type="button" @click="sendOtp" :disabled="busy" class="block text-xs font-bold text-brand hover:underline">{{ __('ui.resend_code') }}</button>
+            <button type="button" @click="backToPhone" class="block text-sm font-bold text-ink hover:underline">{{ __('ui.back') }}</button>
+        </form>
         </div>
-
-        <p x-show="error" x-cloak class="text-sm text-amber-800 font-semibold" x-text="error"></p>
-        @if($error)
-            <div class="rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-semibold px-4 py-3">{{ $error }}</div>
-        @endif
-
-        <button
-            type="button"
-            @click="continueLookup"
-            :disabled="busy"
-            class="w-full sm:w-auto rounded-xl bg-brand text-white font-extrabold px-6 py-3 hover:bg-brand-dark transition disabled:opacity-60"
-        >
-            <span x-text="busy ? i18n.pleaseWait : (otpSent ? i18n.verifyShowTickets : i18n.findTickets)"></span>
-        </button>
     </div>
 
     @if($searched && ! $error)
+        <div class="space-y-3">
         @forelse($tickets as $ticket)
-            <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4 hover:shadow-md transition">
+            <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="block {{ $card }} hover:shadow-md transition">
                 <div class="relative h-28 bg-slate-200">
                     @if($ticket->event?->cover_image)
                         <img src="{{ $ticket->event->cover_image }}" class="w-full h-full object-cover" alt="">
@@ -225,8 +267,8 @@
                         <div class="font-extrabold text-sm">{{ $ticket->event?->title }}</div>
                         <div class="text-xs text-white/70">{{ $ticket->event?->event_date?->format('M j, Y') }}</div>
                     </div>
-                    <span class="absolute top-3 right-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full {{ $ticket->status === 'valid' ? 'bg-brand text-white' : 'bg-slate-500 text-white' }}">
-                        {{ $ticket->status === 'valid' ? __('ui.valid') : ucfirst($ticket->status) }}
+                    <span class="absolute top-3 right-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full {{ $ticket->event?->isExpired() ? 'bg-slate-800 text-white' : ($ticket->status === 'valid' ? 'bg-brand text-white' : 'bg-slate-500 text-white') }}">
+                        {{ $ticket->event?->isExpired() ? __('ui.expired') : ($ticket->status === 'valid' ? __('ui.valid') : ucfirst($ticket->status)) }}
                     </span>
                 </div>
                 <div class="px-4 py-3 flex items-center justify-between">
@@ -238,11 +280,16 @@
                 </div>
             </a>
         @empty
-            <div class="text-center py-12 bg-white rounded-2xl border border-slate-100 text-mute">
-                {{ __('ui.no_tickets_for_phone') }}
+            <div class="{{ $card }}">
+                <div class="{{ $bar }}"></div>
+                <div class="text-center py-12 px-5 text-sm text-mute">
+                    {{ __('ui.no_tickets_for_phone') }}
+                </div>
             </div>
         @endforelse
+        </div>
     @endif
+    </div>
 </div>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>[x-cloak]{display:none!important}</style>
@@ -264,6 +311,12 @@ function findTicketsOtp(cfg) {
         get fullPhone() {
             const local = String(this.phoneLocal || '').replace(/\D/g, '');
             return local ? '+252' + local : '';
+        },
+        backToPhone() {
+            this.otpSent = false;
+            this.otpCode = '';
+            this.otpHint = '';
+            this.error = '';
         },
         async sendOtp() {
             if (!this.fullPhone) {

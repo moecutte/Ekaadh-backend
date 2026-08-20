@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\QrPng;
+
 class TicketQrService
 {
     public function payload(string $ticketCode): string
@@ -16,29 +18,40 @@ class TicketQrService
         return hash_hmac('sha256', $ticketCode, $this->secret());
     }
 
-    public function verify(string $payload): ?string
+    public function verify(string $payload, bool $allowPlainCode = false): ?string
     {
         $parts = explode('|', $payload);
-        if (count($parts) !== 3 || $parts[0] !== 'EKAADH') {
-            // Plain ticket codes allowed for manual entry at the gate.
-            if (preg_match('/^EKD-[A-Z0-9]+$/i', $payload)) {
-                return strtoupper($payload);
+        if (count($parts) === 3 && $parts[0] === 'EKAADH') {
+            [$prefix, $code, $sig] = $parts;
+            unset($prefix);
+            if (! hash_equals($this->signature($code), $sig)) {
+                return null;
             }
 
-            return null;
+            return strtoupper($code);
         }
 
-        [$prefix, $code, $sig] = $parts;
-        if (! hash_equals($this->signature($code), $sig)) {
-            return null;
+        // Typed gate entry only — scanners must send the signed QR payload.
+        if ($allowPlainCode && preg_match('/^EKD-[A-Z0-9\-]+$/i', $payload)) {
+            return strtoupper($payload);
         }
 
-        return strtoupper($code);
+        return null;
     }
 
     public function publicUrl(string $ticketCode): string
     {
         return url('/t/'.$ticketCode);
+    }
+
+    public function imageUrl(string $ticketCode): string
+    {
+        return url('/t/'.$ticketCode.'/qr');
+    }
+
+    public function pngDataUri(string $ticketCode, int $size = 240): string
+    {
+        return QrPng::dataUri($this->payload($ticketCode), $size);
     }
 
     private function secret(): string

@@ -47,7 +47,7 @@ class EventSeeder extends Seeder
                 'city' => 'Hargeisa',
                 'event_date' => '2026-08-24',
                 'event_time' => '16:00:00',
-                'is_featured' => true,
+                'is_featured' => false,
                 'cover_image' => 'images/events/book-hosting-hargeisa.jpg',
                 'description' => "You are invited to a Book Hosting Event in Hargeisa celebrating Beyond Horizons: Stories of Resilience and Hope.\n\nCelebrating stories. Inspiring minds.\n\nWhat to expect:\n• Book Presentation\n• Author Discussion\n• Book Signing\n• Networking & Refreshments\n\nOrganized by Hargeisa Readers Club. Let's read. Let's grow. Let's inspire Hargeisa.",
                 'tickets' => [
@@ -62,7 +62,7 @@ class EventSeeder extends Seeder
                 'city' => 'Hargeisa',
                 'event_date' => '2026-08-15',
                 'event_time' => '09:00:00',
-                'is_featured' => true,
+                'is_featured' => false,
                 'cover_image' => 'images/events/tech-conference-hargeisa.jpg',
                 'description' => "Part of Hargeisa Innovation Week 2026.\n\nInnovate. Connect. Transform.\n\nBringing together developers, entrepreneurs, investors and tech leaders to shape the future of Somalia.\n\nFeatures:\n• Keynote Speakers\n• Panel Discussions\n• Startup Showcase\n• Networking Opportunities\n• Exhibition & Tech Demos\n\n#InnovateHargeisa",
                 'tickets' => [
@@ -77,7 +77,7 @@ class EventSeeder extends Seeder
                 'city' => 'Hargeisa',
                 'event_date' => '2026-08-07',
                 'event_time' => '10:00:00',
-                'is_featured' => true,
+                'is_featured' => false,
                 'cover_image' => 'images/events/hargeisa-food-festival.jpg',
                 'description' => "A celebration of flavors, culture & community.\n\nEveryone is welcome!\n\nFeatures:\n• Local Cuisine\n• Live Cooking\n• Food Stalls\n• Family Fun\n• Live Music\n\n@hargeisafoodfestival",
                 'tickets' => [
@@ -107,7 +107,7 @@ class EventSeeder extends Seeder
                 'city' => 'Hargeisa',
                 'event_date' => '2026-08-14',
                 'event_time' => '09:00:00',
-                'is_featured' => true,
+                'is_featured' => false,
                 'cover_image' => 'images/events/youth-leadership-summit.jpg',
                 'description' => "Youth. Lead. Impact.\n\nEmpowering young minds to build a better future.\nBe the change. Lead today!\n\nFeatures:\n• Inspiring Speakers\n• Leadership Workshops\n• Skills Development\n• Networking & Mentorship\n• Youth Panel\n\n#LeadHargeisa",
                 'tickets' => [
@@ -148,5 +148,7 @@ class EventSeeder extends Seeder
                 );
             }
         }
+
+        $this->call(SagalJetBerberaEventSeeder::class);
     }
 }

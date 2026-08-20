@@ -19,6 +19,7 @@ class EventInvitation extends Model
         'status',
         'sms_status',
         'whatsapp_status',
+        'delivery_channel',
         'last_sent_at',
         'opened_at',
         'revoked_at',
@@ -61,5 +62,42 @@ class EventInvitation extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function channelLabel(): string
+    {
+        return match ($this->delivery_channel) {
+            'whatsapp' => 'WhatsApp',
+            'sms' => 'SMS',
+            default => '—',
+        };
+    }
+
+    public function deliveryStatus(): string
+    {
+        if ($this->delivery_channel === 'whatsapp') {
+            return (string) $this->whatsapp_status;
+        }
+
+        if ($this->delivery_channel === 'sms') {
+            return (string) $this->sms_status;
+        }
+
+        return (string) ($this->sms_status ?: $this->whatsapp_status ?: 'pending');
+    }
+
+    public function wasOpened(): bool
+    {
+        return $this->opened_at !== null;
+    }
+
+    public function isWhatsAppChannel(): bool
+    {
+        return $this->delivery_channel === 'whatsapp';
+    }
+
+    public function isSmsChannel(): bool
+    {
+        return $this->delivery_channel === 'sms';
     }
 }

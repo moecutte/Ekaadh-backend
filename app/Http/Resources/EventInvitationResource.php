@@ -18,6 +18,7 @@ class EventInvitationResource extends JsonResource
             'status' => $this->status,
             'sms_status' => $this->sms_status,
             'whatsapp_status' => $this->whatsapp_status,
+            'delivery_channel' => $this->delivery_channel,
             'invitation_url' => $this->publicUrl(),
             'ticket_type' => $this->whenLoaded('ticketType', fn () => [
                 'id' => $this->ticketType->id,

@@ -157,14 +157,19 @@ function invitationImageShare(opts) {
             if (document.fonts?.ready) {
                 try { await document.fonts.ready; } catch (e) {}
             }
-            const canvas = await html2canvas(card, {
-                useCORS: true,
-                allowTaint: false,
-                backgroundColor: null,
-                scale: 2,
-                logging: false,
-            });
-            return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            card.classList.add('invite-capture');
+            try {
+                const canvas = await html2canvas(card, {
+                    useCORS: true,
+                    allowTaint: false,
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false,
+                });
+                return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            } finally {
+                card.classList.remove('invite-capture');
+            }
         },
 
         async share() {

@@ -14,6 +14,8 @@ use App\Models\Category;
 use App\Services\InvitationService;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
+use App\Services\Payments\WaafiPayGateway;
+use App\Support\PaymentMessage;
 use App\Support\Phone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,8 +121,10 @@ class PrivateEventController extends Controller
         $this->authorizeOwner($event, $user);
 
         $data = $request->validate([
-            'payment_method' => ['required', 'in:zaad,edahab'],
+            'payment_method' => ['required', 'in:waafipay'],
             'force_fail' => ['sometimes', 'boolean'],
+            'wallet_pin' => ['nullable', 'string', 'max:8'],
+            'buyer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
         $order = $this->pendingOrder($event, $user->id);
@@ -130,11 +134,29 @@ class PrivateEventController extends Controller
             ], 404);
         }
 
+        $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
+        if (config('waafipay.sandbox') && $walletPin === null) {
+            throw ValidationException::withMessages([
+                'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
+            ]);
+        }
+
+        $chargePhone = Phone::normalize($user->phone);
+        if (config('waafipay.sandbox')) {
+            $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
+            if ($chargePhone === '') {
+                throw ValidationException::withMessages([
+                    'buyer_phone' => [__('ui.sandbox_charge_phone_required')],
+                ]);
+            }
+        }
+
         $order = $this->privateEvents->payCapacityOrder(
             $order,
             $data['payment_method'],
-            $user->phone,
-            OrderService::allowsForceFail() && $request->boolean('force_fail')
+            $chargePhone,
+            OrderService::allowsForceFail() && $request->boolean('force_fail'),
+            $walletPin
         );
 
         $event = $event->fresh()->load('ticketTypes');
@@ -147,8 +169,16 @@ class PrivateEventController extends Controller
             ]);
         }
 
+        if ($order->status === 'pending') {
+            return response()->json([
+                'message' => 'Payment is being confirmed.',
+                'event' => new PrivateEventResource($event),
+                'order' => new OrderResource($order->load(['items.ticketType', 'event', 'payment'])),
+            ], 202);
+        }
+
         return response()->json([
-            'message' => 'Payment could not be completed.',
+            'message' => PaymentMessage::forOrder($order),
             'event' => new PrivateEventResource($event),
             'order' => new OrderResource($order->load(['items.ticketType', 'event', 'payment'])),
         ], 422);
@@ -205,6 +235,7 @@ class PrivateEventController extends Controller
             'guests.*.phone' => ['required', 'string', 'max:30'],
             'guests.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
             'guests.*.ticket_type_id' => ['required', 'integer', 'exists:ticket_types,id'],
+            'channel' => ['required', 'in:sms,whatsapp'],
         ]);
 
         $typeIds = $event->ticketTypes()->pluck('id')->all();
@@ -230,7 +261,7 @@ class PrivateEventController extends Controller
             ];
         }
 
-        $result = $invitations->issueAndSend($event, $guests);
+        $result = $invitations->issueAndSend($event, $guests, $data['channel']);
 
         return response()->json([
             'message' => "Sent {$result['created']} invitation(s).",
@@ -239,33 +270,16 @@ class PrivateEventController extends Controller
         ], 201);
     }
 
-    public function resendInvitation(Event $event, EventInvitation $invitation, InvitationService $invitations): JsonResponse
+    public function resendInvitation(Request $request, Event $event, EventInvitation $invitation, InvitationService $invitations): JsonResponse
     {
         $this->authorizeInvitation($event, $invitation);
-        $invitation = $invitations->resend($invitation);
+        $data = $request->validate([
+            'channel' => ['nullable', 'in:sms,whatsapp'],
+        ]);
+        $invitation = $invitations->resend($invitation, $data['channel'] ?? null);
 
         return response()->json([
             'message' => 'Invitation resent.',
-            'invitation' => new EventInvitationResource($invitation),
-        ]);
-    }
-
-    public function updateInvitationPhone(
-        Request $request,
-        Event $event,
-        EventInvitation $invitation,
-        InvitationService $invitations,
-    ): JsonResponse {
-        $this->authorizeInvitation($event, $invitation);
-
-        $data = $request->validate([
-            'phone' => ['required', 'string', 'max:30'],
-        ]);
-
-        $invitation = $invitations->updatePhoneAndResend($invitation, $data['phone']);
-
-        return response()->json([
-            'message' => 'Phone updated and invitation resent.',
             'invitation' => new EventInvitationResource($invitation),
         ]);
     }

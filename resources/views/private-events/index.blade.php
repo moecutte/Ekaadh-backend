@@ -47,8 +47,8 @@
                         @endif
                         <div class="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-ink/70 via-ink/25 to-transparent pointer-events-none"></div>
                         <span class="absolute top-3 left-3 text-[10px] font-extrabold tracking-wide uppercase px-2.5 py-1 rounded-full border backdrop-blur-md
-                            {{ $paid ? 'bg-emerald-500/90 text-white border-emerald-400/40' : 'bg-amber-400/95 text-ink border-amber-300/50' }}">
-                            {{ $paid ? __('ui.paid') : __('ui.awaiting_payment') }}
+                            {{ $event->isExpired() ? 'bg-slate-800/90 text-white border-white/20' : ($paid ? 'bg-emerald-500/90 text-white border-emerald-400/40' : 'bg-amber-400/95 text-ink border-amber-300/50') }}">
+                            {{ $event->isExpired() ? __('ui.expired') : ($paid ? __('ui.paid') : __('ui.awaiting_payment')) }}
                         </span>
                         <div class="absolute bottom-3 left-3 right-3 text-white">
                             <h2 class="font-extrabold text-base leading-snug line-clamp-2 drop-shadow-sm">{{ $event->title }}</h2>

@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\InvitationDesign;
 use App\Models\InvitationDesignField;
+use App\Support\InvitationPreview;
 use App\Support\PublicUpload;
+use App\Support\TicketDesigns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,7 +49,8 @@ class InvitationDesignController extends Controller
         return view('admin.invitation-designs.form', [
             'design' => new InvitationDesign([
                 'tier' => 'standard',
-                'render_mode' => 'overlay',
+                'render_mode' => 'blade',
+                'blade_key' => 'blush_petal',
                 'is_active' => true,
                 'accent' => '#705898',
                 'card_bg' => '#faf7fc',
@@ -56,6 +59,7 @@ class InvitationDesignController extends Controller
                 'border_color' => '#c5a059',
             ]),
             'categories' => $this->privateCategoryOptions(true),
+            'bladeTemplates' => TicketDesigns::bladeTemplateOptions(),
         ]);
     }
 
@@ -70,19 +74,19 @@ class InvitationDesignController extends Controller
         $data['sort_order'] = $data['sort_order'] ?? ((int) InvitationDesign::query()->max('sort_order') + 1);
 
         $design = InvitationDesign::query()->create($data);
+        $design->syncDefaultBuyerFields();
 
         return redirect()
             ->route('admin.invitation-designs.edit', $design)
-            ->with('success', 'Design created. Add text fields customers will fill.');
+            ->with('success', 'Design created.');
     }
 
     public function edit(InvitationDesign $invitationDesign): View
     {
-        $invitationDesign->load('fields');
-
         return view('admin.invitation-designs.form', [
             'design' => $invitationDesign,
             'categories' => $this->privateCategoryOptions(false),
+            'bladeTemplates' => TicketDesigns::bladeTemplateOptions(),
         ]);
     }
 
@@ -102,16 +106,23 @@ class InvitationDesignController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         $invitationDesign->update($data);
+        $invitationDesign->syncDefaultBuyerFields();
 
         return back()->with('success', 'Design updated.');
     }
 
+    public function preview(InvitationDesign $invitationDesign): View
+    {
+        $invitationDesign->load('fields');
+        $preview = InvitationPreview::make($invitationDesign);
+
+        return view('invitations.preview-frame', $preview + ['showQr' => true]);
+    }
+
     public function destroy(InvitationDesign $invitationDesign): RedirectResponse
     {
-        if ($invitationDesign->events()->exists()) {
-            return back()->with('error', 'Cannot delete — events use this design. Deactivate it instead.');
-        }
-
+        $invitationDesign->events()->update(['invitation_design_id' => null]);
+        $invitationDesign->fields()->delete();
         $invitationDesign->delete();
 
         return redirect()
@@ -196,7 +207,12 @@ class InvitationDesignController extends Controller
             'muted_color' => ['nullable', 'string', 'max:20'],
             'border_color' => ['nullable', 'string', 'max:20'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'graphic' => [$design ? 'nullable' : 'required', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:10240'],
+            'graphic' => [
+                ($design || $request->input('render_mode', 'blade') !== 'overlay') ? 'nullable' : 'required',
+                'file',
+                'mimetypes:image/jpeg,image/png,image/webp',
+                'max:10240',
+            ],
             'thumbnail' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:4096'],
         ], [
             'graphic.uploaded' => 'The graphic failed to upload. Use a PNG/JPG/WebP under 10MB and try again.',
@@ -310,8 +326,10 @@ class InvitationDesignController extends Controller
         try {
             return PublicUpload::store($file, $directory, $name);
         } catch (\Throwable $e) {
+            report($e);
+
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'graphic' => ['The image could not be saved on the server. '.$e->getMessage()],
+                'graphic' => ['The image could not be saved on the server. Please try a different file or contact support.'],
             ]);
         }
     }

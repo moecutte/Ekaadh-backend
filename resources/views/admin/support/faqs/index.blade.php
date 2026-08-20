@@ -82,7 +82,7 @@
                 <div class="px-4 py-10 text-center text-mute text-sm">No FAQs yet. Add your first question on the right.</div>
             @endforelse
         </div>
-        <div>{{ $faqs->links() }}</div>
+        @include('admin.partials.pager', ['paginator' => $faqs])
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">

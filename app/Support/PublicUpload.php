@@ -40,6 +40,29 @@ class PublicUpload
         return 'storage/'.ltrim($stored, '/');
     }
 
+    public static function delete(?string $path): void
+    {
+        if (! $path || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        $relative = ltrim($path, '/');
+        $publicFile = public_path($relative);
+        if (File::isFile($publicFile)) {
+            File::delete($publicFile);
+        }
+
+        $storageRelative = str_starts_with($relative, 'storage/')
+            ? substr($relative, strlen('storage/'))
+            : $relative;
+
+        try {
+            Storage::disk('public')->delete($storageRelative);
+        } catch (Throwable) {
+            // ignore missing files
+        }
+    }
+
     private static function isWritableDirectory(string $path): bool
     {
         if (! File::isDirectory($path)) {

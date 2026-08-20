@@ -10,6 +10,37 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->seedProductionAdmin();
+        } else {
+            $this->seedDemoUsers();
+        }
+
+        Setting::setValue('platform_name', 'Ekaadh');
+        Setting::setValue('default_commission_rate', '10');
+        Setting::setValue('service_fee', '1');
+        Setting::setValue('payment_gateway', (string) env('PAYMENT_GATEWAY', 'waafipay'));
+        Setting::setValue('private_ticket_price', '5');
+        Setting::setValue('private_ticket_max', '500');
+        Setting::setValue('private_premium_design_surcharge', '2');
+        Setting::setValue('show_organizer_packages_on_front', '0');
+
+        $calls = [
+            OrganizerPackageSeeder::class,
+            CategorySeeder::class,
+            InvitationDesignSeeder::class,
+            SupportFaqSeeder::class,
+        ];
+
+        if (! app()->environment('production')) {
+            $calls[] = EventSeeder::class;
+        }
+
+        $this->call($calls);
+    }
+
+    private function seedDemoUsers(): void
+    {
         User::query()->updateOrCreate(
             ['email' => 'admin@ekaadh.com'],
             [
@@ -42,22 +73,29 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+    }
 
-        Setting::setValue('platform_name', 'Ekaadh');
-        Setting::setValue('default_commission_rate', '10');
-        Setting::setValue('service_fee', '1');
-        Setting::setValue('payment_gateway', 'mock');
-        Setting::setValue('private_ticket_price', '5');
-        Setting::setValue('private_ticket_max', '500');
-        Setting::setValue('private_premium_design_surcharge', '2');
-        Setting::setValue('show_organizer_packages_on_front', '0');
+    private function seedProductionAdmin(): void
+    {
+        $email = trim((string) env('ADMIN_EMAIL', ''));
+        $password = (string) env('ADMIN_PASSWORD', '');
+        $phone = trim((string) env('ADMIN_PHONE', ''));
 
-        $this->call([
-            OrganizerPackageSeeder::class,
-            CategorySeeder::class,
-            InvitationDesignSeeder::class,
-            SupportFaqSeeder::class,
-            EventSeeder::class,
-        ]);
+        if ($email === '' || strlen($password) < 8) {
+            $this->command?->warn('Production seed skipped demo users. Set ADMIN_EMAIL and ADMIN_PASSWORD (min 8) to create the first admin.');
+
+            return;
+        }
+
+        User::query()->firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => 'Ekaadh Admin',
+                'phone' => $phone !== '' ? $phone : null,
+                'password' => $password,
+                'role' => User::ROLE_ADMIN,
+                'status' => 'active',
+            ]
+        );
     }
 }
