@@ -3,7 +3,15 @@
 @section('title', 'Ekaadh')
 
 @push('head')
+    <link rel="preload" as="image" href="{{ asset('images/hero-curtain.webp') }}" type="image/webp" fetchpriority="high">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
+    <style>
+        .featured-track { scroll-padding-inline: 1rem; -webkit-overflow-scrolling: touch; }
+        [data-featured-dot].is-on { width: 1.5rem; background: #323891; }
+        @media (min-width: 768px) {
+            .featured-track { scroll-padding-inline: 0; }
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -27,17 +35,21 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     @if($featured->isNotEmpty())
-    <section class="pt-10 mb-14">
-        <div class="flex items-center gap-3 mb-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ __('ui.featured_trending') }}</h2>
+    @php $featuredItems = $featured->take(3); @endphp
+    <section class="pt-10 mb-14" data-featured-slider>
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ __('ui.featured_trending') }}</h2>
             <span class="bg-brand/10 text-brand text-xs font-extrabold px-2.5 py-0.5 rounded-full">{{ __('ui.hot') }}</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            @foreach($featured->take(3) as $i => $event)
+        <div
+            data-featured-track
+            class="featured-track flex md:grid md:grid-cols-3 gap-4 md:gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0"
+        >
+            @foreach($featuredItems as $i => $event)
                 @php $price = $event->ticketTypes->min('price'); @endphp
                 <a href="{{ route('events.show', $event->slug) }}"
-                   class="relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all group border border-slate-100 {{ $i === 0 ? 'md:col-span-2' : '' }}">
-                    <div class="relative overflow-hidden bg-slate-200 {{ $i === 0 ? 'h-72' : 'h-52' }}">
+                   class="featured-slide relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all group border border-slate-100 snap-center shrink-0 w-[85%] sm:w-[70%] md:w-auto md:max-w-none md:shrink {{ $i === 0 ? 'md:col-span-2' : '' }}">
+                    <div class="relative overflow-hidden bg-slate-200 h-52 {{ $i === 0 ? 'md:h-72' : 'md:h-52' }}">
                         @if($event->cover_image)
                             <img src="{{ $event->cover_image }}" alt="{{ $event->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                         @endif
@@ -46,11 +58,11 @@
                         @if($event->isExpired())
                             <div class="absolute top-3 right-3 bg-slate-900/90 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md shadow-black/25">{{ __('ui.expired') }}</div>
                         @endif
-                        <div class="absolute bottom-0 left-0 right-0 p-5">
+                        <div class="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                             @if($event->category)
                                 <span class="inline-flex text-[11px] font-bold px-2.5 py-0.5 rounded-full {{ $catBadge[$event->category] ?? 'bg-white text-ink' }} shadow-md shadow-black/20">{{ $event->category }}</span>
                             @endif
-                            <h3 class="font-extrabold text-white mt-2 leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] {{ $i === 0 ? 'text-2xl' : 'text-base' }}">{{ $event->title }}</h3>
+                            <h3 class="font-extrabold text-white mt-2 leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] {{ $i === 0 ? 'text-lg sm:text-xl md:text-2xl' : 'text-base' }}">{{ $event->title }}</h3>
                             <div class="flex flex-wrap items-end justify-between gap-2 mt-2">
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-white text-xs font-semibold drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">
                                     <span>{{ $event->event_date?->format('M j, Y') }}</span>
@@ -67,6 +79,16 @@
                 </a>
             @endforeach
         </div>
+        @if($featuredItems->count() > 1)
+        <div class="flex justify-center gap-2 mt-4 md:hidden" role="tablist" aria-label="{{ __('ui.featured_trending') }}">
+            @foreach($featuredItems as $i => $event)
+                <button type="button"
+                        data-featured-dot="{{ $i }}"
+                        class="h-2 w-2 rounded-full bg-slate-300 transition-all {{ $i === 0 ? 'is-on' : '' }}"
+                        aria-label="{{ $event->title }}"></button>
+            @endforeach
+        </div>
+        @endif
     </section>
     @endif
 
@@ -80,9 +102,9 @@
     @endif
 
     <section class="mb-14">
-        <div class="flex items-center justify-between mb-5">
-            <h2 class="text-2xl font-extrabold text-ink">{{ $homeEventsWhen === 'past' ? __('ui.past_events') : __('ui.upcoming_events') }}</h2>
-            <a href="{{ route('events.index', ['when' => $homeEventsWhen]) }}" class="text-brand font-bold text-sm hover:underline flex items-center gap-1">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink">{{ $homeEventsWhen === 'past' ? __('ui.past_events') : __('ui.upcoming_events') }}</h2>
+            <a href="{{ route('events.index', ['when' => $homeEventsWhen]) }}" class="text-brand font-bold text-sm hover:underline flex items-center gap-1 shrink-0">
                 {{ __('ui.view_all') }}
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
             </a>
@@ -98,7 +120,7 @@
 
     <section class="mb-16">
         <div class="text-center mb-10">
-            <h2 class="text-2xl font-extrabold text-ink mb-2">{{ __('ui.how_it_works') }}</h2>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-ink mb-2">{{ __('ui.how_it_works') }}</h2>
             <p class="text-mute text-sm">{{ __('ui.how_it_works_sub') }}</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -156,4 +178,50 @@
         </div>
     </section>
 </div>
+<script>
+(function () {
+    const root = document.querySelector('[data-featured-slider]');
+    if (!root) return;
+    const track = root.querySelector('[data-featured-track]');
+    const dots = [...root.querySelectorAll('[data-featured-dot]')];
+    const slides = [...root.querySelectorAll('.featured-slide')];
+    if (!track || slides.length < 2) return;
+
+    function isDesktop() {
+        return window.matchMedia('(min-width: 768px)').matches;
+    }
+
+    function setActive(index) {
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('is-on', i === index);
+            dot.setAttribute('aria-selected', i === index ? 'true' : 'false');
+        });
+    }
+
+    function onScroll() {
+        if (isDesktop()) return;
+        const mid = track.getBoundingClientRect().left + track.clientWidth / 2;
+        let best = 0;
+        let dist = Infinity;
+        slides.forEach((slide, i) => {
+            const r = slide.getBoundingClientRect();
+            const d = Math.abs(r.left + r.width / 2 - mid);
+            if (d < dist) {
+                dist = d;
+                best = i;
+            }
+        });
+        setActive(best);
+    }
+
+    track.addEventListener('scroll', onScroll, { passive: true });
+    dots.forEach((dot, i) => {
+        dot.addEventListener('click', function () {
+            const pad = parseFloat(getComputedStyle(track).paddingLeft) || 0;
+            track.scrollTo({ left: slides[i].offsetLeft - pad, behavior: 'smooth' });
+        });
+    });
+    window.addEventListener('resize', onScroll);
+})();
+</script>
 @endsection

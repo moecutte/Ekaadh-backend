@@ -51,7 +51,7 @@
         @if($event->category)
             <span class="inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full {{ $catBadge[$event->category] ?? 'bg-white/90 text-ink' }}">{{ $event->category }}</span>
         @endif
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-3 leading-tight">{{ $event->title }}</h1>
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white mt-2 mb-3 leading-tight">{{ $event->title }}</h1>
         @if($event->isExpired())
             <span class="inline-flex text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full bg-white/20 text-white mb-3">{{ __('ui.expired') }}</span>
         @endif
@@ -73,13 +73,13 @@
 
     <div class="grid lg:grid-cols-5 gap-8">
         <div class="lg:col-span-3 space-y-5">
-            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.about_this_event') }}</h2>
                 <div class="text-mute leading-relaxed text-sm whitespace-pre-line">{{ $event->description }}</div>
             </div>
 
             @if($event->speakers->isNotEmpty())
-            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.speakers_guests') }}</h2>
                 <div class="space-y-4">
                     @foreach($event->speakers as $speaker)
@@ -107,12 +107,12 @@
             @endif
 
             @if($event->programmeItems->isNotEmpty())
-            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.event_programme') }}</h2>
                 <ol class="space-y-3">
                     @foreach($event->programmeItems as $item)
                         <li class="flex gap-3">
-                            <div class="w-28 shrink-0 text-xs font-extrabold text-brand pt-0.5">{{ $item->timeRangeLabel() }}</div>
+                            <div class="w-20 sm:w-28 shrink-0 text-[11px] sm:text-xs font-extrabold text-brand pt-0.5">{{ $item->timeRangeLabel() }}</div>
                             <div class="min-w-0">
                                 <p class="font-bold text-ink text-sm">{{ $item->title }}</p>
                                 @if($item->description)
@@ -126,7 +126,7 @@
             @endif
 
             @if($event->galleryImages->isNotEmpty())
-            <div class="bg-white rounded-2xl border border-slate-100 p-6" x-data="{ open: null }">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6" x-data="{ open: null }">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.event_gallery') }}</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     @foreach($event->galleryImages as $image)
@@ -142,7 +142,7 @@
             @endif
 
             @if($event->organizer)
-            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.organizer') }}</h2>
                 <div class="flex items-center gap-3">
                     @include('partials.avatar', [
@@ -161,7 +161,7 @@
             </div>
             @endif
 
-            <div class="bg-white rounded-2xl border border-slate-100 p-6">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6">
                 <h2 class="text-xl font-extrabold text-ink mb-4">{{ __('ui.venue') }}</h2>
                 <div class="flex items-start gap-3 mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -181,7 +181,7 @@
         </div>
 
         <div class="lg:col-span-2" x-data="eventTickets()">
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-lg p-5 sticky top-24">
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-lg p-4 sm:p-5 lg:sticky lg:top-24">
                 <div class="flex items-center justify-between mb-1">
                     <p class="text-xs text-mute">{{ __('ui.starting_from') }}</p>
                     @if($event->isExpired())
@@ -190,7 +190,7 @@
                         <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{{ __('ui.tickets_available') }}</span>
                     @endif
                 </div>
-                <p class="text-3xl font-extrabold text-ink mb-5">
+                <p class="text-2xl sm:text-3xl font-extrabold text-ink mb-5">
                     @if($event->isFreeEvent() || (float) ($starting ?? 0) === 0.0)
                         {{ __('ui.free') }}
                     @else

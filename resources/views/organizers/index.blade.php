@@ -64,17 +64,17 @@
         >
         <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-transparent"></div>
     </div>
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-24">
         <div class="max-w-2xl">
             <div class="inline-flex items-center gap-2 bg-brand/20 border border-brand/30 text-brand text-xs font-bold px-3 py-1.5 rounded-full mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 {{ __('ui.for_event_organisers') }}
             </div>
-            <h1 class="text-5xl sm:text-6xl font-extrabold text-white leading-[1.1] mb-5">
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] mb-5">
                 {{ __('ui.sell_tickets_hero_1') }}<br>
                 <span class="text-brand">{{ __('ui.sell_tickets_hero_2') }}</span>
             </h1>
-            <p class="text-slate-300 text-lg mb-8 leading-relaxed max-w-xl">
+            <p class="text-slate-300 text-base sm:text-lg mb-8 leading-relaxed max-w-xl">
                 {{ __('ui.organizers_hero_sub') }}
             </p>
             <div class="flex flex-wrap gap-3">
@@ -106,9 +106,9 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     {{-- Features --}}
-    <section class="py-16">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-extrabold text-ink mb-3">
+    <section class="py-10 sm:py-16">
+        <div class="text-center mb-8 sm:mb-12">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-ink mb-3">
                 {{ __('ui.org_features_title') }}
             </h2>
             <p class="text-mute max-w-xl mx-auto text-sm leading-relaxed">
@@ -130,8 +130,8 @@
 
     {{-- How it works --}}
     <section id="how-it-works" class="py-8 mb-8 scroll-mt-24">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-extrabold text-ink mb-3">
+        <div class="text-center mb-8 sm:mb-12">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-ink mb-3">
                 {{ __('ui.org_steps_title') }}
             </h2>
             <p class="text-mute text-sm">
@@ -158,7 +158,7 @@
     @if($showPackages ?? false)
     <section class="py-12 mb-8" x-data="{ eventType: 'free' }">
         <div class="text-center mb-6">
-            <h2 class="text-3xl font-extrabold text-ink mb-3">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-ink mb-3">
                 {{ __('ui.org_pricing_title') }}
             </h2>
             <p class="text-mute text-sm">
@@ -219,7 +219,7 @@
     {{-- Bottom CTA --}}
     <section class="mb-16">
         <div class="bg-brand rounded-2xl p-8 sm:p-12 text-center">
-            <h2 class="text-3xl font-extrabold text-white mb-3">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-3">
                 {{ __('ui.org_cta_title') }}
             </h2>
             <p class="text-white/80 text-sm mb-7 max-w-md mx-auto">

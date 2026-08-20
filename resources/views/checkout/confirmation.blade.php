@@ -28,7 +28,7 @@
             </div>
             <div class="absolute inset-0 rounded-full bg-green-400/20 animate-ping"></div>
         </div>
-        <h1 class="text-3xl font-extrabold text-ink mb-2">{{ __('ui.payment_successful') }}</h1>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-ink mb-2">{{ __('ui.payment_successful') }}</h1>
         <p class="text-mute text-sm">
             {{ __('ui.order_reference') }}:
             <span class="font-extrabold text-ink">{{ $order->order_number }}</span>
@@ -76,7 +76,7 @@
         </p>
     </div>
 
-    <div class="flex gap-3 mb-8">
+    <div class="flex flex-col sm:flex-row gap-3 mb-8">
         <a href="{{ $ticketsUrl }}" class="flex-1 bg-brand hover:bg-brand-dark text-white font-bold py-3.5 rounded-xl transition-colors text-sm text-center">
             {{ __('ui.view_my_tickets') }}
         </a>

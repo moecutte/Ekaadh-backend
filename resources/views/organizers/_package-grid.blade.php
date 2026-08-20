@@ -3,7 +3,7 @@
 @endphp
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
     @forelse($plans as $plan)
-        <div class="rounded-2xl border p-6 relative {{ $plan['highlight'] ? 'border-brand bg-ink shadow-2xl scale-[1.02]' : 'border-slate-100 bg-white' }}">
+        <div class="rounded-2xl border p-5 sm:p-6 relative {{ $plan['highlight'] ? 'border-brand bg-ink shadow-2xl md:scale-[1.02]' : 'border-slate-100 bg-white' }}">
             @if($plan['highlight'])
                 <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-white text-xs font-extrabold px-4 py-1 rounded-full">
                     {{ __('ui.most_popular') }}

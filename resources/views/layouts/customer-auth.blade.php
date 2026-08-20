@@ -11,7 +11,7 @@
     <script>tailwind.config={theme:{extend:{colors:{brand:{DEFAULT:'#323891',soft:'#eef0f8',dark:'#262a6d'},ink:'#0f1a2e',mute:'#64748b'},fontFamily:{sans:['Plus Jakarta Sans','sans-serif']}}}}</script>
     <script src="{{ asset('js/locale-switch.js') }}"></script>
 </head>
-<body class="bg-[#f4f6f8] text-ink antialiased min-h-screen font-sans flex items-center justify-center p-6">
+<body class="bg-[#f4f6f8] text-ink antialiased min-h-screen font-sans flex items-center justify-center p-4 sm:p-6 overflow-x-hidden">
     <div class="w-full max-w-md">
         <div class="flex justify-end mb-4">
             @include('partials.locale-toggle', ['variant' => 'light'])

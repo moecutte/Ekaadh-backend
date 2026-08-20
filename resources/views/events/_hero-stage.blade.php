@@ -21,11 +21,6 @@
         'Culture' => 'M12 3v18M4 8h16',
         'Business' => 'M3 21h18M5 21V8h6v13M13 21V4h6v17',
     ];
-    $mockPhotos = [
-        asset('images/hero-mock-concert.png'),
-        asset('images/hero-mock-conference.png'),
-        asset('images/hero-mock-festival.png'),
-    ];
     $mockTitles = ['Night Live Concert', 'Tech Summit 2026', 'Hargeisa Culture Fest'];
     $ticketTimeLabel = '4:00 PM';
     if ($ticketEvent?->event_time) {
@@ -49,6 +44,8 @@
         min-height: 640px;
         text-align: left;
         color: #fff;
+        width: 100%;
+        max-width: 100vw;
     }
     .hero-stage::before {
         content: "";
@@ -73,11 +70,12 @@
         z-index: 1;
         overflow: hidden;
     }
-    .hero-curtain img {
+    .hero-curtain::after {
+        content: "";
+        display: block;
         width: 140%;
         height: 100%;
-        object-fit: cover;
-        object-position: left center;
+        background: url('{{ asset('images/hero-curtain.webp') }}') left center / cover no-repeat;
         filter: saturate(1.05) contrast(1.08);
     }
     .hero-curtain--left {
@@ -90,9 +88,24 @@
         -webkit-mask-image: linear-gradient(to left, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
         mask-image: linear-gradient(to left, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
     }
-    .hero-curtain--right img {
+    .hero-curtain--right::after {
         transform: scaleX(-1);
-        object-position: left center;
+        transform-origin: left center;
+    }
+    .hero-mock {
+        background-color: #e2e8f0;
+        background-size: cover;
+        background-position: center;
+    }
+    @media (min-width: 641px) {
+        .hero-mock--concert { background-image: url('{{ asset('images/hero-mock-concert.webp') }}'); }
+        .hero-mock--conference { background-image: url('{{ asset('images/hero-mock-conference.webp') }}'); }
+        .hero-mock--festival { background-image: url('{{ asset('images/hero-mock-festival.webp') }}'); }
+        .hp-brand-logo {
+            width: 42px;
+            height: 14px;
+            background: url('{{ asset('images/ekaadh-logo.png') }}') center / contain no-repeat;
+        }
     }
     .hero-inner {
         position: relative;
@@ -101,14 +114,15 @@
         grid-template-columns: minmax(0, 1.05fr) minmax(280px, 520px);
         align-items: center;
         gap: 12px 24px;
-        width: min(1200px, calc(100% - 32px));
+        width: min(1200px, calc(100% - 2 * clamp(96px, 18vw, 280px)));
         margin: 0 auto;
-        padding: 64px 8px 56px;
+        padding: 64px 12px 56px;
     }
     .hero-copy {
         max-width: 640px;
         margin: 0;
         padding: 28px 0 0;
+        min-width: 0;
     }
     .hero-title-1 {
         font-size: clamp(36px, 6.2vw, 64px);
@@ -296,35 +310,50 @@
         .hero-phone { width: 150px; height: 310px; }
     }
     @media (max-width: 900px) {
+        .hero-stage { min-height: 0; }
         .hero-inner {
             grid-template-columns: 1fr;
-            padding: 48px 4px 36px;
+            width: 100%;
+            padding: 40px max(20px, calc(clamp(80px, 20vw, 200px) * 0.62)) 36px;
         }
-        .hero-copy { max-width: none; }
+        .hero-copy { max-width: none; padding-top: 8px; }
         .hero-visual { height: 430px; margin: 0 auto; width: min(520px, 100%); }
-        .hero-curtain { opacity: .92; width: clamp(92px, 22vw, 220px); }
+        .hero-curtain { opacity: .78; width: clamp(80px, 20vw, 200px); }
         .hero-orbit-item { --r: 168px; }
         .hero-phone { width: 148px; height: 306px; }
+        .hero-title-1 { font-size: clamp(32px, 8vw, 48px); }
+        .hero-title-2 { font-size: clamp(26px, 6.6vw, 40px); }
     }
     @media (max-width: 640px) {
-        .hero-phone--left, .hero-phone--right { display: none; }
-        .hero-phone--center { animation: hero-bob-center 6.2s ease-in-out infinite; }
+        .hero-inner {
+            padding: 28px max(18px, calc(clamp(52px, 16vw, 96px) * 0.78)) 24px;
+            gap: 20px;
+        }
+        .hero-curtain { width: clamp(52px, 16vw, 96px); opacity: .5; }
+        .hero-phone--left, .hero-phone--right, .hero-phone--center, .hero-phones { display: none; }
         .hero-orbit-ring { display: none; }
-        .hero-visual { height: auto; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-        .hero-phones { position: relative; height: auto; padding: 8px 0 4px; }
+        .hero-visual { height: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .hero-orbit-item {
             position: static;
             transform: none !important;
             margin: 3px;
+            white-space: nowrap;
+            font-size: 10px;
+            padding: 5px 10px;
         }
         .hero-cities-mobile {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 340px;
+            max-width: min(340px, 100%);
             order: 2;
         }
-        .hero-phones { order: 1; }
+    }
+    @media (max-width: 430px) {
+        .hero-inner { padding: 24px 16px 20px; }
+        .hero-curtain { width: 44px; opacity: .38; }
+        .hero-title-1 { font-size: clamp(26px, 8.4vw, 34px); }
+        .hero-title-2 { font-size: clamp(22px, 7vw, 28px); }
     }
     @media (min-width: 641px) {
         .hero-cities-mobile { display: contents; }
@@ -338,8 +367,8 @@
 </style>
 
 <section class="hero-stage">
-    <div class="hero-curtain hero-curtain--left" aria-hidden="true"><img src="{{ asset('images/hero-curtain.png') }}" alt=""></div>
-    <div class="hero-curtain hero-curtain--right" aria-hidden="true"><img src="{{ asset('images/hero-curtain.png') }}" alt=""></div>
+    <div class="hero-curtain hero-curtain--left" aria-hidden="true"></div>
+    <div class="hero-curtain hero-curtain--right" aria-hidden="true"></div>
 
     <div class="hero-inner">
     <div class="hero-copy">
@@ -350,13 +379,13 @@
         <p class="text-slate-300 text-sm sm:text-base mb-8 leading-relaxed max-w-xl">
             {{ __('ui.hero_subtitle') }}
         </p>
-        <a href="{{ route('events.index') }}" class="hero-cta inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white font-bold px-7 py-3 rounded-full text-sm transition-colors mb-8">
+        <a href="{{ route('events.index') }}" class="hero-cta inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-bold px-7 py-3 rounded-full text-sm transition-colors mb-6 sm:mb-8 w-full sm:w-auto">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             {{ __('ui.explore_events') }}
         </a>
 
         <form action="{{ route('events.index') }}" method="GET" class="hero-search bg-white rounded-2xl flex items-stretch overflow-hidden text-left">
-            <div class="flex items-center gap-2 flex-1 px-4 py-1 min-w-0">
+            <div class="flex items-center gap-2 flex-1 px-3 sm:px-4 py-1 min-w-0">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="search" name="q" placeholder="{{ __('ui.search_events') }}" class="flex-1 outline-none text-sm text-ink placeholder-slate-400 bg-transparent min-w-0 py-3">
             </div>
@@ -378,7 +407,7 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold px-6 text-sm shrink-0 transition-colors rounded-r-2xl">{{ __('ui.search') }}</button>
+            <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-bold px-4 sm:px-6 text-sm shrink-0 transition-colors rounded-r-2xl">{{ __('ui.search') }}</button>
         </form>
     </div>
 
@@ -422,8 +451,7 @@
                     <div class="px-3 space-y-2 pb-2 flex-1 overflow-hidden">
                         @foreach([0, 1] as $i)
                             <div class="bg-white rounded-xl overflow-hidden">
-                                <div class="h-16 bg-slate-200 relative">
-                                    <img src="{{ $mockPhotos[$i] }}" alt="" class="w-full h-full object-cover">
+                                <div class="h-16 relative hero-mock {{ $i === 0 ? 'hero-mock--concert' : 'hero-mock--conference' }}">
                                     <span class="absolute top-1.5 right-1.5 bg-brand text-white text-[6px] font-extrabold px-1.5 py-0.5 rounded-full">{{ $homeCats[$i] ?? 'Music' }}</span>
                                 </div>
                                 <div class="px-2 py-1.5">
@@ -443,7 +471,7 @@
                     <div class="hp-status"><span>9:41</span><span>●●●</span></div>
                     <div class="bg-white px-3 pt-1 pb-2.5">
                         <div class="flex items-center gap-1 mb-2">
-                            <img src="{{ asset('images/ekaadh-logo.png') }}" alt="" class="h-3.5 w-auto">
+                            <span class="hp-brand-logo shrink-0" aria-hidden="true"></span>
                             <div class="ml-auto flex items-center bg-[#f2f4f8] border border-[#e2e8e4] rounded-lg p-0.5">
                                 <span class="bg-brand text-white text-[6px] font-extrabold px-1.5 py-0.5 rounded">{{ __('ui.english') }}</span>
                                 <span class="text-mute text-[6px] font-extrabold px-1.5 py-0.5">{{ __('ui.somali') }}</span>
@@ -473,8 +501,7 @@
                             @endforeach
                         </div>
                         <p class="font-black text-[9px] mb-1.5">{{ __('ui.featured') }}</p>
-                        <div class="rounded-2xl overflow-hidden h-[88px] relative mb-2">
-                            <img src="{{ $mockPhotos[1] }}" alt="" class="w-full h-full object-cover">
+                        <div class="rounded-2xl overflow-hidden h-[88px] relative mb-2 hero-mock hero-mock--conference">
                             <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                             <span class="absolute top-1.5 right-1.5 bg-brand text-white text-[6px] font-extrabold px-1.5 py-0.5 rounded-full">{{ $homeCats[1] ?? 'Tech' }}</span>
                             <div class="absolute bottom-1.5 left-2 right-2">
@@ -484,8 +511,7 @@
                         </div>
                         <p class="font-black text-[9px] mb-1.5">{{ __('ui.upcoming_events') }}</p>
                         <div class="bg-white rounded-xl overflow-hidden flex">
-                            <div class="w-12 h-12 bg-slate-200 shrink-0">
-                                <img src="{{ $mockPhotos[2] }}" alt="" class="w-full h-full object-cover">
+                            <div class="w-12 h-12 shrink-0 hero-mock hero-mock--festival">
                             </div>
                             <div class="px-2 py-1.5 min-w-0">
                                 <p class="font-extrabold text-[8px] truncate">{{ $mockTitles[2] }}</p>
@@ -512,8 +538,7 @@
                     </div>
                     <div class="px-3 flex-1 overflow-hidden">
                         <div class="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-                            <div class="h-[92px] relative bg-slate-200">
-                                <img src="{{ $mockPhotos[0] }}" alt="" class="w-full h-full object-cover">
+                            <div class="h-[92px] relative hero-mock hero-mock--concert">
                                 <div class="absolute top-2 left-2 bg-white rounded-xl px-1.5 py-1 text-center min-w-[28px]">
                                     <p class="text-[6px] font-extrabold text-brand leading-none">AUG</p>
                                     <p class="text-[11px] font-black leading-none">24</p>
