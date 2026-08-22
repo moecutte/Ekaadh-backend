@@ -74,7 +74,7 @@ class InvitationPreview
         ]);
 
         $ticket = new Ticket([
-            'holder_name' => $meta['guest_name'] ?? 'Guest',
+            'holder_name' => $meta['guest_name'] ?? '',
             'ticket_code' => 'PREVIEW',
             'ticket_type_name' => 'Invitation',
             'status' => 'valid',

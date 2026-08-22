@@ -10,7 +10,9 @@ use App\Models\City;
 use App\Models\Event;
 use App\Models\EventInvitation;
 use App\Models\Order;
+use App\Models\InvitationDesign;
 use App\Models\Category;
+use App\Support\InvitationPreview;
 use App\Services\InvitationService;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
@@ -44,6 +46,38 @@ class PrivateEventController extends Controller
                 'premium' => \App\Support\TicketDesigns::premium(),
                 'default' => \App\Support\TicketDesigns::defaultId(),
             ],
+        ]);
+    }
+
+    public function invitationPreview(Request $request)
+    {
+        $this->customer();
+
+        $design = InvitationDesign::query()
+            ->with('fields')
+            ->findOrFail($request->integer('invitation_design_id'));
+
+        abort_unless($design->is_active, 404);
+
+        $fields = $request->input('fields', []);
+        if (! is_array($fields)) {
+            $fields = [];
+        }
+
+        $preview = InvitationPreview::make($design, $fields, [
+            'event_date' => $request->input('event_date'),
+            'event_time' => $request->input('event_time'),
+            'venue' => $request->input('venue'),
+            'address' => $request->input('address'),
+            'city' => $request->input('city'),
+            'guest_name' => $request->input('guest_name', ''),
+        ]);
+
+        return response()->view('invitations.preview-frame', $preview + [
+            'showQr' => $request->boolean('show_qr', false),
+            'withEnvelope' => $request->boolean('envelope', true),
+            'autoOpen' => $request->boolean('auto_open', true),
+            'compact' => $request->boolean('compact', false),
         ]);
     }
 

@@ -116,7 +116,11 @@ class InvitationDesignController extends Controller
         $invitationDesign->load('fields');
         $preview = InvitationPreview::make($invitationDesign);
 
-        return view('invitations.preview-frame', $preview + ['showQr' => true]);
+        return view('invitations.preview-frame', $preview + [
+            'showQr' => false,
+            'withEnvelope' => true,
+            'autoOpen' => false,
+        ]);
     }
 
     public function destroy(InvitationDesign $invitationDesign): RedirectResponse

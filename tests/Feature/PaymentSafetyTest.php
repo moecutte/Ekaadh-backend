@@ -24,6 +24,46 @@ class PaymentSafetyTest extends TestCase
         $this->getJson('/api/v1/tickets/EKD-DOESNOTEXIST')->assertNotFound();
     }
 
+    public function test_free_event_api_returns_zero_service_fee(): void
+    {
+        Setting::setValue('service_fee', '1');
+
+        $organizer = User::factory()->create(['role' => User::ROLE_ORGANIZER]);
+        $profile = OrganizerProfile::query()->create([
+            'user_id' => $organizer->id,
+            'business_name' => 'Test Org',
+            'approval_status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        $event = Event::query()->create([
+            'organizer_id' => $profile->id,
+            'title' => 'Free Event',
+            'slug' => 'free-event-'.Str::lower(Str::random(8)),
+            'venue' => 'Hargeisa',
+            'city' => 'Hargeisa',
+            'event_date' => now()->addDays(10)->toDateString(),
+            'event_time' => '18:00:00',
+            'status' => 'published',
+            'is_private' => false,
+            'pricing_type' => 'free',
+        ]);
+
+        TicketType::query()->create([
+            'event_id' => $event->id,
+            'name' => 'General',
+            'price' => 0,
+            'quantity_available' => 50,
+            'quantity_sold' => 0,
+            'max_per_order' => 10,
+        ]);
+
+        $this->getJson('/api/v1/events/'.$event->slug)
+            ->assertOk()
+            ->assertJsonPath('data.is_free', true)
+            ->assertJsonPath('data.service_fee', 0);
+    }
+
     public function test_pay_requires_matching_phone(): void
     {
         $this->bindGateway($this->successGateway());

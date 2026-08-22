@@ -64,6 +64,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('private-events')->group(function () {
             Route::get('/meta', [PrivateEventController::class, 'meta']);
+            Route::post('/invitation-preview', [PrivateEventController::class, 'invitationPreview']);
             Route::get('/', [PrivateEventController::class, 'index']);
             Route::post('/', [PrivateEventController::class, 'store']);
             Route::get('/{event}', [PrivateEventController::class, 'show']);

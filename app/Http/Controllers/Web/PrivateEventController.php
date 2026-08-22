@@ -56,6 +56,12 @@ class PrivateEventController extends Controller
             'premiumDesigns' => \App\Support\TicketDesigns::premium(),
             'defaultDesign' => \App\Support\TicketDesigns::defaultId(),
             'allDesigns' => array_values(\App\Support\TicketDesigns::all()),
+            'pickerPreviews' => \App\Models\InvitationDesign::query()
+                ->active()
+                ->with('fields')
+                ->ordered()
+                ->get()
+                ->mapWithKeys(fn ($design) => [$design->id => \App\Support\InvitationPreview::make($design)]),
         ]);
     }
 
@@ -80,10 +86,15 @@ class PrivateEventController extends Controller
             'venue' => $request->input('venue'),
             'address' => $request->input('address'),
             'city' => $request->input('city'),
-            'guest_name' => 'Guest',
+            'guest_name' => $request->input('guest_name', ''),
         ]);
 
-        return view('invitations.preview-frame', $preview + ['showQr' => true]);
+        return view('invitations.preview-frame', $preview + [
+            'showQr' => $request->boolean('show_qr', false),
+            'withEnvelope' => $request->boolean('envelope', true),
+            'autoOpen' => $request->boolean('auto_open', true),
+            'compact' => $request->boolean('compact', false),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -161,9 +172,29 @@ class PrivateEventController extends Controller
             abort(404, 'No pending payment found for this private event.');
         }
 
+        $event->load('ticketTypes');
+        $invitePreview = null;
+        if ($event->invitation_design_id) {
+            $design = InvitationDesign::query()->with('fields')->find($event->invitation_design_id);
+            if ($design) {
+                $invitePreview = InvitationPreview::make(
+                    $design,
+                    is_array($event->invitation_field_values) ? $event->invitation_field_values : [],
+                    [
+                        'event_date' => $event->event_date?->format('Y-m-d'),
+                        'event_time' => $event->event_time ? substr((string) $event->event_time, 0, 5) : null,
+                        'venue' => $event->venue,
+                        'address' => $event->address,
+                        'city' => $event->city,
+                    ]
+                );
+            }
+        }
+
         return view('private-events.pay', [
-            'event' => $event->load('ticketTypes'),
+            'event' => $event,
             'order' => $order,
+            'invitePreview' => $invitePreview,
             'allowForceFail' => OrderService::allowsForceFail(),
             'waafiSandbox' => (bool) config('waafipay.sandbox'),
             'waafiTestWallets' => config('waafipay.test_wallets', []),

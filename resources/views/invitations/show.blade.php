@@ -76,52 +76,17 @@
                     $shareTicket->holder_name = $invitation->guest_name ?: $shareTicket->holder_name;
                 }
             @endphp
-            @include('invitations.partials.envelope-open-styles')
-        <div class="inv-env-stage mx-auto mb-6"
-             style="--env-paper: {{ $design['header_from'] ?? '#3d2a32' }}; --env-flap: {{ $design['header_to'] ?? '#8b5a6b' }}; --env-accent: {{ $design['accent'] ?? '#c5a059' }}; --env-ink: {{ $design['text'] ?? '#fff' }};">
-            <div class="inv-env">
-                <div class="inv-env-shell" style="background: var(--env-paper);">
-                    <div class="inv-env-flap" aria-hidden="true">
-                        <div class="inv-env-flap-face" style="background: linear-gradient(165deg, var(--env-flap), var(--env-paper));"></div>
-                    </div>
-                    <div class="inv-env-seal" aria-hidden="true">
-                        <span class="inv-env-seal-wax"></span>
-                        <span class="inv-env-seal-icon">{{ $design['ornament'] ?: '❖' }}</span>
-                    </div>
-
-                    <div class="inv-env-letter">
-                        <div id="invitation-share-card">
-                            @include('tickets.partials.designed-card', [
-                                'ticket' => $shareTicket,
-                                'qrImage' => $shareTicket->qr_image ?? '',
-                                'design' => $design,
-                                'showQr' => false,
-                                'compact' => false,
-                            ])
-                        </div>
-                    </div>
-
-                    <div class="inv-env-front" style="background: var(--env-paper);"></div>
-
-                    <button type="button" class="inv-env-hit js-open-envelope" aria-label="Open invitation">
-                        <span class="inv-env-cta">
-                            <span class="block text-[10px] font-bold tracking-[0.28em] uppercase mb-1" style="color: #fff;">{{ $design['badge'] ?: 'Invitation' }}</span>
-                            <span class="block text-lg font-semibold" style="font-family: 'Great Vibes', cursive; color: #fff;">
-                                @if(trim((string) $invitation->guest_name) !== '')
-                                    For {{ $invitation->guest_name }}
-                                @else
-                                    Open your invitation
-                                @endif
-                            </span>
-                            <span class="mt-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold bg-white/95" style="color: var(--env-paper);">Tap to open</span>
-                        </span>
-                    </button>
-                </div>
-            </div>
-            <p class="inv-env-replay text-center mt-3">
-                <button type="button" class="js-replay-envelope text-[11px] font-bold underline-offset-2 hover:underline" style="color: {{ $design['muted'] }};">Replay envelope opening</button>
-            </p>
-        </div>
+            @include('invitations.partials.invitation-fonts')
+            @include('invitations.partials.invite-look', [
+                'ticket' => $shareTicket,
+                'qrImage' => $shareTicket->qr_image ?? '',
+                'design' => $design,
+                'showQr' => false,
+                'compact' => false,
+                'withEnvelope' => true,
+                'autoOpen' => false,
+                'envelopeGuest' => $invitation->guest_name,
+            ])
 
         @include('invitations.partials.share-image-buttons', [
             'design' => $design,

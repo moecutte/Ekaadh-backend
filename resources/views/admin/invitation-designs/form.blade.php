@@ -3,7 +3,7 @@
 @section('heading', $design->exists ? 'Edit design' : 'New invitation design')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400&family=Great+Vibes&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+@include('invitations.partials.invitation-fonts')
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>[x-cloak]{display:none!important}</style>
 
@@ -30,25 +30,6 @@
      x-data="{
         previewSrc: @js($design->thumbnail_url ?: $design->graphic_url),
         graphicError: '',
-        envelopeDemo: true,
-        envelopeOpen: false,
-        envelopeDone: false,
-        envelopeTimer: null,
-        startEnvelopeDemo() {
-            clearTimeout(this.envelopeTimer);
-            this.envelopeDemo = true;
-            this.envelopeOpen = false;
-            this.envelopeDone = false;
-        },
-        openEnvelopeDemo() {
-            if (this.envelopeOpen) return;
-            this.envelopeOpen = true;
-            this.envelopeTimer = setTimeout(() => {
-                this.envelopeDone = true;
-                this.envelopeDemo = false;
-                this.envelopeOpen = false;
-            }, 1400);
-        },
         onGraphicPicked(e) {
             this.graphicError = '';
             const file = e.target.files && e.target.files[0];
