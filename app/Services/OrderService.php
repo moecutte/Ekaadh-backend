@@ -63,12 +63,18 @@ class OrderService
             $lineItems = [];
 
             foreach ($items as $row) {
-                /** @var TicketType $type */
+                /** @var TicketType|null $type */
                 $type = TicketType::query()
                     ->where('event_id', $event->id)
                     ->whereKey($row['ticket_type_id'])
                     ->lockForUpdate()
-                    ->firstOrFail();
+                    ->first();
+
+                if (! $type) {
+                    throw ValidationException::withMessages([
+                        'items' => ['This ticket type is no longer available. Refresh the page and try again.'],
+                    ]);
+                }
 
                 $qty = (int) $row['quantity'];
                 if ($qty < 1) {
@@ -136,7 +142,7 @@ class OrderService
                 $this->fulfillPaidOrder($order);
                 $paid = $order->fresh()->load(['items.ticketType', 'items.tickets', 'event', 'payment']);
                 $this->queueTicketDelivery($paid);
-                $this->notifyOrganizerTicketSale($paid);
+                $this->queueOrganizerSaleNotice($paid);
 
                 return $paid;
             }
@@ -366,7 +372,7 @@ class OrderService
             $this->fulfillPaidOrder($order->load('items.ticketType'));
             $paid = $order->fresh()->load(['items.ticketType', 'items.tickets', 'event', 'payment']);
             $this->queueTicketDelivery($paid);
-            $this->notifyOrganizerTicketSale($paid);
+            $this->queueOrganizerSaleNotice($paid);
 
             return $paid;
         }
@@ -417,6 +423,17 @@ class OrderService
         $orderId = $order->id;
         DB::afterCommit(function () use ($orderId) {
             DeliverPaidOrderTickets::dispatch($orderId);
+        });
+    }
+
+    private function queueOrganizerSaleNotice(Order $order): void
+    {
+        $orderId = $order->id;
+        DB::afterCommit(function () use ($orderId) {
+            $fresh = Order::query()->with(['items', 'event.organizer.user'])->find($orderId);
+            if ($fresh) {
+                $this->notifyOrganizerTicketSale($fresh);
+            }
         });
     }
 
@@ -603,29 +620,33 @@ class OrderService
 
     private function notifyOrganizerTicketSale(Order $order): void
     {
-        if (in_array($order->source, ['invitation', 'private_event', 'organizer_package'], true)) {
-            return;
+        try {
+            if (in_array($order->source, ['invitation', 'private_event', 'organizer_package'], true)) {
+                return;
+            }
+
+            $order->loadMissing(['items', 'event.organizer.user']);
+            $user = $order->event?->organizer?->user;
+            if (! $user) {
+                return;
+            }
+
+            $eventTitle = $order->event?->title ?: 'your event';
+            $qty = (int) $order->items->sum('quantity');
+
+            app(PanelNotifier::class)->toUser(
+                $user,
+                'New ticket sale',
+                "{$order->buyer_name} claimed {$qty} ticket(s) for {$eventTitle}.",
+                'ticket_sale',
+                route('organizer.earnings'),
+                [
+                    'event_id' => (string) $order->event_id,
+                    'order_number' => (string) $order->order_number,
+                ],
+            );
+        } catch (\Throwable $e) {
+            report($e);
         }
-
-        $order->loadMissing(['items', 'event.organizer.user']);
-        $user = $order->event?->organizer?->user;
-        if (! $user) {
-            return;
-        }
-
-        $eventTitle = $order->event?->title ?: 'your event';
-        $qty = (int) $order->items->sum('quantity');
-
-        app(PanelNotifier::class)->toUser(
-            $user,
-            'New ticket sale',
-            "{$order->buyer_name} claimed {$qty} ticket(s) for {$eventTitle}.",
-            'ticket_sale',
-            route('organizer.earnings'),
-            [
-                'event_id' => (string) $order->event_id,
-                'order_number' => (string) $order->order_number,
-            ],
-        );
     }
 }

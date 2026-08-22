@@ -57,8 +57,11 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Web OTP/checkout fetch() sends Accept: application/json. If we only
+        // treat /api/* as JSON, ValidationException becomes a 302 HTML redirect;
+        // fetch follows it and the UI shows "Could not send code (200)".
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
         // Never leak stack traces / SQL to API clients (even when APP_DEBUG=true).
