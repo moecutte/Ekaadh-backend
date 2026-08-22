@@ -244,6 +244,11 @@
     </script>
 
     <main class="flex-1">
+        @if(session('error'))
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+                <div class="rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm font-semibold px-4 py-3">{{ session('error') }}</div>
+            </div>
+        @endif
         @yield('content')
     </main>
 
@@ -288,7 +293,14 @@
                     <p class="text-xs mt-2 text-slate-500">{{ __('ui.your_event_ticket') }}</p>
                 </div>
             </div>
-            <div class="border-t border-white/10 pt-6 text-center text-xs text-slate-500">&copy; {{ date('Y') }} Ekaadh. {{ __('ui.all_rights') }}</div>
+            <div class="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                <p>&copy; {{ date('Y') }} Ekaadh. {{ __('ui.all_rights') }}</p>
+                <nav class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                    <a href="{{ route('privacy') }}" class="hover:text-white transition">{{ __('ui.privacy_footer') }}</a>
+                    <a href="{{ route('terms') }}" class="hover:text-white transition">{{ __('ui.terms_footer') }}</a>
+                    <a href="{{ route('account-deletion') }}" class="hover:text-white transition">{{ __('ui.delete_account_footer') }}</a>
+                </nav>
+            </div>
         </div>
     </footer>
     @livewireScripts

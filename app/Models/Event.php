@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
@@ -245,6 +246,16 @@ class Event extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function pendingPrivateOrder(): HasOne
+    {
+        return $this->hasOne(Order::class)->ofMany(
+            ['id' => 'max'],
+            function ($query) {
+                $query->where('source', 'private_event')->where('status', 'pending');
+            }
+        );
+    }
+
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
@@ -298,5 +309,19 @@ class Event extends Model
     public static function listingWhen(?string $when): string
     {
         return strtolower(trim((string) $when)) === 'past' ? 'past' : 'upcoming';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $query = $this->newQuery();
+        if ($field) {
+            return $query->where($field, $value)->firstOrFail();
+        }
+
+        if (ctype_digit((string) $value)) {
+            return $query->whereKey($value)->firstOrFail();
+        }
+
+        return $query->where('slug', $value)->firstOrFail();
     }
 }

@@ -296,6 +296,55 @@ class PrivateEventService
         return $this->orders->pay($order, $paymentMethod, $phone, $forceFail, $walletPin);
     }
 
+    public function pendingOrder(Event $event, int $userId): ?Order
+    {
+        return Order::query()
+            ->with(['items.ticketType', 'event', 'payment'])
+            ->where('event_id', $event->id)
+            ->where('user_id', $userId)
+            ->where('source', 'private_event')
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Draft private events must always have a payable capacity order.
+     * Recreates one when the original pending checkout was failed/expired/missing.
+     */
+    public function ensurePendingOrder(Event $event, User $customer): Order
+    {
+        $pending = $this->pendingOrder($event, $customer->id);
+        if ($pending) {
+            return $pending;
+        }
+
+        if (! $event->is_private || $event->owner_user_id !== $customer->id) {
+            throw ValidationException::withMessages([
+                'event' => ['You cannot pay for this private event.'],
+            ]);
+        }
+
+        if ($event->status !== 'draft') {
+            throw ValidationException::withMessages([
+                'order' => ['No pending payment for this private event.'],
+            ]);
+        }
+
+        $event->loadMissing('ticketTypes');
+        $type = $event->ticketTypes->sortBy('id')->first();
+        if (! $type) {
+            throw ValidationException::withMessages([
+                'event' => ['This private event has no ticket type.'],
+            ]);
+        }
+
+        $qty = max(1, (int) $type->quantity_available);
+        $unit = (float) $type->price ?: self::unitPriceForDesign($event->ticket_design);
+
+        return $this->buildCapacityOrder($event, $type, $qty, $unit, $customer);
+    }
+
     /**
      * After successful payment for source=private_event:
      * - First purchase (draft event): publish event (capacity already on ticket type).
@@ -354,7 +403,7 @@ class PrivateEventService
             'user_id' => $customer->id,
             'event_id' => $event->id,
             'order_number' => $this->nextOrderNumber(),
-            'buyer_name' => $customer->name,
+            'buyer_name' => $customer->name ?: 'Customer',
             'buyer_email' => $this->customerEmail($customer),
             'buyer_phone' => $phone,
             'subtotal' => $subtotal,

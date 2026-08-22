@@ -9,7 +9,6 @@ use App\Http\Resources\PrivateEventResource;
 use App\Models\City;
 use App\Models\Event;
 use App\Models\EventInvitation;
-use App\Models\Order;
 use App\Models\InvitationDesign;
 use App\Models\Category;
 use App\Support\InvitationPreview;
@@ -86,7 +85,7 @@ class PrivateEventController extends Controller
         $user = $this->customer();
 
         $events = Event::query()
-            ->with(['ticketTypes', 'privateEventCategory'])
+            ->with(['ticketTypes', 'privateEventCategory', 'pendingPrivateOrder.items.ticketType', 'pendingPrivateOrder.event', 'pendingPrivateOrder.payment'])
             ->where('owner_user_id', $user->id)
             ->where('is_private', true)
             ->latest()
@@ -123,13 +122,18 @@ class PrivateEventController extends Controller
             throw $e;
         }
 
-        $event = $result['event']->load(['ticketTypes', 'privateEventCategory']);
-        $event->pending_order = $result['order']->load(['items.ticketType', 'event', 'payment']);
+        $event = $result['event']->load([
+            'ticketTypes',
+            'privateEventCategory',
+            'pendingPrivateOrder.items.ticketType',
+            'pendingPrivateOrder.event',
+            'pendingPrivateOrder.payment',
+        ]);
 
         return response()->json([
             'message' => 'Private event created. Complete payment to unlock invitations.',
             'event' => new PrivateEventResource($event),
-            'order' => new OrderResource($result['order']),
+            'order' => new OrderResource($result['order']->load(['items.ticketType', 'event', 'payment'])),
         ], 201);
     }
 
@@ -139,10 +143,14 @@ class PrivateEventController extends Controller
         $this->authorizeOwner($event, $user);
 
         $event->load('ticketTypes');
-        $pending = $this->pendingOrder($event, $user->id);
-        if ($pending) {
-            $event->pending_order = $pending->load(['items.ticketType', 'event', 'payment']);
+        if ($event->status === 'draft') {
+            $this->privateEvents->ensurePendingOrder($event, $user);
         }
+        $event->load([
+            'pendingPrivateOrder.items.ticketType',
+            'pendingPrivateOrder.event',
+            'pendingPrivateOrder.payment',
+        ]);
 
         return response()->json([
             'data' => new PrivateEventResource($event),
@@ -161,7 +169,9 @@ class PrivateEventController extends Controller
             'buyer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $order = $this->pendingOrder($event, $user->id);
+        $order = $event->status === 'draft'
+            ? $this->privateEvents->ensurePendingOrder($event, $user)
+            : $this->privateEvents->pendingOrder($event, $user->id);
         if (! $order) {
             return response()->json([
                 'message' => 'No pending payment for this private event.',
@@ -229,13 +239,17 @@ class PrivateEventController extends Controller
         ]);
 
         $result = $this->privateEvents->addCapacityCheckout($event, $user, (int) $data['quantity']);
-        $event = $result['event']->load('ticketTypes');
-        $event->pending_order = $result['order']->load(['items.ticketType', 'event', 'payment']);
+        $event = $result['event']->load([
+            'ticketTypes',
+            'pendingPrivateOrder.items.ticketType',
+            'pendingPrivateOrder.event',
+            'pendingPrivateOrder.payment',
+        ]);
 
         return response()->json([
             'message' => 'Pay to add more invitation tickets.',
             'event' => new PrivateEventResource($event),
-            'order' => new OrderResource($result['order']),
+            'order' => new OrderResource($result['order']->load(['items.ticketType', 'event', 'payment'])),
         ], 201);
     }
 
@@ -347,16 +361,5 @@ class PrivateEventController extends Controller
         $user = $this->customer();
         $this->authorizeOwner($event, $user);
         abort_unless($invitation->event_id === $event->id, 404);
-    }
-
-    private function pendingOrder(Event $event, int $userId): ?Order
-    {
-        return Order::query()
-            ->where('event_id', $event->id)
-            ->where('user_id', $userId)
-            ->where('source', 'private_event')
-            ->where('status', 'pending')
-            ->latest()
-            ->first();
     }
 }

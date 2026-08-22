@@ -33,6 +33,8 @@ use App\Http\Controllers\Web\Organizer\NotificationController as OrganizerNotifi
 use App\Http\Controllers\Web\Organizer\ProfileController as OrganizerProfileController;
 use App\Http\Controllers\Web\OrganizerLandingController;
 use App\Http\Controllers\Web\CreateTicketLandingController;
+use App\Http\Controllers\Web\AccountDeletionController;
+use App\Http\Controllers\Web\LegalController;
 use App\Http\Controllers\Web\OtpController as WebOtpController;
 use App\Http\Controllers\Web\PrivateEventController;
 use App\Http\Controllers\Web\PrivateEventInvitationController;
@@ -45,6 +47,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
 
 Route::get('/', [EventController::class, 'home'])->name('home');
+Route::get('/account-deletion', AccountDeletionController::class)->name('account-deletion');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
 Route::get('/events', [EventController::class, 'index'])->name('events.index');
 Route::get('/events/{slug}', [EventController::class, 'show'])->name('events.show');
 Route::get('/organizers', OrganizerLandingController::class)->name('organizers');
