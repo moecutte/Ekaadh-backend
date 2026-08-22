@@ -1,5 +1,5 @@
+@include('invitations.partials.invitation-fonts')
 @once
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Great+Vibes&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
 <style>
 .invite-motion { --inv-ease: cubic-bezier(.22,1,.36,1); }
 .invite-motion .inv-rise { animation: inv-rise .9s var(--inv-ease) both; }

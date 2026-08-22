@@ -49,7 +49,7 @@ class CheckoutController extends Controller
             : null;
         $sandboxPay = (bool) config('waafipay.sandbox');
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if ($sandboxPay && $walletPin === null) {
+        if (! $event->isFreeEvent() && $sandboxPay && $walletPin === null) {
             throw ValidationException::withMessages([
                 'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
             ]);

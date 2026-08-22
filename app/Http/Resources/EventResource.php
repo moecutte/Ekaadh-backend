@@ -66,7 +66,9 @@ class EventResource extends JsonResource
                 'url' => $image->path,
             ])->values()),
             'payment_sandbox' => (bool) config('waafipay.sandbox'),
-            'service_fee' => (float) \App\Models\Setting::getValue('service_fee', 1),
+            'service_fee' => $this->isFreeEvent()
+                ? 0.0
+                : (float) \App\Models\Setting::getValue('service_fee', 1),
         ];
     }
 

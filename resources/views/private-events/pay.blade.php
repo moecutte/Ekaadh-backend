@@ -17,6 +17,20 @@
     <h1 class="text-2xl font-extrabold mt-3 mb-1">{{ __('ui.pay_for_tickets') }}</h1>
     <p class="text-sm text-mute mb-6">{{ $event->title }}</p>
 
+    @if(! empty($invitePreview))
+        @include('invitations.partials.invitation-fonts')
+        <div class="mb-6">
+            @include('invitations.partials.invite-look', [
+                'ticket' => $invitePreview['ticket'],
+                'qrImage' => $invitePreview['qrImage'] ?? '',
+                'design' => $invitePreview['design'],
+                'showQr' => false,
+                'withEnvelope' => true,
+                'autoOpen' => true,
+            ])
+        </div>
+    @endif
+
     @if(session('success'))
         <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm p-4">{{ session('success') }}</div>
     @endif

@@ -29,8 +29,22 @@
     $fieldClass = 'w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition';
     $labelClass = 'text-[11px] font-bold uppercase tracking-[0.14em] text-mute block mb-1.5';
 @endphp
-<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Dancing+Script:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Great+Vibes&family=Italianno&family=Josefin+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;500;600;700&family=Mr+De+Haviland&family=Parisienne&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&family=Raleway:ital,wght@0,400;0,600;0,700;1,400&family=Rouge+Script&family=Sacramento&family=Satisfy&family=Source+Sans+3:wght@400;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
-<style>[x-cloak]{display:none!important}</style>
+@include('invitations.partials.invitation-fonts')
+<style>
+[x-cloak]{display:none!important}
+.invite-picker-tile {
+    container-type: inline-size;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: #fff;
+}
+.invite-picker-tile-scale {
+    width: 420px;
+    transform-origin: top center;
+    transform: scale(calc(100cqw / 420));
+    pointer-events: none;
+}
+</style>
 
 <div class="relative overflow-hidden">
 <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 via-brand/5 to-transparent"></div>
@@ -177,49 +191,12 @@
                     <div class="space-y-6" x-show="categoryDesigns.length">
                         <div x-show="standardForCategory.length">
                             <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.standard') }}</h4>
-                            <div class="grid grid-cols-3 gap-3">
-                                <template x-for="d in standardForCategory" :key="d.id">
-                                    <button type="button"
-                                            class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
-                                            @click="selectDesign(d.id, d.invitation_design_id)"
-                                            :class="design === d.id ? 'border-brand shadow-lg shadow-brand/15 ring-2 ring-brand/20 scale-[1.02]' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'">
-                                        <img :src="d.thumbnail_url || d.graphic_url"
-                                             x-show="d.thumbnail_url || d.graphic_url"
-                                             class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                             alt="{{ __('ui.invitation_design_alt') }}"
-                                             loading="lazy">
-                                        <div x-show="!(d.thumbnail_url || d.graphic_url)"
-                                             class="w-full aspect-[3/4]"
-                                             :style="{ background: d.card_bg || '#f1f5f9' }"></div>
-                                        <span x-show="design === d.id"
-                                              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
-                                    </button>
-                                </template>
-                            </div>
+                            @include('private-events.partials.design-picker-grid', ['tier' => 'standard'])
                         </div>
 
                         <div x-show="premiumForCategory.length">
                             <h4 class="text-[11px] font-bold uppercase tracking-[0.14em] text-mute mb-3">{{ __('ui.premium') }}</h4>
-                            <div class="grid grid-cols-3 gap-3">
-                                <template x-for="d in premiumForCategory" :key="'p-'+d.id">
-                                    <button type="button"
-                                            class="relative block rounded-2xl border-2 overflow-hidden transition-all duration-200 bg-slate-50 text-left group/card"
-                                            @click="selectDesign(d.id, d.invitation_design_id)"
-                                            :class="design === d.id ? 'border-amber-500 shadow-lg shadow-amber-200/60 ring-2 ring-amber-200 scale-[1.02]' : 'border-slate-100 hover:border-amber-200 hover:shadow-md'">
-                                        <img :src="d.thumbnail_url || d.graphic_url"
-                                             x-show="d.thumbnail_url || d.graphic_url"
-                                             class="w-full aspect-[3/4] object-cover transition-transform duration-300 group-hover/card:scale-105"
-                                             alt="{{ __('ui.invitation_design_alt') }}"
-                                             loading="lazy">
-                                        <div x-show="!(d.thumbnail_url || d.graphic_url)"
-                                             class="w-full aspect-[3/4]"
-                                             :style="{ background: d.card_bg || '#f1f5f9' }"></div>
-                                        <p class="px-2 py-1.5 text-[10px] font-bold text-center bg-amber-50 text-amber-800">+${{ number_format($premiumSurcharge, 2) }}</p>
-                                        <span x-show="design === d.id"
-                                              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-md">✓</span>
-                                    </button>
-                                </template>
-                            </div>
+                            @include('private-events.partials.design-picker-grid', ['tier' => 'premium'])
                         </div>
                     </div>
                 </div>
@@ -285,6 +262,13 @@
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">{{ __('ui.payment') }}</p>
                         <p class="mt-1.5 text-sm text-mute leading-relaxed">{{ __('ui.create_step4_hint') }}</p>
+                    </div>
+                    <div x-show="selectedDesign" class="mx-auto overflow-hidden rounded-xl border bg-slate-50/60"
+                         :style="{ maxWidth: '428px', borderColor: selectedDesign?.border || '#e2e8f0' }">
+                        <iframe x-ref="themePreviewPay"
+                                title="Invitation theme preview"
+                                class="w-full border-0 block bg-transparent"
+                                :style="{ height: previewHeight + 'px' }"></iframe>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -377,7 +361,7 @@ function privateEventForm(cfg) {
             this.$watch('venue', () => this.applyBasicsToFieldValues());
             this.$watch('fieldValues', () => this.queuePreview(), { deep: true });
             this.$watch('invitationDesignId', () => this.queuePreview());
-            this.$watch('step', (step) => { if (step === 2) this.refreshPreview(); });
+            this.$watch('step', (step) => { if (step === 2 || step === 3) this.refreshPreview(); });
             window.addEventListener('message', (e) => {
                 if (e.data && e.data.type === 'ekaadh-invite-preview-height' && e.data.height) {
                     this.previewHeight = Math.max(520, Number(e.data.height) || 680);
@@ -399,7 +383,7 @@ function privateEventForm(cfg) {
             this.previewTimer = setTimeout(() => this.refreshPreview(), 280);
         },
         async refreshPreview() {
-            if (!this.invitationDesignId || this.step !== 2 || !this.previewUrl) return;
+            if (!this.invitationDesignId || (this.step !== 2 && this.step !== 3) || !this.previewUrl) return;
             const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             try {
                 const res = await fetch(this.previewUrl, {
@@ -420,10 +404,8 @@ function privateEventForm(cfg) {
                 });
                 if (!res.ok) return;
                 const html = await res.text();
-                const frame = this.$refs.themePreview;
-                if (frame) {
-                    frame.srcdoc = html;
-                }
+                const frames = [this.$refs.themePreview, this.$refs.themePreviewPay].filter(Boolean);
+                frames.forEach((frame) => { frame.srcdoc = html; });
             } catch (e) {}
         },
         seedFieldDefaults() {
