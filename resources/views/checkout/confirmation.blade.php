@@ -1,10 +1,14 @@
 @extends('layouts.app')
 
-@section('title', __('ui.payment_successful'))
+@php
+    $event = $order->event;
+    $isFree = $event?->isFreeEvent() || ((float) $order->total_amount <= 0.0 && ! $order->payment_method);
+    $successTitle = $isFree ? __('ui.tickets_confirmed') : __('ui.payment_successful');
+@endphp
+@section('title', $successTitle)
 
 @section('content')
 @php
-    $event = $order->event;
     $timeLabel = $event->event_time ? date('g:i A', strtotime($event->event_time)) : null;
     $ticketCount = $order->items->sum('quantity');
     $ticketSummary = $order->items->map(fn ($i) => $i->quantity.'× '.($i->ticketType->name ?? 'Ticket'))->implode(', ');
@@ -28,7 +32,7 @@
             </div>
             <div class="absolute inset-0 rounded-full bg-green-400/20 animate-ping"></div>
         </div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-ink mb-2">{{ __('ui.payment_successful') }}</h1>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-ink mb-2">{{ $successTitle }}</h1>
         <p class="text-mute text-sm">
             {{ __('ui.order_reference') }}:
             <span class="font-extrabold text-ink">{{ $order->order_number }}</span>
@@ -57,10 +61,10 @@
                 <span class="font-semibold text-ink text-right">{{ $ticketSummary ?: $ticketCount }}</span>
             </div>
             <div class="flex justify-between gap-4">
-                <span class="text-mute shrink-0">{{ __('ui.total_paid') }}</span>
-                <span class="font-extrabold text-ink text-right">${{ number_format((float) $order->total, 0) }}</span>
+                <span class="text-mute shrink-0">{{ $isFree ? __('ui.total') : __('ui.total_paid') }}</span>
+                <span class="font-extrabold text-ink text-right">{{ $isFree ? __('ui.free') : '$'.number_format((float) $order->total_amount, 0) }}</span>
             </div>
-            @if($paymentMethod)
+            @if(! $isFree && $paymentMethod)
             <div class="flex justify-between gap-4">
                 <span class="text-mute shrink-0">{{ __('ui.payment_method') }}</span>
                 <span class="font-semibold text-green-600 text-right">{{ $paymentMethodLabel }}</span>
@@ -72,7 +76,7 @@
     <div class="bg-brand/5 border border-brand/20 rounded-2xl p-4 mb-5 flex items-start gap-3">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <p class="text-sm text-ink leading-relaxed">
-            {{ __('ui.ticket_sent_note') }}
+            {{ $isFree ? __('ui.ticket_sent_note_free') : __('ui.ticket_sent_note') }}
         </p>
     </div>
 

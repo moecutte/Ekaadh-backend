@@ -48,6 +48,7 @@ class OrderResource extends JsonResource
                 'title' => $this->event->title,
                 'slug' => $this->event->slug,
                 'cover_image' => $this->event->cover_image,
+                'is_free' => $this->event->isFreeEvent(),
                 'event_date_label' => $this->event->event_date?->format('M j, Y'),
                 'event_time_label' => $this->event->event_time
                     ? date('g:i A', strtotime((string) $this->event->event_time))
