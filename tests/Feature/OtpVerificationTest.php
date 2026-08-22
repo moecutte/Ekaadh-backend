@@ -3,11 +3,15 @@
 namespace Tests\Feature;
 
 use App\Services\OtpService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class OtpVerificationTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,5 +52,31 @@ class OtpVerificationTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('phone', '+252611111111')
             ->assertJsonStructure(['otp_token']);
+    }
+
+    public function test_web_otp_send_returns_json_when_sms_fails(): void
+    {
+        config([
+            'otp.fixed_code' => '',
+            'otp.expose_debug_code' => false,
+            'telesom.sender_id' => 'EKAADH',
+            'telesom.username' => 'user',
+            'telesom.password' => 'pass',
+            'telesom.secret_key' => 'secret',
+            'telesom.base_url' => 'https://sms.mytelesom.com',
+        ]);
+
+        Http::fake([
+            'sms.mytelesom.com/*' => Http::response([
+                'status' => 'rejected',
+                'error' => 'Insufficient credit',
+            ], 400),
+        ]);
+
+        $this->postJson('/otp/send', [
+            'phone' => '+252633001111',
+            'purpose' => 'checkout',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['phone']);
     }
 }

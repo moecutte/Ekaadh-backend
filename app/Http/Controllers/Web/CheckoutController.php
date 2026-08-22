@@ -13,6 +13,7 @@ use App\Support\PaymentMessage;
 use App\Support\Phone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
@@ -49,7 +50,15 @@ class CheckoutController extends Controller
 
     public function store(Request $request, string $slug): RedirectResponse
     {
-        $event = Event::query()->publicListing()->where('slug', $slug)->firstOrFail();
+        // WaafiPay can take ~45s; PHP's default 30s limit turns that into a 500.
+        set_time_limit(120);
+
+        $event = Event::query()->publicListing()->where('slug', $slug)->first();
+        if (! $event) {
+            return redirect()->route('events.index')->withErrors([
+                'event' => 'This event is no longer available for purchase.',
+            ]);
+        }
 
         $customer = $request->user();
         $customer = ($customer && $customer->isCustomer()) ? $customer : null;
@@ -132,6 +141,8 @@ class CheckoutController extends Controller
                 $customer
             );
 
+            $this->grantOrderAccess($request, $order);
+
             if ($order->status !== 'paid') {
                 $order = $this->orders->pay(
                     $order,
@@ -143,30 +154,27 @@ class CheckoutController extends Controller
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return back()->withErrors([
+                'items' => 'This ticket type is no longer available. Refresh the page and try again.',
+            ])->withInput();
         }
 
-        $this->grantOrderAccess($request, $order);
-
-        if ($order->status === 'paid') {
-            return redirect()->route('checkout.confirmation', $order->order_number);
-        }
-
-        if ($order->status === 'pending') {
-            return redirect()->route('checkout.pending', $order->order_number);
-        }
-
-        return redirect()->route('checkout.failed', $order->order_number);
+        return $this->redirectToOrder($request, $order);
     }
 
-    public function confirmation(Request $request, string $orderNumber): View
+    public function confirmation(Request $request, string $orderNumber): View|RedirectResponse
     {
         $order = Order::query()
             ->with(['items.ticketType', 'items.tickets', 'event', 'payment'])
             ->where('order_number', $orderNumber)
-            ->where('status', 'paid')
             ->firstOrFail();
 
         $this->assertOrderAccess($request, $order);
+
+        if ($order->status !== 'paid') {
+            return $this->redirectToOrder($request, $order);
+        }
 
         $tickets = $order->items
             ->flatMap(fn ($item) => $item->tickets)
@@ -204,14 +212,33 @@ class CheckoutController extends Controller
         $order = $this->orders->reconcile($order);
 
         if ($order->status === 'paid') {
-            return redirect()->route('checkout.confirmation', $order->order_number);
+            return $this->redirectToOrder($request, $order);
         }
 
         if ($order->status === 'failed') {
-            return redirect()->route('checkout.failed', $order->order_number);
+            return $this->redirectToOrder($request, $order);
         }
 
         return view('checkout.pending', compact('order'));
+    }
+
+    private function redirectToOrder(Request $request, Order $order): RedirectResponse
+    {
+        $this->grantOrderAccess($request, $order);
+
+        $route = match ($order->status) {
+            'paid' => 'checkout.confirmation',
+            'pending' => 'checkout.pending',
+            default => 'checkout.failed',
+        };
+
+        // Relative so www vs apex APP_URL mismatch cannot invalidate the signature.
+        return redirect()->to(URL::temporarySignedRoute(
+            $route,
+            now()->addDays(7),
+            ['orderNumber' => $order->order_number],
+            absolute: false,
+        ));
     }
 
     private function grantOrderAccess(Request $request, Order $order): void
@@ -221,6 +248,12 @@ class CheckoutController extends Controller
 
     private function assertOrderAccess(Request $request, Order $order): void
     {
+        if ($request->hasValidSignature() || $request->hasValidRelativeSignature()) {
+            $this->grantOrderAccess($request, $order);
+
+            return;
+        }
+
         if ($request->session()->boolean('checkout_access.'.$order->order_number)) {
             return;
         }

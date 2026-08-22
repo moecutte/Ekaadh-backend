@@ -15,6 +15,7 @@ use App\Services\OtpService;
 use App\Services\Payments\PaymentGatewayInterface;
 use App\Services\TicketQrService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -99,6 +100,31 @@ class ProductionHardeningTest extends TestCase
 
         $signed = $checkIn->scan(app(TicketQrService::class)->payload($ticket->ticket_code), $staff, $ticket->event_id, false);
         $this->assertSame('used', $signed['result']);
+    }
+
+    public function test_confirmation_without_session_is_not_found(): void
+    {
+        $this->bindGateway($this->successGateway());
+        $order = $this->pendingOrder();
+        $paid = app(OrderService::class)->pay($order, 'waafipay', $order->buyer_phone);
+
+        $this->get('/orders/'.$paid->order_number.'/confirmation')->assertNotFound();
+    }
+
+    public function test_confirmation_signed_url_works_without_session(): void
+    {
+        $this->bindGateway($this->successGateway());
+        $order = $this->pendingOrder();
+        $paid = app(OrderService::class)->pay($order, 'waafipay', $order->buyer_phone);
+
+        $url = URL::temporarySignedRoute(
+            'checkout.confirmation',
+            now()->addDay(),
+            ['orderNumber' => $paid->order_number],
+            absolute: false,
+        );
+
+        $this->get($url)->assertOk();
     }
 
     private function bindGateway(PaymentGatewayInterface $gateway): void

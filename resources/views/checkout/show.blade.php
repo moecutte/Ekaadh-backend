@@ -560,7 +560,7 @@ function checkoutWizard() {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.otpError = i18n.couldNotSendCode + ' (' + res.status + ')';
+                    this.otpError = i18n.couldNotSendCode;
                     return false;
                 }
                 if (!res.ok) {

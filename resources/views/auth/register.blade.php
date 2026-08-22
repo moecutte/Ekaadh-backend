@@ -205,7 +205,7 @@ function registerOtp() {
                 const text = await res.text();
                 let body = {};
                 try { body = text ? JSON.parse(text) : {}; } catch (_) {
-                    this.error = i18n.couldNotSendCode + ' (' + res.status + ')';
+                    this.error = i18n.couldNotSendCode;
                     return false;
                 }
                 if (!res.ok) {
