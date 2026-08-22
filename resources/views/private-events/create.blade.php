@@ -33,15 +33,14 @@
 <style>
 [x-cloak]{display:none!important}
 .invite-picker-tile {
-    container-type: inline-size;
+    position: relative;
     aspect-ratio: 3 / 4;
     overflow: hidden;
     background: #fff;
 }
 .invite-picker-tile-scale {
     width: 420px;
-    transform-origin: top center;
-    transform: scale(calc(100cqw / 420));
+    transform-origin: top left;
     pointer-events: none;
 }
 </style>
@@ -355,13 +354,18 @@ function privateEventForm(cfg) {
             this.$watch('categoryId', () => {
                 this.design = '';
                 this.invitationDesignId = null;
+                this.fitPickerTiles();
             });
             this.$watch('eventDate', () => this.applyBasicsToFieldValues());
             this.$watch('eventTime', () => this.applyBasicsToFieldValues());
             this.$watch('venue', () => this.applyBasicsToFieldValues());
             this.$watch('fieldValues', () => this.queuePreview(), { deep: true });
             this.$watch('invitationDesignId', () => this.queuePreview());
-            this.$watch('step', (step) => { if (step === 2 || step === 3) this.refreshPreview(); });
+            this.$watch('step', (step) => {
+                if (step === 1) this.fitPickerTiles();
+                if (step === 2 || step === 3) this.refreshPreview();
+            });
+            this.observePickerTiles();
             window.addEventListener('message', (e) => {
                 if (e.data && e.data.type === 'ekaadh-invite-preview-height' && e.data.height) {
                     this.previewHeight = Math.max(520, Number(e.data.height) || 680);
@@ -369,6 +373,26 @@ function privateEventForm(cfg) {
             });
             // Ensure default time paints into the time input and card fields.
             this.$nextTick(() => this.applyBasicsToFieldValues());
+        },
+        observePickerTiles() {
+            const apply = (tile) => {
+                const inner = tile.querySelector('.invite-picker-tile-scale');
+                if (!inner) return;
+                const w = tile.clientWidth || 0;
+                if (w < 8) return;
+                inner.style.transform = `scale(${w / 420})`;
+            };
+            this.$nextTick(() => {
+                document.querySelectorAll('.invite-picker-tile').forEach((tile) => {
+                    apply(tile);
+                    if (tile.dataset.fitObserved) return;
+                    tile.dataset.fitObserved = '1';
+                    new ResizeObserver(() => apply(tile)).observe(tile);
+                });
+            });
+        },
+        fitPickerTiles() {
+            this.observePickerTiles();
         },
         selectDesign(slug, id) {
             this.design = slug;

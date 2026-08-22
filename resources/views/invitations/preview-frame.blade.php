@@ -11,11 +11,22 @@
         html, body { margin: 0; background: transparent; }
         body { padding: {{ !empty($compact) ? '0' : '8px 4px 16px' }}; }
         @if(!empty($compact))
-        .invitation-design-card, article.invitation-design-card { max-width: 420px !important; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        .invite-compact-fit {
+            width: 420px;
+            transform-origin: top left;
+            transform: scale(calc(100vw / 420));
+        }
+        .invitation-design-card, article.invitation-design-card {
+            max-width: 420px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
         @endif
     </style>
 </head>
 <body>
+    @if(!empty($compact))<div class="invite-compact-fit">@endif
     @include('invitations.partials.invite-look', [
         'ticket' => $ticket,
         'qrImage' => $qrImage ?? '',
@@ -27,6 +38,7 @@
         'hideReplay' => $hideReplay ?? false,
         'envelopeGuest' => $envelopeGuest ?? '',
     ])
+    @if(!empty($compact))</div>@endif
     <script>
         function postHeight() {
             const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
