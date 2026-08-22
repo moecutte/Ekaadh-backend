@@ -55,17 +55,29 @@ class PrivateEventResource extends JsonResource
             'invited' => $sold,
             'remaining' => $remaining,
             'ticket_types' => TicketTypeResource::collection($this->whenLoaded('ticketTypes')),
-            'pending_order' => $this->when(
-                isset($this->pending_order),
-                fn () => $this->pending_order
-                    ? new OrderResource($this->pending_order)
-                    : null
-            ),
+            'pending_order' => $this->pendingOrderPayload($request),
             'payment_sandbox' => (bool) config('waafipay.sandbox'),
             'test_wallets' => $this->when(
                 (bool) config('waafipay.sandbox'),
                 array_values(config('waafipay.test_wallets', []))
             ),
         ];
+    }
+
+    private function pendingOrderPayload(Request $request): ?array
+    {
+        $order = $this->relationLoaded('pendingPrivateOrder')
+            ? $this->pendingPrivateOrder
+            : $this->resource->pendingPrivateOrder()
+                ->with(['items.ticketType', 'event', 'payment'])
+                ->first();
+
+        if (! $order) {
+            return null;
+        }
+
+        $order->loadMissing(['items.ticketType', 'event', 'payment']);
+
+        return (new OrderResource($order))->resolve($request);
     }
 }

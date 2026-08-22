@@ -7,7 +7,6 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Event;
 use App\Models\InvitationDesign;
-use App\Models\Order;
 use App\Support\InvitationPreview;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
@@ -150,26 +149,21 @@ class PrivateEventController extends Controller
         return view('private-events.show', compact('event', 'remaining', 'sold', 'capacity'));
     }
 
-    public function payForm(Event $event): View
+    public function payForm(Event $event): View|RedirectResponse
     {
         $user = $this->customer();
         $this->authorizeOwner($event, $user);
 
-        $order = Order::query()
-            ->with(['items.ticketType', 'event'])
-            ->where('event_id', $event->id)
-            ->where('user_id', $user->id)
-            ->where('source', 'private_event')
-            ->where('status', 'pending')
-            ->latest()
-            ->first();
-
-        if (! $order && $event->status === 'published') {
-            return redirect()->route('private-events.show', $event);
-        }
+        $order = $event->status === 'draft'
+            ? $this->privateEvents->ensurePendingOrder($event, $user)
+            : $this->privateEvents->pendingOrder($event, $user->id);
 
         if (! $order) {
-            abort(404, 'No pending payment found for this private event.');
+            $target = $event->status === 'published'
+                ? redirect()->route('private-events.show', $event)
+                : redirect()->route('private-events.index');
+
+            return $target->with('error', 'No pending payment found for this private event.');
         }
 
         $event->load('ticketTypes');
@@ -213,13 +207,15 @@ class PrivateEventController extends Controller
             'buyer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $order = Order::query()
-            ->where('event_id', $event->id)
-            ->where('user_id', $user->id)
-            ->where('source', 'private_event')
-            ->where('status', 'pending')
-            ->latest()
-            ->firstOrFail();
+        $order = $event->status === 'draft'
+            ? $this->privateEvents->ensurePendingOrder($event, $user)
+            : $this->privateEvents->pendingOrder($event, $user->id);
+
+        if (! $order) {
+            return redirect()
+                ->route($event->status === 'published' ? 'private-events.show' : 'private-events.index', $event->status === 'published' ? $event : [])
+                ->with('error', 'No pending payment found for this private event.');
+        }
 
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
         if (config('waafipay.sandbox') && $walletPin === null) {
