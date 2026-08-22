@@ -2,7 +2,7 @@
     $tier = $tier ?? 'standard';
     $isPremiumTier = $tier === 'premium';
 @endphp
-<div class="grid grid-cols-3 gap-3">
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
     @foreach($pickerPreviews as $designId => $preview)
         @php
             $catalog = $preview['design'];
