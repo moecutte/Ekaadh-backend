@@ -20,6 +20,11 @@
         'compact' => false,
     ])
 
+    @php
+        $isPrivateInvite = ! empty($invitationUrl) && $ticket->event?->is_private;
+    @endphp
+
+    @unless($isPrivateInvite)
     <div class="mt-5 {{ !empty($invitationUrl) ? '' : 'grid grid-cols-2 gap-3' }}">
         @if(empty($invitationUrl))
             <a href="{{ route('tickets.pdf', $ticket->ticket_code) }}"
@@ -30,5 +35,6 @@
            class="text-center rounded-2xl font-extrabold py-3.5 text-sm block {{ !empty($invitationUrl) ? 'w-full' : '' }}"
            style="background: {{ $design['accent_soft'] }}; color: {{ $design['accent'] }};">{{ __('ui.download_qr') }}</a>
     </div>
+    @endunless
 </div>
 @endsection
