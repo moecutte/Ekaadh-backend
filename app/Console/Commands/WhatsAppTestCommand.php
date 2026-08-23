@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\WhatsAppCloudService;
 use App\Support\Phone;
+use App\Support\PublicUrl;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -41,8 +42,8 @@ class WhatsAppTestCommand extends Command
 
         $template = $type === 'ticket' ? $whatsapp->ticketTemplate() : $whatsapp->inviteTemplate();
         $params = $type === 'ticket'
-            ? ['Test Event', '1', url('/')]
-            : ['Guest', 'Test Event', '1', url('/')];
+            ? ['Test Event', '1', PublicUrl::to('/')]
+            : ['Guest', 'Test Event', '1', PublicUrl::to('/')];
 
         $this->info("Sending {$type} template `{$template}` to {$phone}…");
 

@@ -10,6 +10,8 @@ return [
 
     'timeout' => (int) env('WHATSAPP_TIMEOUT', 20),
 
+    'cafile' => env('WHATSAPP_CAFILE', env('WAAFIPAY_CAFILE')),
+
     /*
     |--------------------------------------------------------------------------
     | Message templates (Meta Business Manager)

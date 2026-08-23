@@ -7,13 +7,11 @@ use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\User;
 use App\Services\PanelNotifier;
-use App\Support\OrganizerDocuments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -56,16 +54,14 @@ class AuthController extends Controller
 
     public function showRegister(): View
     {
-        return view('organizer.auth.register', [
-            'idTypes' => OrganizerProfile::ID_TYPES,
-        ]);
+        return view('organizer.auth.register');
     }
 
     public function register(Request $request): RedirectResponse
     {
-        $data = $request->validate($this->applicationRules());
+        $data = $request->validate($this->registrationRules());
 
-        $user = DB::transaction(function () use ($data, $request) {
+        $user = DB::transaction(function () use ($data) {
             $user = User::query()->create([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -75,23 +71,15 @@ class AuthController extends Controller
                 'status' => 'active',
             ]);
 
-            $documents = OrganizerDocuments::store($user->id, [
-                'id_type' => $data['id_type'],
-                'id_front' => $request->file('id_document_front'),
-                'id_back' => $request->file('id_document_back'),
-                'business_license' => $request->file('business_license'),
-            ]);
-
             OrganizerProfile::query()->create([
                 'user_id' => $user->id,
                 'business_name' => $data['business_name'],
                 'business_phone' => $data['business_phone'] ?? $data['phone'],
                 'city' => $data['city'],
                 'business_description' => $data['business_description'],
-                'id_number' => $data['id_number'],
-                'documents' => $documents,
                 'package_id' => OrganizerPackage::defaultPackage()?->id,
-                'approval_status' => 'pending',
+                'approval_status' => 'approved',
+                'approved_at' => now(),
             ]);
 
             return $user;
@@ -102,12 +90,12 @@ class AuthController extends Controller
 
         $user->load('organizerProfile');
         if ($profile = $user->organizerProfile) {
-            app(PanelNotifier::class)->organizerApplicationSubmitted($profile);
+            app(PanelNotifier::class)->organizerRegistered($profile);
         }
 
         return redirect()
             ->route('organizer.dashboard')
-            ->with('success', 'Application submitted with your ID documents. An admin will review your account.');
+            ->with('success', 'Your organizer account is ready. You can create events right away.');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -122,10 +110,8 @@ class AuthController extends Controller
     /**
      * @return array<string, mixed>
      */
-    public static function applicationRules(bool $requireNewIdFront = true): array
+    public static function registrationRules(): array
     {
-        $file = ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
-
         return [
             'name' => ['required', 'string', 'max:120'],
             'business_name' => ['required', 'string', 'max:160'],
@@ -135,20 +121,6 @@ class AuthController extends Controller
             'city' => ['required', 'string', 'max:100'],
             'business_description' => ['required', 'string', 'max:500'],
             'password' => ['required', 'confirmed', Password::defaults()],
-            'id_type' => ['required', Rule::in(array_keys(OrganizerProfile::ID_TYPES))],
-            'id_number' => ['required', 'string', 'max:80'],
-            'id_document_front' => array_merge(
-                $requireNewIdFront ? ['required'] : ['nullable'],
-                $file
-            ),
-            'id_document_back' => [
-                Rule::requiredIf(fn () => request('id_type') === 'national_id' && $requireNewIdFront),
-                'nullable',
-                'file',
-                'mimes:jpg,jpeg,png,pdf',
-                'max:5120',
-            ],
-            'business_license' => array_merge(['nullable'], $file),
             'terms' => ['accepted'],
         ];
     }
