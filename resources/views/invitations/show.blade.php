@@ -92,6 +92,7 @@
             'design' => $design,
             'event' => $event,
             'shareSpec' => $shareSpec,
+            'showDownload' => ! ($event?->is_private),
         ])
 
         <p class="text-center text-xs mb-6" style="color: {{ $design['muted'] }};">
