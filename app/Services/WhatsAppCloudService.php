@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Support\Phone;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -10,8 +13,8 @@ class WhatsAppCloudService
 {
     public function configured(): bool
     {
-        return filled(config('whatsapp.token'))
-            && filled(config('whatsapp.phone_number_id'));
+        return filled($this->token())
+            && filled($this->phoneNumberId());
     }
 
     public function enabled(): bool
@@ -45,13 +48,63 @@ class WhatsAppCloudService
             throw new RuntimeException('WhatsApp template name is required.');
         }
 
-        $to = $this->digitsOnly($toE164);
+        $to = Phone::internationalDigits($toE164);
+        if ($to === '') {
+            $to = preg_replace('/\D+/', '', $toE164) ?? '';
+        }
         if ($to === '' || strlen($to) < 8) {
             throw new RuntimeException('Invalid WhatsApp recipient phone.');
         }
 
+        $languages = $this->languageCandidates();
+        $lastError = 'Failed to send WhatsApp message.';
+        $lastStatus = 0;
+
+        foreach ($languages as $index => $language) {
+            $response = $this->postTemplate($to, $templateName, $bodyParams, $language);
+
+            if ($response->successful()) {
+                $json = $response->json();
+
+                Log::info('WhatsApp Cloud API message accepted', [
+                    'message_id' => data_get($json, 'messages.0.id'),
+                    'template' => $templateName,
+                    'language' => $language,
+                    'recipient' => $this->redact($to),
+                ]);
+
+                return is_array($json) ? $json : [];
+            }
+
+            $lastStatus = $response->status();
+            $lastError = $this->graphError($response) ?: $lastError;
+            $retryable = $this->shouldRetryLanguage($response) && $index < count($languages) - 1;
+
+            Log::error('WhatsApp Cloud API send failed', [
+                'status' => $lastStatus,
+                'error' => $lastError,
+                'body' => $response->body(),
+                'template' => $templateName,
+                'language' => $language,
+                'retrying' => $retryable,
+                'recipient' => $this->redact($to),
+            ]);
+
+            if (! $retryable) {
+                break;
+            }
+        }
+
+        throw new RuntimeException($lastError);
+    }
+
+    /**
+     * @param  list<string>  $bodyParams
+     */
+    private function postTemplate(string $to, string $templateName, array $bodyParams, string $language): Response
+    {
         $version = trim((string) config('whatsapp.api_version', 'v21.0'), '/');
-        $phoneNumberId = (string) config('whatsapp.phone_number_id');
+        $phoneNumberId = $this->phoneNumberId();
         $url = "https://graph.facebook.com/{$version}/{$phoneNumberId}/messages";
 
         $components = [];
@@ -67,12 +120,14 @@ class WhatsAppCloudService
 
         $payload = [
             'messaging_product' => 'whatsapp',
+            'recipient_type' => 'individual',
             'to' => $to,
             'type' => 'template',
             'template' => [
                 'name' => $templateName,
                 'language' => [
-                    'code' => (string) config('whatsapp.template_lang', 'en'),
+                    'code' => $language,
+                    'policy' => 'deterministic',
                 ],
             ],
         ];
@@ -81,46 +136,47 @@ class WhatsAppCloudService
             $payload['template']['components'] = $components;
         }
 
-        $response = Http::timeout((int) config('whatsapp.timeout', 20))
+        $request = Http::timeout((int) config('whatsapp.timeout', 20))
             ->acceptJson()
-            ->withToken((string) config('whatsapp.token'))
-            ->post($url, $payload);
+            ->asJson()
+            ->withToken($this->token());
 
-        if (! $response->successful()) {
-            Log::error('WhatsApp Cloud API send failed', [
-                'status' => $response->status(),
-                'body' => $response->body(),
+        $cafile = (string) config('whatsapp.cafile', '');
+        if ($cafile !== '' && is_file($cafile)) {
+            $request = $request->withOptions(['verify' => $cafile]);
+        }
+
+        try {
+            return $request->post($url, $payload);
+        } catch (ConnectionException $e) {
+            $ssl = str_contains(strtolower($e->getMessage()), 'ssl')
+                || str_contains($e->getMessage(), 'certificate')
+                || str_contains($e->getMessage(), 'cURL error 60');
+
+            Log::error($ssl ? 'WhatsApp Cloud API SSL verification failed' : 'WhatsApp Cloud API request timed out', [
+                'error' => $e->getMessage(),
                 'template' => $templateName,
                 'recipient' => $this->redact($to),
             ]);
 
-            throw new RuntimeException('Failed to send WhatsApp message.');
+            throw new RuntimeException(
+                $ssl
+                    ? 'Could not connect to WhatsApp because PHP could not verify the SSL certificate. Set WHATSAPP_CAFILE (or WAAFIPAY_CAFILE) to a CA bundle.'
+                    : 'WhatsApp Cloud API request timed out.',
+                0,
+                $e
+            );
         }
-
-        $json = $response->json();
-
-        Log::info('WhatsApp Cloud API message accepted', [
-            'message_id' => data_get($json, 'messages.0.id'),
-            'template' => $templateName,
-            'recipient' => $this->redact($to),
-        ]);
-
-        return is_array($json) ? $json : [];
     }
 
     public function ticketTemplate(): string
     {
-        return (string) config('whatsapp.template_ticket', '');
+        return trim((string) config('whatsapp.template_ticket', ''));
     }
 
     public function inviteTemplate(): string
     {
-        return (string) config('whatsapp.template_invite', '');
-    }
-
-    private function digitsOnly(string $phone): string
-    {
-        return preg_replace('/\D+/', '', $phone) ?? '';
+        return trim((string) config('whatsapp.template_invite', ''));
     }
 
     /**
@@ -134,9 +190,70 @@ class WhatsAppCloudService
         return $text === '' ? '-' : mb_substr($text, 0, 1024);
     }
 
+    /**
+     * @return list<string>
+     */
+    private function languageCandidates(): array
+    {
+        $primary = trim((string) config('whatsapp.template_lang', 'en'));
+        if ($primary === '') {
+            $primary = 'en';
+        }
+
+        $candidates = [$primary];
+        foreach (['en_US', 'en', 'en_GB'] as $code) {
+            if (strcasecmp($code, $primary) !== 0) {
+                $candidates[] = $code;
+            }
+        }
+
+        return $candidates;
+    }
+
+    private function shouldRetryLanguage(Response $response): bool
+    {
+        $code = (int) data_get($response->json(), 'error.code');
+        $subcode = (int) data_get($response->json(), 'error.error_subcode');
+        $message = strtolower($this->graphError($response));
+
+        return in_array($code, [132000, 132001], true)
+            || $subcode === 2494010
+            || str_contains($message, 'template name does not exist in the translation')
+            || str_contains($message, 'template not found');
+    }
+
+    private function graphError(Response $response): string
+    {
+        $json = $response->json();
+        $message = trim((string) data_get($json, 'error.error_user_msg', ''));
+        if ($message === '') {
+            $message = trim((string) data_get($json, 'error.message', ''));
+        }
+        $details = trim((string) data_get($json, 'error.error_data.details', ''));
+        if ($details !== '') {
+            $message = $message === '' ? $details : $message.' '.$details;
+        }
+
+        if ($message === '') {
+            return 'Failed to send WhatsApp message (HTTP '.$response->status().').';
+        }
+
+        return $message;
+    }
+
+    private function token(): string
+    {
+        return trim((string) config('whatsapp.token', ''));
+    }
+
+    private function phoneNumberId(): string
+    {
+        return trim((string) config('whatsapp.phone_number_id', ''));
+    }
+
     private function redact(string $phone): string
     {
-        $digits = $this->digitsOnly($phone);
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
         if (strlen($digits) < 4) {
             return '***';
         }

@@ -50,6 +50,7 @@ APP_NAME=Ekaadh
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://YOUR_DOMAIN
+APP_PUBLIC_URL=https://YOUR_DOMAIN   # WhatsApp/SMS links; required if APP_URL is an internal host
 APP_KEY=                    # generate once (see below)
 # Boot fails if production has APP_DEBUG, WAAFIPAY_MODE=sandbox, CORS *, OTP_FIXED_CODE, or empty TICKET_QR_SECRET.
 

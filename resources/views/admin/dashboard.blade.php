@@ -84,7 +84,14 @@
                     <tr class="border-t border-slate-50">
                         <td class="px-4 py-3">
                             <a href="{{ $viewUrl }}" @unless($event->is_private) target="_blank" @endunless class="font-semibold text-ink hover:text-brand">{{ $event->title }}</a>
-                            <div class="text-xs text-mute">{{ $event->organizer?->business_name }} · {{ $event->is_private ? 'Private' : ($event->category ?: 'Public') }}@if($event->city) · {{ $event->city }}@endif</div>
+                            <div class="text-xs text-mute">
+                                @if($event->organizer)
+                                    <a href="{{ route('admin.organizers.show', $event->organizer) }}" class="text-brand hover:underline">{{ $event->organizer->business_name }}</a>
+                                @else
+                                    —
+                                @endif
+                                · {{ $event->is_private ? 'Private' : ($event->category ?: 'Public') }}@if($event->city) · {{ $event->city }}@endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-mute text-xs whitespace-nowrap">{{ $event->event_date?->format('M j, Y') ?: '—' }}</td>
                         <td class="px-4 py-3">
@@ -163,7 +170,14 @@
                 <div class="px-5 py-3.5 flex items-center gap-3">
                     <div class="flex-1 min-w-0">
                         <div class="text-sm font-semibold truncate">{{ $event->title }}</div>
-                        <div class="text-xs text-mute">{{ $event->organizer?->business_name }} · {{ $event->event_date?->format('M j') }} · {{ number_format($sold) }} sold · {{ number_format($left) }} left</div>
+                        <div class="text-xs text-mute">
+                            @if($event->organizer)
+                                <a href="{{ route('admin.organizers.show', $event->organizer) }}" class="text-brand hover:underline">{{ $event->organizer->business_name }}</a>
+                            @else
+                                —
+                            @endif
+                            · {{ $event->event_date?->format('M j') }} · {{ number_format($sold) }} sold · {{ number_format($left) }} left
+                        </div>
                     </div>
                     @if($event->is_private)
                         <a href="{{ route('admin.events.index', ['type' => 'private', 'q' => $event->title]) }}" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold">View</a>

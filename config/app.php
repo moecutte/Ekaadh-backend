@@ -55,6 +55,12 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | Public origin for SMS / WhatsApp / email links. Use the live HTTPS domain
+    | (https://ekaadh.com) so Coolify internal hostnames never go out to guests.
+    */
+    'public_url' => env('APP_PUBLIC_URL', env('APP_URL', 'http://localhost')),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

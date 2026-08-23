@@ -59,6 +59,17 @@ class PanelNotifier
         );
     }
 
+    public function organizerRegistered(OrganizerProfile $profile): void
+    {
+        $this->toAdmins(
+            'New organizer account',
+            ($profile->business_name ?: 'An organizer').' created an organizer account.',
+            'organizer_registered',
+            route('admin.organizers.show', $profile),
+            ['organizer_id' => (string) $profile->id],
+        );
+    }
+
     public function organizerApplicationSubmitted(OrganizerProfile $profile): void
     {
         $this->toAdmins(

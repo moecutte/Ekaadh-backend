@@ -129,7 +129,11 @@
                                     @endif
                                 </div>
                             @else
-                                <div class="text-mute">{{ $event->organizer?->business_name ?? '—' }}</div>
+                                @if($event->organizer)
+                                    <a href="{{ route('admin.organizers.show', $event->organizer) }}" class="font-semibold text-brand hover:underline">{{ $event->organizer->business_name }}</a>
+                                @else
+                                    <div class="text-mute">—</div>
+                                @endif
                             @endif
                         </td>
                         <td class="px-4 py-3 text-mute whitespace-nowrap">
