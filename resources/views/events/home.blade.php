@@ -32,7 +32,7 @@
 
 @include('events._hero-stage')
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {{ $featured->isEmpty() ? 'pt-10' : '' }}">
 
     @if($featured->isNotEmpty())
     @php $featuredItems = $featured->take(3); @endphp
