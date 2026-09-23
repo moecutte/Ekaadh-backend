@@ -83,6 +83,10 @@ class OrderResource extends JsonResource
                 'status' => $this->payment->status,
                 'amount' => (float) $this->payment->amount,
             ] : null),
+            'card_redirect_url' => $this->when(
+                $this->relationLoaded('payment'),
+                fn () => app(\App\Services\OrderService::class)->cardRedirectUrl($this->resource)
+            ),
         ];
     }
 }

@@ -43,27 +43,40 @@ class TelesomSmsService
             $payload['callback_url'] = $callback;
         }
 
-        return $this->post(config('telesom.sms_path'), $payload, $to);
+        return $this->post(config('telesom.sms_path'), $payload, $to, 'SMS');
     }
 
     /**
-     * Send a verification code as a standard prepaid SMS.
+     * Send a verification code through the Telesom OTP prepaid API.
      *
-     * /smsotpapi requires an OTP-prepaid account. Until Telesom enables that
-     * product on this SenderID, codes go out on /smsapi/v1/messages.
+     * POST /index.php/smsotpapi/v1/otp — `message` is the OTP itself.
+     * $ttlSeconds is unused by Telesom; kept for callers that still pass it.
      *
      * @return array<string, mixed>
      */
-    public function sendOtp(string $recipient, string $code, int $ttlSeconds): array
+    public function sendOtp(string $recipient, string $code, int $ttlSeconds = 0): array
     {
-        $minutes = max(1, (int) ceil($ttlSeconds / 60));
-        $body = str_replace(
-            [':code', ':minutes'],
-            [$code, (string) $minutes],
-            (string) config('otp.sms_message', 'Your Ekaadh code is :code. Valid for :minutes minutes.')
+        $to = array_map(
+            static fn (string $phone) => ltrim($phone, '+'),
+            $this->normalizeRecipients($recipient)
         );
+        $payload = [
+            'to' => $to,
+            'message' => $code,
+            'type' => 'text',
+        ];
 
-        return $this->send($recipient, $body);
+        $clientRef = trim((string) config('telesom.client_ref', ''));
+        $payload['client_ref'] = $clientRef !== ''
+            ? $clientRef
+            : 'ekaadh-otp-'.bin2hex(random_bytes(6));
+
+        $callback = trim((string) config('telesom.callback_url', ''));
+        if ($callback !== '') {
+            $payload['callback_url'] = $callback;
+        }
+
+        return $this->post(config('telesom.otp_path'), $payload, $to, 'OTP');
     }
 
     /**
@@ -71,7 +84,7 @@ class TelesomSmsService
      * @param  list<string>  $recipients
      * @return array<string, mixed>
      */
-    private function post(string $path, array $payload, array $recipients): array
+    private function post(string $path, array $payload, array $recipients, string $channel = 'SMS'): array
     {
         if (! $this->enabled()) {
             throw new RuntimeException('Telesom SMS is not configured.');
@@ -79,6 +92,7 @@ class TelesomSmsService
 
         $timestamp = now('Africa/Mogadishu')->format('Y-m-d');
         $url = rtrim((string) config('telesom.base_url'), '/').'/'.ltrim($path, '/');
+        $label = $channel === 'OTP' ? 'Telesom OTP' : 'Telesom SMS';
 
         $request = Http::timeout((int) config('telesom.timeout', 20))
             ->acceptJson()
@@ -97,7 +111,7 @@ class TelesomSmsService
                 || str_contains($e->getMessage(), 'certificate')
                 || str_contains($e->getMessage(), 'cURL error 60');
 
-            Log::error($ssl ? 'Telesom SMS SSL verification failed' : 'Telesom SMS request timed out', [
+            Log::error($ssl ? $label.' SSL verification failed' : $label.' request timed out', [
                 'error' => $e->getMessage(),
                 'recipients' => array_map(fn (string $n) => $this->redact($n), $recipients),
             ]);
@@ -105,7 +119,7 @@ class TelesomSmsService
             throw new RuntimeException(
                 $ssl
                     ? 'Could not connect to Telesom SMS because PHP could not verify the SSL certificate. Set TELESOM_CAFILE (or WAAFIPAY_CAFILE) to a CA bundle.'
-                    : 'Telesom SMS request timed out.',
+                    : $label.' request timed out.',
                 0,
                 $e
             );
@@ -117,7 +131,7 @@ class TelesomSmsService
         if (! $this->accepted($response, $json)) {
             $error = $this->errorMessage($json, $response);
 
-            Log::error('Telesom SMS failed', [
+            Log::error($label.' failed', [
                 'status' => $response->status(),
                 'error' => $error,
                 'body' => $response->body(),
@@ -127,7 +141,7 @@ class TelesomSmsService
             throw new RuntimeException($error);
         }
 
-        Log::info('Telesom SMS accepted', [
+        Log::info($label.' accepted', [
             'request_id' => data_get($json, 'request_id'),
             'status' => data_get($json, 'status', 'accepted'),
             'recipients' => array_map(fn (string $n) => $this->redact($n), $recipients),

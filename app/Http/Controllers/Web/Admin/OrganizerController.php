@@ -38,7 +38,7 @@ class OrganizerController extends Controller
         }
 
         $organizers = $query->paginate($this->resolvePerPage($request))->withQueryString();
-        $defaultRate = (float) Setting::getValue('default_commission_rate', 10);
+        $defaultRate = (float) Setting::getValue('default_commission_rate', 5);
         $packages = OrganizerPackage::query()->organizerPlans()->ordered()->get();
 
         return view('admin.organizers.index', compact('organizers', 'defaultRate', 'packages'));
@@ -61,7 +61,7 @@ class OrganizerController extends Controller
             ->fragment('organizer-payouts');
 
         $eventIds = $organizer->events()->pluck('id');
-        $defaultRate = (float) Setting::getValue('default_commission_rate', 10);
+        $defaultRate = (float) Setting::getValue('default_commission_rate', 5);
         $packages = OrganizerPackage::query()->organizerPlans()->ordered()->get();
 
         $stats = [

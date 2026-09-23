@@ -103,22 +103,42 @@ class EventController extends Controller
         return view('admin.events.index', compact('events', 'filterOptions', 'filtersActive', 'perPage', 'type', 'tabCounts'));
     }
 
-    public function approve(Event $event): RedirectResponse
+    public function approve(Request $request, Event $event): RedirectResponse
     {
-        $event->load('package');
-        if ($event->needsPackagePayment()) {
-            return back()->with('error', "Cannot publish {$event->title} until the organizer pays the free-event package.");
+        $data = $request->validate([
+            'charges' => ['nullable', 'in:default,free'],
+        ]);
+        $waive = ($data['charges'] ?? 'default') === 'free';
+
+        $payload = [
+            'status' => 'published',
+            'platform_charges_waived' => $waive,
+        ];
+
+        if ($waive && $event->isFreeEvent()) {
+            $payload['package_paid_at'] = $event->package_paid_at ?: now();
+        } elseif ($event->isFreeEvent() && ! $waive) {
+            // Organizer must pay capacity fee after publish.
+            $payload['package_paid_at'] = null;
         }
 
-        $event->update(['status' => 'published']);
-        $flushed = $this->invitations->flushPending($event->fresh(['ticketTypes']));
-        $extra = $flushed['created'] > 0
-            ? " Sent {$flushed['created']} complimentary invitation(s)."
-            : ($flushed['error'] ? ' Complimentary invitations could not be sent: '.$flushed['error'] : '');
+        $event->update($payload);
+        $event = $event->fresh(['ticketTypes', 'organizer.user']);
+
+        $extra = '';
+        if ($event->isPubliclyBookable()) {
+            $extra = $this->flushInvitesNote($event);
+        }
+
+        $chargeNote = $waive
+            ? ' Platform charges waived (free of charge). Event is live.'
+            : ($event->needsPackagePayment()
+                ? ' Organizer must pay $'.number_format($event->freeEventChargeAmount(), 2).' before the event goes live.'
+                : ' Default platform charges apply.');
 
         $this->notifyOrganizerEventStatus($event, 'published');
 
-        return back()->with('success', "Published {$event->title}.".$extra);
+        return back()->with('success', "Published {$event->title}.".$chargeNote.$extra);
     }
 
     public function reject(Event $event): RedirectResponse
@@ -140,21 +160,32 @@ class EventController extends Controller
     {
         $data = $request->validate([
             'status' => ['required', 'in:draft,pending_review,published,completed,cancelled'],
+            'charges' => ['nullable', 'in:default,free'],
         ]);
 
-        $event->load('package');
-        if ($data['status'] === 'published' && $event->needsPackagePayment()) {
-            return back()->with('error', "Cannot publish {$event->title} until the organizer pays the free-event package.");
+        $payload = ['status' => $data['status']];
+        if ($data['status'] === 'published' && array_key_exists('charges', $data) && $data['charges'] !== null) {
+            $waive = $data['charges'] === 'free';
+            $payload['platform_charges_waived'] = $waive;
+            if ($event->isFreeEvent()) {
+                $payload['package_paid_at'] = $waive ? ($event->package_paid_at ?: now()) : null;
+            }
         }
 
-        $event->update(['status' => $data['status']]);
+        $event->update($payload);
+        $event = $event->fresh(['ticketTypes', 'organizer.user']);
         $extra = '';
+
         if ($data['status'] === 'published') {
-            $flushed = $this->invitations->flushPending($event->fresh(['ticketTypes']));
-            if ($flushed['created'] > 0) {
-                $extra = " Sent {$flushed['created']} complimentary invitation(s).";
-            } elseif ($flushed['error']) {
-                $extra = ' Complimentary invitations could not be sent: '.$flushed['error'];
+            if ($event->isPubliclyBookable()) {
+                $extra = $this->flushInvitesNote($event);
+            }
+            if (array_key_exists('platform_charges_waived', $payload)) {
+                $extra .= $payload['platform_charges_waived']
+                    ? ' Platform charges waived (free of charge).'
+                    : ($event->needsPackagePayment()
+                        ? ' Organizer must pay $'.number_format($event->freeEventChargeAmount(), 2).' before the event goes live.'
+                        : ' Default platform charges apply.');
             }
             $this->notifyOrganizerEventStatus($event, 'published');
         } elseif (in_array($data['status'], ['cancelled', 'completed'], true)) {
@@ -162,6 +193,19 @@ class EventController extends Controller
         }
 
         return back()->with('success', 'Event status updated.'.$extra);
+    }
+
+    private function flushInvitesNote(Event $event): string
+    {
+        $flushed = $this->invitations->flushPending($event->fresh(['ticketTypes']));
+        if ($flushed['created'] > 0) {
+            return " Sent {$flushed['created']} complimentary invitation(s).";
+        }
+        if ($flushed['error']) {
+            return ' Complimentary invitations could not be sent: '.$flushed['error'];
+        }
+
+        return '';
     }
 
     private function notifyOrganizerEventStatus(Event $event, string $status): void
@@ -172,6 +216,20 @@ class EventController extends Controller
             $user = $event->organizer?->user;
         }
         if (! $user) {
+            return;
+        }
+
+        if ($status === 'published' && $event->needsPackagePayment()) {
+            $amount = number_format($event->freeEventChargeAmount(), 2);
+            app(PanelNotifier::class)->toUser(
+                $user,
+                'Event approved — payment required',
+                "{$event->title} was approved. Pay \${$amount} to make it live.",
+                'event_payment_required',
+                route('organizer.events.pay', $event),
+                ['event_id' => (string) $event->id],
+            );
+
             return;
         }
 

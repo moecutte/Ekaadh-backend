@@ -19,9 +19,9 @@
         <a href="{{ route('organizer.events.index') }}" class="text-sm font-bold text-mute hover:text-brand">&larr; My Events</a>
         <h2 class="text-lg font-extrabold mt-1">{{ $event->title }}</h2>
         <p class="text-xs text-mute mt-1">{{ $remaining }} seats left · {{ $sold }}/{{ $capacity }} issued (sales + comps)</p>
-        <p class="text-xs text-mute mt-1">Complimentary guests: {{ $guestUsed }}/{{ $guestLimit }}. They use the same ticket capacity as public sales.</p>
+        <p class="text-xs text-mute mt-1">{{ $guestUsed }} complimentary guest(s) sent. Complimentary seats come from the same ticket capacity as public sales.</p>
         @if($guestSlots < 1 && $event->status === 'published')
-            <p class="text-xs text-amber-700 mt-1">Guest limit reached. Revoke an invitation to send another.</p>
+            <p class="text-xs text-amber-700 mt-1">No seats left. Revoke an invitation or wait for returns to free capacity.</p>
         @endif
     </div>
 </div>

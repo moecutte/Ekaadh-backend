@@ -24,12 +24,13 @@ class CheckoutController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
         $data = $request->validate([
             'event_id' => ['required', 'integer', 'exists:events,id'],
             'buyer_name' => ['required', 'string', 'max:120'],
             'buyer_email' => ['nullable', 'email', 'max:255'],
             'buyer_phone' => ['required', 'string', 'max:30'],
-            'payment_method' => ['nullable', 'in:waafipay'],
+            'payment_method' => ['nullable', 'in:'.$allowedPay],
             'items' => ['required', 'array', 'min:1'],
             'items.*.ticket_type_id' => ['required', 'integer', 'exists:ticket_types,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
@@ -48,8 +49,9 @@ class CheckoutController extends Controller
             ? $customer
             : null;
         $sandboxPay = (bool) config('waafipay.sandbox');
+        $isCard = ($data['payment_method'] ?? '') === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (! $event->isFreeEvent() && $sandboxPay && $walletPin === null) {
+        if (! $event->isFreeEvent() && $sandboxPay && ! $isCard && $walletPin === null) {
             throw ValidationException::withMessages([
                 'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
             ]);
@@ -93,7 +95,7 @@ class CheckoutController extends Controller
             if (empty($data['payment_method'])) {
                 return response()->json([
                     'message' => 'Payment method is required.',
-                    'errors' => ['payment_method' => ['Pay with WaafiPay.']],
+                    'errors' => ['payment_method' => ['Pay with WaafiPay mobile money or card.']],
                 ], 422);
             }
 
@@ -137,8 +139,9 @@ class CheckoutController extends Controller
 
     public function pay(Request $request, string $orderNumber): JsonResponse
     {
+        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
         $data = $request->validate([
-            'payment_method' => ['required', 'in:waafipay'],
+            'payment_method' => ['required', 'in:'.$allowedPay],
             'phone' => ['required', 'string', 'max:30'],
             'force_fail' => ['sometimes', 'boolean'],
             'wallet_pin' => ['nullable', 'string', 'max:8'],
@@ -151,8 +154,9 @@ class CheckoutController extends Controller
                 'phone' => ['Enter the checkout phone number for this order.'],
             ]);
         }
+        $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && $walletPin === null) {
+        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
             throw ValidationException::withMessages([
                 'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
             ]);

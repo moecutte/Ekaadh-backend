@@ -154,9 +154,22 @@ function invitationImageShare(opts) {
                 return null;
             }
             const card = root.querySelector('.invitation-design-card') || root.querySelector('article') || root;
+            const env = root.closest('.inv-env');
+            const hadOpen = env ? env.classList.contains('is-open') : true;
+            const hadDone = env ? env.classList.contains('is-done') : true;
+            if (env) {
+                env.classList.add('is-open', 'is-done');
+                env.querySelectorAll('.inv-env-shell, .inv-env-flap, .inv-env-letter, .inv-env-front, .inv-env-seal')
+                    .forEach((el) => {
+                        el.style.transition = 'none';
+                        el.style.animation = 'none';
+                    });
+            }
             if (document.fonts?.ready) {
                 try { await document.fonts.ready; } catch (e) {}
             }
+            // Let layout settle after snapping the envelope open.
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
             card.classList.add('invite-capture');
             try {
                 const canvas = await html2canvas(card, {
@@ -169,6 +182,15 @@ function invitationImageShare(opts) {
                 return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
             } finally {
                 card.classList.remove('invite-capture');
+                if (env) {
+                    env.querySelectorAll('.inv-env-shell, .inv-env-flap, .inv-env-letter, .inv-env-front, .inv-env-seal')
+                        .forEach((el) => {
+                            el.style.transition = '';
+                            el.style.animation = '';
+                        });
+                    if (!hadOpen) env.classList.remove('is-open');
+                    if (!hadDone) env.classList.remove('is-done');
+                }
             }
         },
 

@@ -4,7 +4,6 @@ use App\Http\Controllers\Web\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Web\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Web\Admin\CityController as AdminCityController;
 use App\Http\Controllers\Web\Admin\InvitationDesignController as AdminInvitationDesignController;
-use App\Http\Controllers\Web\Admin\CommissionController as AdminCommissionController;
 use App\Http\Controllers\Web\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Web\Admin\InviteeController as AdminInviteeController;
 use App\Http\Controllers\Web\Admin\DashboardController as AdminDashboardController;
@@ -42,6 +41,7 @@ use App\Http\Controllers\Web\Admin\SupportConversationController as AdminSupport
 use App\Http\Controllers\Web\Admin\SupportFaqController as AdminSupportFaqController;
 use App\Http\Controllers\Web\SupportController;
 use App\Http\Controllers\Web\TicketController;
+use App\Http\Controllers\Web\WaafiHppController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
@@ -60,6 +60,9 @@ Route::post('/events/{slug}/checkout', [CheckoutController::class, 'store'])->mi
 Route::get('/orders/{orderNumber}/confirmation', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
 Route::get('/orders/{orderNumber}/pending', [CheckoutController::class, 'pending'])->name('checkout.pending');
 Route::get('/orders/{orderNumber}/failed', [CheckoutController::class, 'failed'])->name('checkout.failed');
+
+Route::match(['get', 'post'], '/payments/waafi/hpp/success', [WaafiHppController::class, 'success'])->name('payments.waafi.hpp.success');
+Route::match(['get', 'post'], '/payments/waafi/hpp/failure', [WaafiHppController::class, 'failure'])->name('payments.waafi.hpp.failure');
 
 Route::get('/my-tickets', [TicketController::class, 'index'])->middleware('throttle:tickets')->name('tickets.index');
 Route::get('/t/{code}', [TicketController::class, 'show'])->middleware('throttle:tickets')->name('tickets.show');
@@ -134,6 +137,7 @@ Route::prefix('organizer')->name('organizer.')->group(function () {
             Route::post('/events', [OrganizerEventController::class, 'store'])->name('events.store');
             Route::get('/events/{event}/edit', [OrganizerEventController::class, 'edit'])->name('events.edit');
             Route::put('/events/{event}', [OrganizerEventController::class, 'update'])->name('events.update');
+            Route::get('/events/{event}/orders', [OrganizerEventController::class, 'orders'])->name('events.orders');
             Route::get('/events/{event}/pay', [OrganizerEventController::class, 'payForm'])->name('events.pay');
             Route::post('/events/{event}/pay', [OrganizerEventController::class, 'pay'])->middleware('throttle:checkout')->name('events.pay.store');
             Route::get('/events/{event}/invitations', [OrganizerEventInvitationController::class, 'index'])->name('events.invitations.index');
@@ -142,6 +146,8 @@ Route::prefix('organizer')->name('organizer.')->group(function () {
             Route::post('/events/{event}/invitations/flush', [OrganizerEventInvitationController::class, 'flush'])->name('events.invitations.flush');
             Route::post('/events/{event}/invitations/{invitation}/resend', [OrganizerEventInvitationController::class, 'resend'])->name('events.invitations.resend');
             Route::post('/events/{event}/invitations/{invitation}/revoke', [OrganizerEventInvitationController::class, 'revoke'])->name('events.invitations.revoke');
+            Route::post('/events/{event}/cancel', [OrganizerEventController::class, 'cancel'])->name('events.cancel');
+            Route::post('/events/{event}/reactivate', [OrganizerEventController::class, 'reactivate'])->name('events.reactivate');
             Route::delete('/events/{event}', [OrganizerEventController::class, 'destroy'])->name('events.destroy');
         });
     });
@@ -221,8 +227,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/revenue', [AdminRevenueReportController::class, 'index'])->name('revenue.index');
 
-        Route::get('/commission', [AdminCommissionController::class, 'edit'])->name('commission.edit');
-        Route::post('/commission', [AdminCommissionController::class, 'update'])->name('commission.update');
+        Route::get('/commission', fn () => redirect()->route('admin.settings.edit'))->name('commission.edit');
+        Route::post('/commission', fn () => redirect()->route('admin.settings.edit'))->name('commission.update');
 
         Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('payouts.index');
         Route::post('/payouts', [AdminPayoutController::class, 'store'])->name('payouts.store');

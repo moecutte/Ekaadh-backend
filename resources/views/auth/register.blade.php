@@ -213,9 +213,7 @@ function registerOtp() {
                     return false;
                 }
                 this.otpSent = true;
-                this.otpHint = body.debug_code
-                    ? ('Testing code: ' + body.debug_code)
-                    : (body.message || 'Code sent.');
+                this.otpHint = body.message || 'Code sent.';
                 return true;
             } catch (e) {
                 this.error = e.message || i18n.couldNotSendCode;

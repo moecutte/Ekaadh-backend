@@ -25,7 +25,6 @@ class OtpController extends Controller
             'message' => $result['message'],
             'phone' => $result['phone'],
             'expires_in' => $result['expires_in'],
-            'debug_code' => $result['debug_code'] ?? null,
         ]);
     }
 

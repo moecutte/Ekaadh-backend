@@ -11,8 +11,8 @@ use App\Models\EventGalleryImage;
 use App\Models\EventProgrammeItem;
 use App\Models\EventSpeaker;
 use App\Models\Order;
-use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
+use App\Models\Setting;
 use App\Models\TicketType;
 use App\Services\InvitationService;
 use App\Services\OrderService;
@@ -84,7 +84,12 @@ class EventController extends Controller
             default => $query->latest(),
         };
 
-        $events = $query->paginate(15)->withQueryString();
+        $perPage = (int) $request->input('per_page', 15);
+        if (! in_array($perPage, [10, 15, 25, 50], true)) {
+            $perPage = 15;
+        }
+
+        $events = $query->paginate($perPage)->withQueryString();
 
         $statusCounts = (clone $baseQuery)
             ->selectRaw('status, count(*) as aggregate')
@@ -127,11 +132,10 @@ class EventController extends Controller
         $profile = $this->organizerProfile();
         $data = $this->validated($request);
         $pricingType = $this->validatedPricingType($request);
-        $package = $this->resolvedFreeEventPackage($request, $pricingType);
         $tickets = $this->validatedTickets($request, $pricingType);
         $this->assertEventExtras($request);
 
-        if ($error = $this->capacityError($profile, $tickets, $pricingType, $package)) {
+        if ($error = $this->capacityError($profile, $tickets, $pricingType)) {
             return back()->withInput()->with('error', $error);
         }
 
@@ -158,9 +162,9 @@ class EventController extends Controller
             'is_featured' => false,
             'is_private' => false,
             'pricing_type' => $pricingType,
-            'package_id' => $package?->id,
+            'package_id' => null,
             'pending_invitations' => $pending,
-            'status' => $status === 'pending_review' && $pricingType === 'free' ? 'draft' : $status,
+            'status' => $status,
         ]);
 
         $this->syncTicketTypes($event, $tickets);
@@ -168,7 +172,7 @@ class EventController extends Controller
         $this->syncProgramme($event, $request);
         $this->syncGallery($event, $request);
 
-        return $this->afterSave($event->fresh(['package', 'ticketTypes']), $wantsReview, created: true);
+        return $this->afterSave($event->fresh(['ticketTypes']), $wantsReview, created: true);
     }
 
     public function edit(Event $event): View
@@ -197,11 +201,10 @@ class EventController extends Controller
         $previousStatus = $event->status;
         $data = $this->validated($request, $event);
         $pricingType = $this->validatedPricingType($request, $event);
-        $package = $this->resolvedFreeEventPackage($request, $pricingType, $event);
         $tickets = $this->validatedTickets($request, $pricingType);
         $this->assertEventExtras($request);
 
-        if ($error = $this->capacityError($profile, $tickets, $pricingType, $package, $event)) {
+        if ($error = $this->capacityError($profile, $tickets, $pricingType, $event)) {
             return back()->withInput()->with('error', $error);
         }
 
@@ -217,7 +220,7 @@ class EventController extends Controller
         $wantsReview = $request->input('action') === 'publish';
         if ($request->input('action') === 'draft') {
             $status = 'draft';
-        } elseif ($wantsReview && ! ($pricingType === 'free' && $package && $package->chargeAmount() > 0 && ! ($event->package_id === $package->id && $event->packageIsPaid()))) {
+        } elseif ($wantsReview) {
             $status = 'pending_review';
         }
 
@@ -226,10 +229,6 @@ class EventController extends Controller
             $this->deleteLocalCoverImage($coverImage);
             $coverImage = $this->storeCoverImage($request->file('cover_image'));
         }
-
-        $samePaidPackage = $pricingType === 'free'
-            && $event->packageIsPaid()
-            && (int) $event->package_id === (int) ($package?->id ?? 0);
 
         $event->update([
             'title' => $data['title'],
@@ -243,8 +242,8 @@ class EventController extends Controller
             'cover_image' => $coverImage,
             'is_private' => false,
             'pricing_type' => $pricingType,
-            'package_id' => $package?->id,
-            'package_paid_at' => $samePaidPackage ? $event->package_paid_at : null,
+            'package_id' => null,
+            'package_paid_at' => null,
             'status' => $status,
         ]);
 
@@ -257,7 +256,81 @@ class EventController extends Controller
         $this->syncProgramme($event, $request, true);
         $this->syncGallery($event, $request, true);
 
-        return $this->afterSave($event->fresh(['package', 'ticketTypes']), $wantsReview, created: false, previousStatus: $previousStatus);
+        return $this->afterSave($event->fresh(['ticketTypes']), $wantsReview, created: false, previousStatus: $previousStatus);
+    }
+
+    public function orders(Request $request, Event $event): View
+    {
+        $this->authorizeEvent($event);
+        $event->load('ticketTypes');
+
+        $totalCards = (int) $event->ticketTypes->sum('quantity_available');
+        $bookedCards = (int) $event->ticketTypes->sum('quantity_sold');
+        $remainingCards = max(0, $totalCards - $bookedCards);
+
+        $query = Order::query()
+            ->where('event_id', $event->id)
+            ->where(function ($q) {
+                $q->whereNull('source')
+                    ->orWhereNotIn('source', ['organizer_package', 'private_event']);
+            });
+
+        if ($search = $request->string('q')->trim()->toString()) {
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('buyer_name', 'like', "%{$search}%")
+                    ->orWhere('buyer_phone', 'like', "%{$search}%");
+            });
+        }
+
+        $type = $request->string('type')->toString();
+        if ($type === 'sale') {
+            $query->where(function ($q) {
+                $q->whereNull('source')->orWhere('source', '!=', 'invitation');
+            });
+        } elseif ($type === 'invitation') {
+            $query->where('source', 'invitation');
+        }
+
+        if ($status = $request->string('status')->toString()) {
+            if ($status === 'private_sent') {
+                $query->where('source', 'invitation')->where('status', 'paid');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($ticketTypeId = $request->integer('ticket_type_id')) {
+            $query->whereHas('items', fn ($q) => $q->where('ticket_type_id', $ticketTypeId));
+        }
+
+        if ($from = $request->string('date_from')->toString()) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+
+        if ($to = $request->string('date_to')->toString()) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        $orders = $query
+            ->with(['items.ticketType', 'invitation'])
+            ->latest()
+            ->paginate(25)
+            ->withQueryString();
+
+        $filterKeys = ['q', 'type', 'status', 'ticket_type_id', 'date_from', 'date_to'];
+        $filtersActive = collect($request->only($filterKeys))
+            ->filter(fn ($v) => $v !== null && $v !== '')
+            ->isNotEmpty();
+
+        return view('organizer.events.orders', compact(
+            'event',
+            'orders',
+            'totalCards',
+            'bookedCards',
+            'remainingCards',
+            'filtersActive',
+        ));
     }
 
     public function payForm(Event $event): View|RedirectResponse
@@ -267,8 +340,8 @@ class EventController extends Controller
 
         if (! $event->needsPackagePayment()) {
             return redirect()
-                ->route('organizer.events.edit', $event)
-                ->with('success', 'This event does not need a package payment.');
+                ->route('organizer.events.index')
+                ->with('success', 'This event does not need payment right now.');
         }
 
         try {
@@ -286,6 +359,9 @@ class EventController extends Controller
             'allowForceFail' => OrderService::allowsForceFail(),
             'waafiSandbox' => (bool) config('waafipay.sandbox'),
             'waafiTestWallets' => config('waafipay.test_wallets', []),
+            'waafiCardCheckout' => (bool) config('waafipay.card_checkout_enabled'),
+            'waafiHppEnabled' => (bool) config('waafipay.hpp_enabled'),
+            'waafiTestCards' => config('waafipay.test_cards', []),
         ]);
     }
 
@@ -294,15 +370,19 @@ class EventController extends Controller
         $this->authorizeEvent($event);
         $event->load(['package', 'ticketTypes', 'organizer']);
 
+        $allowedMethods = config('waafipay.card_checkout_enabled')
+            ? 'waafipay,waafipay_card'
+            : 'waafipay';
         $data = $request->validate([
-            'payment_method' => ['required', 'in:waafipay'],
+            'payment_method' => ['required', 'in:'.$allowedMethods],
             'force_fail' => ['sometimes', 'boolean'],
             'wallet_pin' => ['nullable', 'string', 'max:8'],
             'buyer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
+        $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && $walletPin === null) {
+        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
             return back()->withErrors([
                 'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
             ]);
@@ -315,7 +395,7 @@ class EventController extends Controller
         }
 
         $chargePhone = Phone::normalize(auth()->user()->phone ?: $event->organizer?->business_phone);
-        if (config('waafipay.sandbox')) {
+        if (config('waafipay.sandbox') && ! $isCard) {
             $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
             if ($chargePhone === '') {
                 return back()->withErrors([
@@ -336,12 +416,14 @@ class EventController extends Controller
             return back()->withErrors($e->errors());
         }
 
+        if ($url = app(OrderService::class)->cardRedirectUrl($order)) {
+            return redirect()->away($url);
+        }
+
         if ($order->status === 'paid') {
             return redirect()
                 ->route('organizer.events.index')
-                ->with('success', $event->fresh()->status === 'pending_review'
-                    ? 'Package paid. Event submitted for admin review.'
-                    : 'Package paid. You can submit this event for review when ready.');
+                ->with('success', 'Payment received. Your free event is now live.');
         }
 
         if ($order->status === 'pending') {
@@ -370,6 +452,36 @@ class EventController extends Controller
         return redirect()->route('organizer.events.index')->with('success', 'Event deleted.');
     }
 
+    public function cancel(Event $event): RedirectResponse
+    {
+        $this->authorizeEvent($event);
+
+        if ($event->status === 'cancelled') {
+            return back()->with('success', 'This event is already cancelled.');
+        }
+
+        $event->update(['status' => 'cancelled']);
+
+        return redirect()
+            ->route('organizer.events.index')
+            ->with('success', 'Event cancelled. It is no longer listed publicly.');
+    }
+
+    public function reactivate(Event $event): RedirectResponse
+    {
+        $this->authorizeEvent($event);
+
+        if ($event->status !== 'cancelled') {
+            return back()->with('error', 'Only cancelled events can be reactivated.');
+        }
+
+        $event->update(['status' => 'draft']);
+
+        return redirect()
+            ->route('organizer.events.edit', $event)
+            ->with('success', 'Event reactivated as a draft. Submit it for review when ready.');
+    }
+
     private function authorizeEvent(Event $event): void
     {
         abort_unless($event->organizer_id === $this->organizerProfile()->id, 403);
@@ -382,17 +494,10 @@ class EventController extends Controller
         OrganizerProfile $profile,
         array $tickets,
         string $pricingType,
-        ?OrganizerPackage $freePackage,
         ?Event $event = null,
     ): ?string {
-        $totalTickets = collect($tickets)->sum(fn ($row) => (int) ($row['quantity_available'] ?? 0));
-
         if ($pricingType === 'free') {
-            if (! $freePackage) {
-                return 'Choose a free-event package.';
-            }
-
-            return $freePackage->ticketLimitError($totalTickets);
+            return null;
         }
 
         return $this->packageLimitError($profile, $tickets, $event);
@@ -468,29 +573,6 @@ class EventController extends Controller
         return $data['pricing_type'];
     }
 
-    private function resolvedFreeEventPackage(Request $request, string $pricingType, ?Event $event = null): ?OrganizerPackage
-    {
-        if ($pricingType !== 'free') {
-            return null;
-        }
-
-        if ($event?->packageIsPaid() && $event->package_id) {
-            return $event->package ?: OrganizerPackage::query()->find($event->package_id);
-        }
-
-        $data = $request->validate([
-            'package_id' => [
-                'required',
-                'integer',
-                Rule::exists('organizer_packages', 'id')
-                    ->where('kind', OrganizerPackage::KIND_FREE_EVENT)
-                    ->where('is_active', true),
-            ],
-        ]);
-
-        return OrganizerPackage::query()->find($data['package_id']);
-    }
-
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -531,30 +613,14 @@ class EventController extends Controller
      */
     private function formPayload(Event $event, $ticketTypes, OrganizerProfile $profile): array
     {
-        $freePackages = OrganizerPackage::query()
-            ->active()
-            ->freeEventPlans()
-            ->ordered()
-            ->get()
-            ->map(fn (OrganizerPackage $package) => [
-                'id' => $package->id,
-                'name' => $package->name,
-                'description' => $package->description,
-                'price' => $package->chargeAmount(),
-                'price_label' => $package->displayPrice(),
-                'range_label' => $package->ticketRangeLabel(),
-                'min' => $package->min_tickets_per_event,
-                'max' => $package->max_tickets_per_event,
-                'features' => $package->features ?? [],
-                'highlighted' => (bool) $package->is_highlighted,
-            ]);
+        $freeTicketFee = (float) Setting::getValue('free_ticket_organizer_fee', 0.25);
 
         return [
             'event' => $event,
             'categories' => $event->exists ? $this->categoryOptionsFor($event) : Category::activeNames(),
             'cities' => $event->exists ? $this->cityOptionsFor($event) : City::activeNames(),
             'ticketTypes' => $ticketTypes,
-            'freePackages' => $freePackages,
+            'freeTicketFee' => $freeTicketFee,
             'commissionRate' => $profile->effectiveCommissionRate(),
             'pricingLocked' => $event->exists && $event->pricingIsLocked(),
             'pendingInvites' => $this->pendingInviteRows($event),
@@ -567,30 +633,11 @@ class EventController extends Controller
 
     private function afterSave(Event $event, bool $wantsReview, bool $created, ?string $previousStatus = null): RedirectResponse
     {
-        $event->loadMissing('package');
-
-        if ($event->isFreeEvent() && $event->package && $event->package->chargeAmount() <= 0) {
-            $this->packages->markComplimentaryPackagePaid($event, $wantsReview ? 'pending_review' : 'draft');
-            $event->refresh();
-        }
-
-        if ($event->needsPackagePayment()) {
-            if ($wantsReview) {
-                session(['event_package_after_pay.'.$event->id => 'pending_review']);
-            }
-
-            return redirect()
-                ->route('organizer.events.pay', $event)
-                ->with('success', $created
-                    ? 'Event saved. Pay the selected package to continue.'
-                    : 'Event updated. Pay the selected package to continue.');
-        }
-
         if ($wantsReview && $event->status !== 'pending_review' && $event->status !== 'published') {
             $event->update(['status' => 'pending_review']);
         }
 
-        $event = $event->fresh(['package', 'ticketTypes']);
+        $event = $event->fresh(['ticketTypes']);
         $inviteNote = '';
         if ($event->status === 'published' && $event->hasPendingInvitations()) {
             $flushed = $this->invitations->flushPending($event);
@@ -646,7 +693,7 @@ class EventController extends Controller
     {
         $data = $request->validate([
             'invite_channel' => ['nullable', 'in:sms,whatsapp'],
-            'invites' => ['nullable', 'array', 'max:'.Event::MAX_COMPLIMENTARY_GUESTS],
+            'invites' => ['nullable', 'array', 'max:500'],
             'invites.*.name' => ['nullable', 'string', 'max:120'],
             'invites.*.phone' => ['nullable', 'string', 'max:30'],
             'invites.*.quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -670,12 +717,6 @@ class EventController extends Controller
 
         if ($guests === []) {
             return null;
-        }
-
-        if (count($guests) > Event::MAX_COMPLIMENTARY_GUESTS) {
-            throw ValidationException::withMessages([
-                'invites' => ['Complimentary guests are limited to '.Event::MAX_COMPLIMENTARY_GUESTS.' per event.'],
-            ]);
         }
 
         return [

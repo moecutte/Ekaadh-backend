@@ -38,7 +38,6 @@ class TicketController extends Controller
             $accountMode = true;
             $tickets = Ticket::query()
                 ->with(['event', 'orderItem.order', 'invitation'])
-                ->forPublicEvents()
                 ->where(function ($q) use ($user) {
                     $q->whereHas('orderItem.order', function ($q) use ($user) {
                         $q->where('status', 'paid')
@@ -69,7 +68,6 @@ class TicketController extends Controller
                 $normalized = $this->otp->normalize($phone);
                 $phone = $normalized;
                 $tickets = $this->otp->findableTicketsForPhone($normalized)
-                    ->filter(fn (Ticket $ticket) => ! $ticket->event?->is_private)
                     ->values()
                     ->map(fn (Ticket $ticket) => $this->decorate($ticket));
             } catch (\Illuminate\Validation\ValidationException $e) {
@@ -78,6 +76,17 @@ class TicketController extends Controller
         } elseif ($request->filled('phone') || $request->filled('otp_token')) {
             $searched = true;
             $error = 'Confirm your phone with the code we sent to view tickets.';
+        }
+
+        $filterOptions = $this->ticketFilterOptions($tickets);
+        $filtersActive = false;
+        if ($tickets->isNotEmpty()) {
+            [$tickets, $filtersActive] = $this->filterTickets($tickets, $request);
+        }
+
+        $when = $request->string('when')->toString();
+        if (! in_array($when, ['all', 'upcoming', 'past'], true)) {
+            $when = 'all';
         }
 
         return view('tickets.index', [
@@ -89,10 +98,159 @@ class TicketController extends Controller
             'isCustomer' => $isCustomer,
             'error' => $error,
             'otpMode' => true,
-            'otpToken' => $searched && $tickets->isNotEmpty() ? $otpToken : '',
+            'otpToken' => $searched && $otpToken !== '' ? $otpToken : '',
             'otpSendUrl' => route('otp.send'),
             'otpVerifyUrl' => route('otp.verify'),
+            'filterOptions' => $filterOptions,
+            'filtersActive' => $filtersActive,
+            'when' => $when,
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Ticket>  $tickets
+     * @return array{0: \Illuminate\Support\Collection<int, Ticket>, 1: bool}
+     */
+    private function filterTickets($tickets, Request $request): array
+    {
+        $when = $request->string('when')->toString();
+        if (! in_array($when, ['all', 'upcoming', 'past'], true)) {
+            $when = 'all';
+        }
+        $status = $request->string('status')->toString();
+        $origin = $request->string('origin')->toString();
+        if (! in_array($origin, ['private', 'invitation', 'website_paid', 'website_free'], true)) {
+            $origin = '';
+        }
+        $q = mb_strtolower($request->string('q')->trim()->toString());
+        $category = $request->string('category')->trim()->toString();
+        $city = $request->string('city')->trim()->toString();
+
+        $filtersActive = collect([
+            $when !== 'all' ? $when : null,
+            $status,
+            $origin,
+            $q,
+            $category,
+            $city,
+        ])->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
+
+        $filtered = $tickets->filter(function (Ticket $ticket) use ($when, $status, $origin, $q, $category, $city) {
+            $event = $ticket->event;
+            $expired = $event?->isExpired() ?? false;
+
+            if ($when === 'upcoming' && $expired) {
+                return false;
+            }
+            if ($when === 'past' && ! $expired) {
+                return false;
+            }
+
+            if ($status !== '' && strtolower((string) $ticket->status) !== strtolower($status)) {
+                return false;
+            }
+
+            if ($origin !== '' && $this->ticketOrigin($ticket) !== $origin) {
+                return false;
+            }
+
+            if ($category !== '' && (string) ($event?->category ?? '') !== $category) {
+                return false;
+            }
+
+            if ($city !== '' && (string) ($event?->city ?? '') !== $city) {
+                return false;
+            }
+
+            if ($q !== '') {
+                $haystack = mb_strtolower(implode(' ', array_filter([
+                    $event?->title,
+                    $event?->venue,
+                    $event?->city,
+                    $event?->category,
+                    $ticket->ticket_type_name,
+                    $ticket->ticket_code,
+                    $ticket->holder_name,
+                    $ticket->origin_label ?? null,
+                ])));
+                if (! str_contains($haystack, $q)) {
+                    return false;
+                }
+            }
+
+            return true;
+        })->values();
+
+        return [$filtered, $filtersActive];
+    }
+
+    /**
+     * private | invitation | website_paid | website_free
+     */
+    private function ticketOrigin(Ticket $ticket): string
+    {
+        $event = $ticket->event;
+        if ($event?->is_private) {
+            return 'private';
+        }
+
+        $order = $ticket->orderItem?->order;
+        if ($ticket->invitation_id || ($order && $order->isInvitation())) {
+            return 'invitation';
+        }
+
+        if ($event?->isFreeEvent()) {
+            return 'website_free';
+        }
+
+        return 'website_paid';
+    }
+
+    private function ticketOriginLabel(string $origin): string
+    {
+        return match ($origin) {
+            'private' => __('ui.ticket_origin_private'),
+            'invitation' => __('ui.ticket_origin_invitation'),
+            'website_paid' => __('ui.ticket_origin_website_paid'),
+            'website_free' => __('ui.ticket_origin_website_free'),
+            default => __('ui.ticket_origin_website_paid'),
+        };
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Ticket>  $tickets
+     * @return array{categories: list<string>, cities: list<string>}
+     */
+    private function ticketFilterOptions($tickets): array
+    {
+        $categories = $tickets
+            ->map(fn (Ticket $t) => trim((string) ($t->event?->category ?? '')))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $cities = $tickets
+            ->map(fn (Ticket $t) => trim((string) ($t->event?->city ?? '')))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return compact('categories', 'cities');
+    }
+
+    private function decorate(Ticket $ticket): Ticket
+    {
+        $ticket->qr_image = $this->qr->imageUrl($ticket->ticket_code);
+        $ticket->ticket_url = $this->qr->publicUrl($ticket->ticket_code);
+        $origin = $this->ticketOrigin($ticket);
+        $ticket->origin = $origin;
+        $ticket->origin_label = $this->ticketOriginLabel($origin);
+
+        return $ticket;
     }
 
     public function show(string $code): View
@@ -124,7 +282,6 @@ class TicketController extends Controller
             ->where('ticket_code', strtoupper($code))
             ->firstOrFail();
 
-        $payload = $this->qr->payload($ticket->ticket_code);
         $qrDataUri = $this->qr->pngDataUri($ticket->ticket_code, 400);
 
         $design = \App\Support\TicketDesigns::resolveForEvent($ticket->event);
@@ -176,14 +333,6 @@ class TicketController extends Controller
             'Content-Type' => 'image/png',
             'Cache-Control' => 'private, max-age=300',
         ]);
-    }
-
-    private function decorate(Ticket $ticket): Ticket
-    {
-        $ticket->qr_image = $this->qr->imageUrl($ticket->ticket_code);
-        $ticket->ticket_url = $this->qr->publicUrl($ticket->ticket_code);
-
-        return $ticket;
     }
 
     private function imageDataUri(?string $url): ?string

@@ -83,6 +83,15 @@ class TicketDesigns
 
     public static function publicDefault(): array
     {
+        if (Schema::hasTable('invitation_designs')) {
+            $design = InvitationDesign::defaultPublic();
+            if ($design) {
+                $design->loadMissing('fields');
+
+                return $design->toCatalogArray();
+            }
+        }
+
         return [
             'id' => 'public',
             'name' => 'Ekaadh Classic',
@@ -105,6 +114,7 @@ class TicketDesigns
             'font_display' => 'Plus Jakarta Sans',
             'font_body' => 'Plus Jakarta Sans',
             'render_mode' => 'blade',
+            'blade_key' => 'public',
             'fields' => [],
         ];
     }

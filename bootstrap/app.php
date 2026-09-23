@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->throttleApi('api');
         $middleware->trustProxies(at: '*');
+        $middleware->validateCsrfTokens(except: [
+            'payments/waafi/hpp/*',
+        ]);
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('admin') || $request->is('admin/*')) {
                 return route('admin.login');

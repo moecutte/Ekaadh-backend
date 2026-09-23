@@ -17,7 +17,7 @@ class OrganizerEventPackageService
     public function pendingOrder(Event $event): ?Order
     {
         return Order::query()
-            ->with(['items.ticketType', 'event.package'])
+            ->with(['items.ticketType', 'event'])
             ->where('event_id', $event->id)
             ->where('source', 'organizer_package')
             ->where('status', 'pending')
@@ -27,40 +27,39 @@ class OrganizerEventPackageService
 
     public function pendingOrCreate(Event $event, User $organizer): Order
     {
-        $event->loadMissing(['package', 'ticketTypes', 'organizer']);
+        $event->loadMissing(['ticketTypes', 'organizer']);
 
-        if (! $event->isFreeEvent()) {
+        if (! $event->isFreeEvent() || $event->is_private) {
             throw ValidationException::withMessages([
-                'event' => ['Only free events require a package payment.'],
+                'event' => ['Only free public events require this payment.'],
+            ]);
+        }
+
+        if ($event->status !== 'published') {
+            throw ValidationException::withMessages([
+                'event' => ['Wait for admin approval before paying for this free event.'],
             ]);
         }
 
         if ($event->packageIsPaid()) {
             throw ValidationException::withMessages([
-                'event' => ['This event package is already paid.'],
+                'event' => ['This free event is already paid (or free of charge).'],
             ]);
         }
 
-        $package = $event->package;
-        if (! $package || ! $package->isFreeEventPackage() || ! $package->is_active) {
-            throw ValidationException::withMessages([
-                'package_id' => ['Choose a valid free-event package.'],
-            ]);
-        }
-
-        $amount = $package->chargeAmount();
+        $amount = $event->freeEventChargeAmount();
         if ($amount <= 0) {
             throw ValidationException::withMessages([
-                'package_id' => ['This package does not require payment.'],
+                'event' => ['This free event does not require payment.'],
             ]);
         }
 
         $pending = $this->pendingOrder($event);
-        if ($pending && (float) $pending->total_amount === $amount) {
+        if ($pending && abs((float) $pending->total_amount - $amount) < 0.001) {
             return $pending;
         }
 
-        return DB::transaction(function () use ($event, $organizer, $package, $amount, $pending) {
+        return DB::transaction(function () use ($event, $organizer, $amount, $pending) {
             if ($pending) {
                 $pending->update(['status' => 'cancelled']);
             }
@@ -104,7 +103,7 @@ class OrganizerEventPackageService
                 'subtotal' => $amount,
             ]);
 
-            return $order->load(['items.ticketType', 'event.package']);
+            return $order->load(['items.ticketType', 'event']);
         });
     }
 
@@ -112,7 +111,7 @@ class OrganizerEventPackageService
     {
         if ($order->source !== 'organizer_package') {
             throw ValidationException::withMessages([
-                'order' => ['This order is not a free-event package purchase.'],
+                'order' => ['This order is not a free-event capacity payment.'],
             ]);
         }
 
@@ -121,43 +120,43 @@ class OrganizerEventPackageService
 
     public function fulfill(Order $order): void
     {
-        $order->loadMissing('event');
+        $order->loadMissing('event.ticketTypes');
         $event = $order->event;
         if (! $event || ! $event->isFreeEvent()) {
             return;
         }
 
-        $updates = ['package_paid_at' => $event->package_paid_at ?: now()];
-        $after = session('event_package_after_pay.'.$event->id);
-        if ($after === 'pending_review' && $event->status === 'draft') {
-            $updates['status'] = 'pending_review';
+        $event->update([
+            'package_paid_at' => $event->package_paid_at ?: now(),
+        ]);
+
+        $event = $event->fresh(['ticketTypes']);
+        app(InvitationService::class)->flushPending($event);
+
+        $user = $event->organizer?->user;
+        if (! $user) {
+            $event->loadMissing('organizer.user');
+            $user = $event->organizer?->user;
         }
-
-        $becameReview = ($updates['status'] ?? null) === 'pending_review';
-        $event->update($updates);
-        session()->forget('event_package_after_pay.'.$event->id);
-
-        if ($becameReview) {
-            app(PanelNotifier::class)->eventSubmittedForReview($event->fresh('organizer'));
+        if ($user) {
+            app(PanelNotifier::class)->toUser(
+                $user,
+                'Free event is live',
+                "{$event->title} payment received. Your event is now live.",
+                'event_published',
+                route('organizer.events.index'),
+                ['event_id' => (string) $event->id],
+            );
         }
     }
 
-    public function markComplimentaryPackagePaid(Event $event, string $afterStatus = 'draft'): void
+    public function markComplimentaryPackagePaid(Event $event): void
     {
-        $event->loadMissing('package');
         if (! $event->isFreeEvent() || $event->packageIsPaid()) {
             return;
         }
 
-        if ($event->package && $event->package->chargeAmount() > 0) {
-            return;
-        }
-
-        $updates = ['package_paid_at' => now()];
-        if ($afterStatus === 'pending_review' && $event->status === 'draft') {
-            $updates['status'] = 'pending_review';
-        }
-        $event->update($updates);
+        $event->update(['package_paid_at' => now()]);
     }
 
     private function organizerEmail(User $organizer): ?string

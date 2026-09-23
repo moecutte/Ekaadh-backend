@@ -4,13 +4,18 @@
 
 @section('content')
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-mute max-w-xl">Web themes for private invitations. Pick a layout and colors — customers fill names and venue when they create an event.</p>
+    <p class="text-sm text-mute max-w-xl">Designs for private invitations and public event tickets. Choose the type when creating a design.</p>
     <a href="{{ route('admin.invitation-designs.create') }}" class="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-bold">New design</a>
 </div>
 
 <form method="GET" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5">
     <div class="flex flex-wrap gap-3">
         <input name="q" value="{{ request('q') }}" placeholder="Search designs…" class="flex-1 min-w-[180px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+        <select name="audience" class="rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+            <option value="">All types</option>
+            <option value="private_invitation" @selected(request('audience')==='private_invitation')>Private invitations</option>
+            <option value="public_event" @selected(request('audience')==='public_event')>Public events</option>
+        </select>
         <select name="category" class="rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
             <option value="">All categories</option>
             @foreach($categories as $cat)
@@ -37,14 +42,28 @@
                 @endif
             </div>
             <div class="flex-1 min-w-[180px]">
-                <div class="font-bold">{{ $design->category?->name ?? 'Design' }} · #{{ $design->id }}</div>
+                <div class="font-bold">
+                    @if($design->isPublicAudience())
+                        {{ $design->name ?: 'Public ticket' }}
+                    @else
+                        {{ $design->category?->name ?? 'Design' }} · #{{ $design->id }}
+                    @endif
+                </div>
                 <div class="text-xs text-mute mt-0.5">
-                    {{ $design->tier }} · {{ $design->blade_key ?: $design->render_mode }}
+                    {{ $design->audienceLabel() }}
+                    · {{ $design->tier }}
+                    · {{ $design->blade_key ?: $design->render_mode }}
+                    @if($design->is_default)
+                        · <span class="text-brand font-bold">default</span>
+                    @endif
                     @if($design->events_count)
                         · {{ $design->events_count }} {{ \Illuminate\Support\Str::plural('event', $design->events_count) }}
                     @endif
                 </div>
             </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $design->isPublicAudience() ? 'bg-sky-50 text-sky-700 border-sky-100' : 'bg-violet-50 text-violet-700 border-violet-100' }}">
+                {{ $design->isPublicAudience() ? 'Public' : 'Private' }}
+            </span>
             @if($design->is_active)
                 <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">active</span>
             @else

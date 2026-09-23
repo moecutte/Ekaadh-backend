@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
-    public const MAX_COMPLIMENTARY_GUESTS = 15;
-
     protected $fillable = [
         'organizer_id',
         'owner_user_id',
@@ -28,6 +26,7 @@ class Event extends Model
         'is_featured',
         'is_private',
         'pricing_type',
+        'platform_charges_waived',
         'package_id',
         'package_paid_at',
         'ticket_design',
@@ -46,6 +45,7 @@ class Event extends Model
             'event_date' => 'date',
             'is_featured' => 'boolean',
             'is_private' => 'boolean',
+            'platform_charges_waived' => 'boolean',
             'package_paid_at' => 'datetime',
             'invitation_field_values' => 'array',
             'pending_invitations' => 'array',
@@ -96,31 +96,75 @@ class Event extends Model
         return $this->pricing_type === 'free';
     }
 
+    public function platformChargesWaived(): bool
+    {
+        return (bool) $this->platform_charges_waived;
+    }
+
+    public function freeEventFeePerTicket(): float
+    {
+        return (float) Setting::getValue('free_ticket_organizer_fee', 0.25);
+    }
+
+    public function freeEventCapacity(): int
+    {
+        $this->loadMissing('ticketTypes');
+
+        return max(0, (int) $this->ticketTypes->sum('quantity_available'));
+    }
+
+    /**
+     * Upfront platform charge for a free public event (capacity × per-ticket fee).
+     */
+    public function freeEventChargeAmount(): float
+    {
+        if (! $this->isFreeEvent() || $this->is_private || $this->platformChargesWaived()) {
+            return 0.0;
+        }
+
+        return round($this->freeEventCapacity() * $this->freeEventFeePerTicket(), 2);
+    }
+
     public function packageIsPaid(): bool
     {
-        if (! $this->isFreeEvent()) {
+        if (! $this->isFreeEvent() || $this->is_private) {
             return true;
         }
 
-        $price = (float) ($this->package?->price ?? 0);
-        if ($price <= 0) {
+        if ($this->platformChargesWaived()) {
             return true;
         }
 
         return $this->package_paid_at !== null;
     }
 
+    /**
+     * Free public events must be paid by the organizer after admin publish (unless waived).
+     */
     public function needsPackagePayment(): bool
     {
-        return $this->isFreeEvent() && ! $this->packageIsPaid();
+        return $this->isFreeEvent()
+            && ! $this->is_private
+            && $this->status === 'published'
+            && ! $this->packageIsPaid()
+            && $this->freeEventChargeAmount() > 0;
+    }
+
+    public function isPubliclyBookable(): bool
+    {
+        if ($this->status !== 'published' || $this->is_private) {
+            return false;
+        }
+
+        if ($this->isFreeEvent() && ! $this->packageIsPaid()) {
+            return false;
+        }
+
+        return true;
     }
 
     public function pricingIsLocked(): bool
     {
-        if ($this->isFreeEvent() && $this->package_paid_at) {
-            return true;
-        }
-
         return Order::query()
             ->where('event_id', $this->id)
             ->where('status', 'paid')
@@ -145,13 +189,25 @@ class Event extends Model
         return $this->invitations()->where('status', 'active')->count();
     }
 
+    /**
+     * Remaining ticket seats available for complimentary invites (same pool as public sales).
+     */
     public function complimentaryGuestSlotsLeft(): int
     {
         if ($this->is_private) {
             return PHP_INT_MAX;
         }
 
-        return max(0, self::MAX_COMPLIMENTARY_GUESTS - $this->activeComplimentaryGuestCount());
+        $this->loadMissing('ticketTypes');
+
+        return max(0, (int) $this->ticketTypes->sum(fn (TicketType $type) => $type->remaining()));
+    }
+
+    public function totalInvitationCapacity(): int
+    {
+        $this->loadMissing('ticketTypes');
+
+        return max(0, (int) $this->ticketTypes->sum('quantity_available'));
     }
 
     public function inviteHostName(): string
@@ -289,7 +345,13 @@ class Event extends Model
     /** Public browse / purchase listings (excludes private invite-only events). */
     public function scopePublicListing($query)
     {
-        return $query->where('status', 'published')->where('is_private', false);
+        return $query->where('status', 'published')
+            ->where('is_private', false)
+            ->where(function ($q) {
+                $q->where('pricing_type', '!=', 'free')
+                    ->orWhereNotNull('package_paid_at')
+                    ->orWhere('platform_charges_waived', true);
+            });
     }
 
     public function scopeUpcoming($query)

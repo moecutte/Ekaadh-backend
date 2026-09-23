@@ -18,6 +18,7 @@ class Ticket extends Model
         'checked_in_at',
         'checked_in_by',
         'reminder_24h_sent_at',
+        'reminder_2h_sent_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class Ticket extends Model
         return [
             'checked_in_at' => 'datetime',
             'reminder_24h_sent_at' => 'datetime',
+            'reminder_2h_sent_at' => 'datetime',
         ];
     }
 

@@ -40,6 +40,10 @@
         </div>
     </header>
 
+    @if($tickets->isNotEmpty() || $filtersActive)
+        @include('tickets.partials.filters', ['preserveQuery' => []])
+    @endif
+
     <div class="space-y-3">
         @forelse($tickets as $ticket)
             @php
@@ -64,6 +68,12 @@
                             @if($timeLabel) · {{ $timeLabel }} @endif
                         </p>
                         <p class="text-xs text-mute">{{ $ticket->ticket_type_name }}</p>
+                        @if(! empty($ticket->origin_label))
+                            <p class="text-[11px] font-semibold mt-0.5
+                                {{ ($ticket->origin ?? '') === 'private' ? 'text-violet-700' : (($ticket->origin ?? '') === 'invitation' ? 'text-brand' : 'text-mute') }}">
+                                {{ $ticket->origin_label }}
+                            </p>
+                        @endif
                     </div>
                     <div class="flex flex-col items-end gap-2 shrink-0">
                         @php
@@ -140,9 +150,15 @@
             <div class="{{ $card }}">
                 <div class="{{ $bar }}"></div>
                 <div class="text-center py-12 px-5 text-mute">
-                    <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_yet') }}</p>
-                    <p class="text-sm mb-5">{{ __('ui.tickets_empty_hint') }}</p>
-                    <a href="{{ route('events.index') }}" class="inline-flex rounded-2xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.browse_events_cta') }}</a>
+                    @if($filtersActive)
+                        <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_filters') }}</p>
+                        <p class="text-sm mb-5">{{ __('ui.try_different_search') }}</p>
+                        <a href="{{ route('tickets.index') }}" class="inline-flex rounded-2xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.clear_filters') }}</a>
+                    @else
+                        <p class="font-semibold text-ink mb-1">{{ __('ui.no_tickets_yet') }}</p>
+                        <p class="text-sm mb-5">{{ __('ui.tickets_empty_hint') }}</p>
+                        <a href="{{ route('events.index') }}" class="inline-flex rounded-2xl bg-brand text-white font-extrabold px-5 py-3 text-sm hover:bg-brand-dark">{{ __('ui.browse_events_cta') }}</a>
+                    @endif
                 </div>
             </div>
         @endforelse
@@ -167,7 +183,6 @@
             'enterPhoneNumber' => __('ui.enter_phone_number'),
             'couldNotSendCode' => __('ui.could_not_send_code'),
             'codeSent' => __('ui.code_sent'),
-            'testingCode' => __('ui.testing_code'),
             'enterConfirmationCode' => __('ui.enter_confirmation_code'),
             'couldNotVerifyCode' => __('ui.could_not_verify_code'),
             'invalidCode' => __('ui.invalid_code'),
@@ -255,6 +270,14 @@
     </div>
 
     @if($searched && ! $error)
+        @if($tickets->isNotEmpty() || $filtersActive)
+            @include('tickets.partials.filters', [
+                'preserveQuery' => array_filter([
+                    'phone' => $phone,
+                    'otp_token' => $otpToken ?? '',
+                ]),
+            ])
+        @endif
         <div class="space-y-3">
         @forelse($tickets as $ticket)
             <a href="{{ route('tickets.show', $ticket->ticket_code) }}" class="block {{ $card }} hover:shadow-md transition">
@@ -271,19 +294,32 @@
                         {{ $ticket->event?->isExpired() ? __('ui.expired') : ($ticket->status === 'valid' ? __('ui.valid') : ucfirst($ticket->status)) }}
                     </span>
                 </div>
-                <div class="px-4 py-3 flex items-center justify-between">
-                    <div>
+                <div class="px-4 py-3 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
                         <div class="text-xs font-semibold text-mute">{{ $ticket->ticket_type_name }}</div>
+                        @if(! empty($ticket->origin_label))
+                            <div class="text-[11px] font-semibold mt-0.5 truncate
+                                {{ ($ticket->origin ?? '') === 'private' ? 'text-violet-700' : (($ticket->origin ?? '') === 'invitation' ? 'text-brand' : 'text-mute') }}">
+                                {{ $ticket->origin_label }}
+                            </div>
+                        @endif
                         <div class="text-sm font-extrabold text-brand font-mono">{{ $ticket->ticket_code }}</div>
                     </div>
-                    <span class="text-sm font-bold text-brand">{{ __('ui.view_qr') }} →</span>
+                    <span class="text-sm font-bold text-brand shrink-0">{{ __('ui.view_qr') }} →</span>
                 </div>
             </a>
         @empty
             <div class="{{ $card }}">
                 <div class="{{ $bar }}"></div>
                 <div class="text-center py-12 px-5 text-sm text-mute">
-                    {{ __('ui.no_tickets_for_phone') }}
+                    @if($filtersActive)
+                        {{ __('ui.no_tickets_filters') }}
+                        <div class="mt-3">
+                            <a href="{{ route('tickets.index', array_filter(['phone' => $phone, 'otp_token' => $otpToken ?? ''])) }}" class="text-brand font-bold">{{ __('ui.clear_filters') }}</a>
+                        </div>
+                    @else
+                        {{ __('ui.no_tickets_for_phone') }}
+                    @endif
                 </div>
             </div>
         @endforelse
@@ -351,9 +387,7 @@ function findTicketsOtp(cfg) {
                     return false;
                 }
                 this.otpSent = true;
-                this.otpHint = body.debug_code
-                    ? i18n.testingCode.replace(':code', body.debug_code)
-                    : (body.message || i18n.codeSent);
+                this.otpHint = body.message || i18n.codeSent;
                 return true;
             } catch (e) {
                 this.error = e.message || i18n.couldNotSendCode;

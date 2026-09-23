@@ -3,7 +3,13 @@
         <div class="flex items-center justify-between mb-3 gap-2">
             <div>
                 <h3 class="text-sm font-bold">Live theme preview</h3>
-                <p class="text-xs text-mute mt-0.5">Same invitation guests receive — tap the envelope to open it.</p>
+                <p class="text-xs text-mute mt-0.5">
+                    @if($design->exists && $design->isPublicAudience())
+                        Classic cover + QR ticket inside the envelope — tap to open.
+                    @else
+                        Same invitation guests receive — tap the envelope to open it.
+                    @endif
+                </p>
             </div>
         </div>
 

@@ -40,8 +40,12 @@ return [
     */
     'cafile' => env('TELESOM_CAFILE', env('WAAFIPAY_CAFILE')),
 
-    'sms_path' => '/index.php/smsapi/v1/messages',
+    'sms_path' => env('TELESOM_SMS_PATH', '/index.php/smsapi/v1/messages'),
 
-    'otp_path' => '/index.php/smsotpapi/v1/messages',
+    /*
+    | Telesom OTP prepaid API. Confirmation codes are POSTed here (numeric
+    | code in `message`). Ticket / invitation texts stay on sms_path.
+    */
+    'otp_path' => env('TELESOM_OTP_PATH', '/index.php/smsotpapi/v1/otp'),
 
 ];

@@ -34,6 +34,10 @@ class InvitationDesignController extends Controller
             $query->where('is_active', $request->string('status')->toString() === 'active');
         }
 
+        if ($request->filled('audience')) {
+            $query->where('audience', $request->string('audience')->toString());
+        }
+
         if ($request->filled('category')) {
             $query->where('private_event_category_id', $request->integer('category'));
         }
@@ -48,10 +52,12 @@ class InvitationDesignController extends Controller
     {
         return view('admin.invitation-designs.form', [
             'design' => new InvitationDesign([
+                'audience' => InvitationDesign::AUDIENCE_PRIVATE,
                 'tier' => 'standard',
                 'render_mode' => 'blade',
                 'blade_key' => 'blush_petal',
                 'is_active' => true,
+                'is_default' => false,
                 'accent' => '#705898',
                 'card_bg' => '#faf7fc',
                 'text_color' => '#3d3348',
@@ -66,11 +72,27 @@ class InvitationDesignController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        $data['name'] = $this->autoName((int) $data['private_event_category_id']);
+        $audience = $data['audience'] ?? InvitationDesign::AUDIENCE_PRIVATE;
+
+        if ($audience === InvitationDesign::AUDIENCE_PUBLIC) {
+            $data['name'] = $data['name'] ?: 'Ekaadh Classic';
+            $data['private_event_category_id'] = null;
+            $data['blade_key'] = 'public';
+            $data['tier'] = 'standard';
+            $data['ticket_price'] = null;
+            $data['premium_surcharge'] = null;
+        } else {
+            $data['name'] = $this->autoName((int) $data['private_event_category_id']);
+            $data['is_default'] = false;
+        }
+
         $data['description'] = null;
         $data['graphic_path'] = $this->storeGraphic($request->file('graphic'));
         $data['thumbnail_path'] = $this->storeGraphic($request->file('thumbnail'), 'thumbs') ?: $data['graphic_path'];
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_default'] = $audience === InvitationDesign::AUDIENCE_PUBLIC
+            ? $request->boolean('is_default', true)
+            : false;
         $data['sort_order'] = $data['sort_order'] ?? ((int) InvitationDesign::query()->max('sort_order') + 1);
 
         $design = InvitationDesign::query()->create($data);
@@ -93,7 +115,23 @@ class InvitationDesignController extends Controller
     public function update(Request $request, InvitationDesign $invitationDesign): RedirectResponse
     {
         $data = $this->validated($request, $invitationDesign);
-        unset($data['name'], $data['description']);
+        $audience = $data['audience'] ?? $invitationDesign->audience;
+
+        if ($audience === InvitationDesign::AUDIENCE_PUBLIC) {
+            if ($request->filled('name')) {
+                $data['name'] = $request->string('name')->trim()->toString();
+            }
+            $data['private_event_category_id'] = null;
+            $data['blade_key'] = 'public';
+            $data['tier'] = 'standard';
+            $data['ticket_price'] = null;
+            $data['premium_surcharge'] = null;
+            $data['is_default'] = $request->boolean('is_default');
+        } else {
+            unset($data['name'], $data['description']);
+            $data['is_default'] = false;
+        }
+
         if ($file = $request->file('graphic')) {
             $data['graphic_path'] = $this->storeGraphic($file);
             if (! $request->file('thumbnail')) {
@@ -117,7 +155,7 @@ class InvitationDesignController extends Controller
         $preview = InvitationPreview::make($invitationDesign);
 
         return view('invitations.preview-frame', $preview + [
-            'showQr' => false,
+            'showQr' => $invitationDesign->isPublicAudience(),
             'withEnvelope' => true,
             'autoOpen' => false,
         ]);
@@ -143,6 +181,8 @@ class InvitationDesignController extends Controller
 
     public function storeField(Request $request, InvitationDesign $invitationDesign): RedirectResponse
     {
+        abort_if($invitationDesign->isPublicAudience(), 404);
+
         $data = $this->validatedField($request, $invitationDesign);
         $data['invitation_design_id'] = $invitationDesign->id;
         $data['sort_order'] = $data['sort_order'] ?? ((int) $invitationDesign->fields()->max('sort_order') + 1);
@@ -158,6 +198,7 @@ class InvitationDesignController extends Controller
     public function updateField(Request $request, InvitationDesign $invitationDesign, InvitationDesignField $field): RedirectResponse|JsonResponse
     {
         abort_unless($field->invitation_design_id === $invitationDesign->id, 404);
+        abort_if($invitationDesign->isPublicAudience(), 404);
 
         $data = $this->validatedField($request, $invitationDesign, $field);
         $data['is_required'] = $request->boolean('is_required');
@@ -189,19 +230,25 @@ class InvitationDesignController extends Controller
      */
     private function validated(Request $request, ?InvitationDesign $design = null): array
     {
+        $audience = $request->input('audience', $design?->audience ?? InvitationDesign::AUDIENCE_PRIVATE);
+        $isPublic = $audience === InvitationDesign::AUDIENCE_PUBLIC;
+
         return $request->validate([
+            'audience' => ['required', Rule::in([InvitationDesign::AUDIENCE_PRIVATE, InvitationDesign::AUDIENCE_PUBLIC])],
+            'name' => [$isPublic ? 'nullable' : 'nullable', 'string', 'max:120'],
             'private_event_category_id' => [
-                'required',
+                $isPublic ? 'nullable' : 'required',
                 'integer',
                 Rule::exists('categories', 'id')->where(
                     fn ($q) => $q->where('parent_id', Category::privateRoot()?->id ?? 0)
                 ),
             ],
-            'tier' => ['required', Rule::in(['standard', 'premium'])],
+            'tier' => [$isPublic ? 'nullable' : 'required', Rule::in(['standard', 'premium'])],
             'ticket_price' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'premium_surcharge' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'render_mode' => ['required', Rule::in(['blade', 'overlay'])],
             'blade_key' => ['nullable', 'string', 'max:80'],
+            'is_default' => ['nullable', 'boolean'],
             'accent' => ['nullable', 'string', 'max:20'],
             'accent_soft' => ['nullable', 'string', 'max:20'],
             'header_from' => ['nullable', 'string', 'max:20'],

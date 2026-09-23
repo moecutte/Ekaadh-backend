@@ -34,6 +34,12 @@ class InvitationService
             ]);
         }
 
+        if ($event->isFreeEvent() && ! $event->is_private && ! $event->packageIsPaid()) {
+            throw ValidationException::withMessages([
+                'event' => ['Pay the free-event platform fee before sending invitations.'],
+            ]);
+        }
+
         if ($guests === []) {
             throw ValidationException::withMessages([
                 'guests' => ['Add at least one guest.'],
@@ -41,14 +47,13 @@ class InvitationService
         }
 
         if (! $event->is_private) {
-            $used = $event->activeComplimentaryGuestCount();
-            $limit = Event::MAX_COMPLIMENTARY_GUESTS;
-            $left = max(0, $limit - $used);
-            if (count($guests) > $left) {
+            $needed = collect($guests)->sum(fn ($guest) => max(1, (int) ($guest['quantity'] ?? 1)));
+            $left = $event->complimentaryGuestSlotsLeft();
+            if ($needed > $left) {
                 throw ValidationException::withMessages([
                     'guests' => $left === 0
-                        ? "Complimentary guests are limited to {$limit} per event. Revoke one to send another."
-                        : "Only {$left} complimentary guest slot(s) left (max {$limit}).",
+                        ? 'No invitation seats left. Complimentary invites use the same ticket capacity as sales.'
+                        : "Complimentary invitations need {$needed} seats, but only {$left} ticket(s) are left.",
                 ]);
             }
         }

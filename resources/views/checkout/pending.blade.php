@@ -10,7 +10,10 @@
     <h1 class="text-3xl font-black mb-3">{{ __('ui.payment_pending') }}</h1>
     <p class="text-mute mb-2">{{ __('ui.payment_pending_for_order', ['order' => $order->order_number]) }}</p>
     <p class="text-mute mb-8">{{ __('ui.payment_pending_hint') }}</p>
-    <a href="{{ route('tickets.index') }}" class="inline-block w-full rounded-2xl bg-brand text-white font-extrabold py-4 mb-3">{{ __('ui.booked_events') }}</a>
+    @if(! empty($cardRedirectUrl))
+        <a href="{{ $cardRedirectUrl }}" class="inline-block w-full rounded-2xl bg-brand text-white font-extrabold py-4 mb-3">{{ __('ui.continue_card_payment') }}</a>
+    @endif
+    <a href="{{ route('tickets.index') }}" class="inline-block w-full rounded-2xl {{ ! empty($cardRedirectUrl) ? 'border border-slate-200 text-ink' : 'bg-brand text-white' }} font-extrabold py-4 mb-3">{{ __('ui.booked_events') }}</a>
     <a href="{{ route('home') }}" class="inline-block text-sm font-bold text-mute">{{ __('ui.back_to_home') }}</a>
 </div>
 <script>setTimeout(function () { window.location.reload(); }, 8000);</script>
