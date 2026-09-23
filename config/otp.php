@@ -14,8 +14,7 @@ return [
     'fixed_code' => env('OTP_FIXED_CODE', ''),
 
     /*
-    | When true, OTP send responses include debug_code (for staging without SMS).
-    | Never enable in production with real users. Fixed OTP alone also exposes it.
+    | When true, production boot is rejected. Codes are never returned in API JSON.
     */
     'expose_debug_code' => (bool) env('OTP_EXPOSE_DEBUG_CODE', false),
 
@@ -26,8 +25,8 @@ return [
     'purposes' => ['register', 'checkout', 'find_tickets'],
 
     /*
-    | Sent as a normal Telesom SMS until the account is OTP prepaid.
-    | Placeholders: :code, :minutes
+    | Unused by the Telesom OTP API (that endpoint delivers the numeric code
+    | only). Kept so existing env files do not break.
     */
     'sms_message' => env(
         'OTP_SMS_MESSAGE',

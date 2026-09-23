@@ -192,6 +192,9 @@ class PrivateEventController extends Controller
             'allowForceFail' => OrderService::allowsForceFail(),
             'waafiSandbox' => (bool) config('waafipay.sandbox'),
             'waafiTestWallets' => config('waafipay.test_wallets', []),
+            'waafiCardCheckout' => (bool) config('waafipay.card_checkout_enabled'),
+            'waafiHppEnabled' => (bool) config('waafipay.hpp_enabled'),
+            'waafiTestCards' => config('waafipay.test_cards', []),
         ]);
     }
 
@@ -200,8 +203,11 @@ class PrivateEventController extends Controller
         $user = $this->customer();
         $this->authorizeOwner($event, $user);
 
+        $allowedMethods = config('waafipay.card_checkout_enabled')
+            ? 'waafipay,waafipay_card'
+            : 'waafipay';
         $data = $request->validate([
-            'payment_method' => ['required', 'in:waafipay'],
+            'payment_method' => ['required', 'in:'.$allowedMethods],
             'force_fail' => ['sometimes', 'boolean'],
             'wallet_pin' => ['nullable', 'string', 'max:8'],
             'buyer_phone' => ['nullable', 'string', 'max:30'],
@@ -217,15 +223,16 @@ class PrivateEventController extends Controller
                 ->with('error', 'No pending payment found for this private event.');
         }
 
+        $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && $walletPin === null) {
+        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
             return back()->withErrors([
                 'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
             ]);
         }
 
         $chargePhone = Phone::normalize($user->phone);
-        if (config('waafipay.sandbox')) {
+        if (config('waafipay.sandbox') && ! $isCard) {
             $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
             if ($chargePhone === '') {
                 return back()->withErrors([
@@ -244,6 +251,10 @@ class PrivateEventController extends Controller
             );
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
+        }
+
+        if ($url = app(OrderService::class)->cardRedirectUrl($order)) {
+            return redirect()->away($url);
         }
 
         if ($order->status === 'paid') {

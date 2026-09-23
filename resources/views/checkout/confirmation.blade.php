@@ -15,6 +15,7 @@
     $paymentMethod = $order->payment_method;
     $paymentMethodLabel = match ($paymentMethod) {
         'waafipay' => 'WaafiPay',
+        'waafipay_card' => __('ui.card_visa_mastercard'),
         'edahab' => 'eDahab',
         'zaad' => 'Zaad',
         default => $paymentMethod,

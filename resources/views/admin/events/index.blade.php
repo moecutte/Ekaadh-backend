@@ -105,14 +105,9 @@
                             <div class="font-bold flex items-center gap-2 flex-wrap">
                                 {{ $event->title }}
                                 @if($event->is_featured)<span class="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">Featured</span>@endif
-                                @unless($isPrivateTab)
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border {{ $event->isFreeEvent() ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-200' }}">
-                                        {{ $event->isFreeEvent() ? 'Free' : 'Priced' }}
-                                    </span>
-                                    @if($event->needsPackagePayment())
-                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">Package unpaid</span>
-                                    @endif
-                                @endunless
+                                @if($event->platformChargesWaived())
+                                    <span class="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded">Free of charge</span>
+                                @endif
                             </div>
                             <div class="text-xs text-mute">
                                 {{ $isPrivateTab ? ($event->privateEventCategory?->name ?? 'Private') : $event->category }}
@@ -153,13 +148,27 @@
                             </form>
                         </td>
                         <td class="px-4 py-3">
-                            <div class="flex flex-wrap gap-1.5">
+                            <div class="flex flex-wrap gap-1.5 items-center">
                                 @if($event->status === 'pending_review')
-                                    <form method="POST" action="{{ route('admin.events.approve', $event) }}">@csrf
+                                    <form method="POST" action="{{ route('admin.events.approve', $event) }}" class="flex flex-wrap items-center gap-1.5">
+                                        @csrf
+                                        <select name="charges" class="rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" title="Platform charges">
+                                            <option value="default">Default charges</option>
+                                            <option value="free">Free of charge</option>
+                                        </select>
                                         <button class="px-2.5 py-1 rounded-lg bg-brand text-white text-xs font-bold">Publish</button>
                                     </form>
                                     <form method="POST" action="{{ route('admin.events.reject', $event) }}">@csrf
                                         <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold">Reject</button>
+                                    </form>
+                                @elseif(! $isPrivateTab && $event->status === 'published')
+                                    <form method="POST" action="{{ route('admin.events.status', $event) }}" class="flex items-center gap-1">
+                                        @csrf
+                                        <input type="hidden" name="status" value="published">
+                                        <select name="charges" class="rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" onchange="this.form.submit()" title="Platform charges">
+                                            <option value="default" @selected(! $event->platformChargesWaived())>Default charges</option>
+                                            <option value="free" @selected($event->platformChargesWaived())>Free of charge</option>
+                                        </select>
                                     </form>
                                 @endif
                                 @unless($isPrivateTab)

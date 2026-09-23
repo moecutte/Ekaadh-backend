@@ -19,15 +19,15 @@ class TicketDeliveryService
 
     public function sendForOrder(Order $order): void
     {
-        $order->loadMissing(['items.tickets', 'event']);
+        $order->load(['items.tickets', 'event']);
 
-        $tickets = $order->items->flatMap->tickets;
+        $tickets = $order->items->flatMap->tickets->where('status', '!=', 'cancelled')->values();
         if ($tickets->isEmpty()) {
             return;
         }
 
         $this->sendEmail($order, $tickets);
-        $this->sendPaidNotificationSms($order);
+        $this->sendPaidNotificationSms($order, $tickets);
         $this->sendOrderPush($order, $tickets);
     }
 
@@ -46,9 +46,9 @@ class TicketDeliveryService
                 : null);
 
         $inviteUrl = $invitation->publicUrl();
-        $eventTitle = $invitation->event?->title ?? 'your event';
+        $eventTitle = $invitation->event?->title ?? 'xafladdaada';
         $qty = $invitation->tickets->where('status', '!=', 'cancelled')->count() ?: $invitation->quantity;
-        $guestName = $invitation->guest_name ?: 'Guest';
+        $guestName = $invitation->guest_name ?: 'Marti';
 
         $codes = $invitation->tickets
             ->where('status', '!=', 'cancelled')
@@ -56,11 +56,11 @@ class TicketDeliveryService
             ->map(fn (Ticket $t) => $t->ticket_code)
             ->implode(', ');
 
-        $body = "Ekaadh: Hi {$guestName}, you're invited to {$eventTitle}. "
-            ."{$qty} ticket(s). Open your invitation: {$inviteUrl}";
+        $body = "Ekaadh: Salaam {$guestName}, waxaa lagugu casuumay munaasabada {$eventTitle}. "
+            ."{$qty} tigidh. Fur casuumaddaada: {$inviteUrl}.";
 
         if ($codes !== '') {
-            $body .= " Codes: {$codes}";
+            $body .= " Koodhadhka: {$codes}";
             if ($invitation->tickets->where('status', '!=', 'cancelled')->count() > 3) {
                 $body .= '…';
             }
@@ -91,8 +91,8 @@ class TicketDeliveryService
 
         $this->push->sendToPhone(
             $invitation->guest_phone,
-            'You\'re invited',
-            "You're invited to {$eventTitle}. Open Ekaadh to view your invitation.",
+            'Waa lagugu casuumay',
+            "Waxaa lagugu casuumay munaasabada {$eventTitle}. Fur Ekaadh si aad u aragto casuumaddaada.",
             PushNotificationService::TYPE_INVITATION_RECEIVED,
             [
                 'invitation_id' => (string) $invitation->id,
@@ -175,15 +175,51 @@ class TicketDeliveryService
         }
     }
 
-    private function sendPaidNotificationSms(Order $order): void
+    /**
+     * @param  \Illuminate\Support\Collection<int, Ticket>  $tickets
+     */
+    private function sendPaidNotificationSms(Order $order, $tickets): void
     {
-        $title = $order->event?->title ?? 'your event';
-        $number = $order->order_number;
-        $body = ((float) $order->total_amount) > 0
-            ? "Ekaadh: Payment confirmed for {$title}. Order {$number}."
-            : "Ekaadh: Your order is confirmed for {$title}. Order {$number}.";
+        if ($order->event?->is_private) {
+            return;
+        }
+
+        $title = trim((string) ($order->event?->title ?? 'munaasabadda')) ?: 'munaasabadda';
+        $number = (string) $order->order_number;
+        $links = $tickets
+            ->take(3)
+            ->map(fn (Ticket $t) => $this->qr->publicUrl($t->ticket_code))
+            ->filter(fn ($url) => is_string($url) && $url !== '')
+            ->implode(' ');
+
+        // Ekaadh: Dalabkaaga waa la xaqiijiyay — {event}. IDga {order}. Fur tigidhadaada: {ticket links}.
+        $body = "Ekaadh: Dalabkaaga waa la xaqiijiyay - {$title}. IDga {$number}.";
+        if ($links !== '') {
+            $body .= " Fur tigidhadaada: {$links}.";
+            if ($tickets->count() > 3) {
+                $body = rtrim($body, '.').'....';
+            }
+        }
 
         $this->deliverSms($order->buyer_phone, $body);
+    }
+
+    /**
+     * SMS reminder ~2 hours before the event (public tickets + private invites).
+     */
+    public function sendEventReminderSms(Ticket $ticket): string
+    {
+        $ticket->loadMissing(['event', 'orderItem.order', 'invitation']);
+        $event = $ticket->event;
+        $title = $event?->title ?? 'munaasabadda';
+        $phone = $ticket->invitation?->guest_phone
+            ?: $ticket->orderItem?->order?->buyer_phone;
+        $url = $this->qr->publicUrl($ticket->ticket_code);
+
+        $body = "Ekaadh: Xusuusin — {$title} waxay bilaabanaysaa 2 saacadood gudahood. "
+            ."Fur tigidhkaaga: {$url}.";
+
+        return $this->deliverSms($phone, $body);
     }
 
     /**
@@ -195,11 +231,11 @@ class TicketDeliveryService
             return;
         }
 
-        $title = $order->event?->title ?? 'your event';
+        $title = $order->event?->title ?? 'munaasabadda';
         $this->push->sendToPhone(
             $order->buyer_phone,
-            'Tickets ready',
-            "Your tickets for {$title} are ready in Ekaadh.",
+            'Tigidhadaada waa diyaar',
+            "Tigidhadaada {$title} waxay ku diyaar yihiin Ekaadh.",
             PushNotificationService::TYPE_TICKETS_READY,
             [
                 'event_id' => (string) ($order->event_id ?? ''),
@@ -213,8 +249,8 @@ class TicketDeliveryService
             if ($user && $user->phone !== $order->buyer_phone) {
                 $this->push->sendToUser(
                     $user,
-                    'Tickets ready',
-                    "Your tickets for {$title} are ready in Ekaadh.",
+                    'Tigidhadaada waa diyaar',
+                    "Tigidhadaada {$title} waxay ku diyaar yihiin Ekaadh.",
                     PushNotificationService::TYPE_TICKETS_READY,
                     [
                         'event_id' => (string) ($order->event_id ?? ''),

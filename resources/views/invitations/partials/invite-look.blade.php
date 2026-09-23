@@ -60,5 +60,7 @@
         @endunless
     </div>
 @else
-    @include('tickets.partials.designed-card', $card)
+    <div id="invitation-share-card" class="invitation-share-card">
+        @include('tickets.partials.designed-card', $card)
+    </div>
 @endif

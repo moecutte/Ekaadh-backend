@@ -44,7 +44,11 @@ class PaymentMessage
     {
         $haystack = strtoupper($responseMsg.' '.$errorCode.' '.$state);
 
-        if (self::containsAny($haystack, ['INSUFFICIENT', 'BALANCE', 'E10205', '5206'])) {
+        if (self::containsAny($haystack, ['PIN', 'KHALAD NUMBERKA PIN', 'WRONG PIN', 'INVALID PIN'])) {
+            return __('ui.payment_failed_wrong_pin');
+        }
+
+        if (self::containsAny($haystack, ['INSUFFICIENT', 'BALANCE', 'LACAG KU FILAN'])) {
             return __('ui.payment_failed_insufficient');
         }
 

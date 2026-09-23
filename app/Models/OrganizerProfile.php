@@ -107,7 +107,7 @@ class OrganizerProfile extends Model
             return (float) $this->package->commission_rate;
         }
 
-        return $platformDefault ?? (float) Setting::getValue('default_commission_rate', 10);
+        return $platformDefault ?? (float) Setting::getValue('default_commission_rate', 5);
     }
 
     public function avatarUrl(): ?string

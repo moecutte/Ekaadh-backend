@@ -79,4 +79,43 @@ class OtpVerificationTest extends TestCase
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['phone']);
     }
+
+    public function test_otp_send_posts_code_to_telesom_otp_endpoint(): void
+    {
+        config([
+            'otp.fixed_code' => '',
+            'otp.expose_debug_code' => false,
+            'telesom.sender_id' => 'EKAADH',
+            'telesom.username' => 'user',
+            'telesom.password' => 'pass',
+            'telesom.secret_key' => 'secret',
+            'telesom.client_ref' => 'TLS-240',
+            'telesom.base_url' => 'https://sms.mytelesom.com',
+        ]);
+
+        Http::fake([
+            'sms.mytelesom.com/*' => Http::response([
+                'status' => 'accepted',
+                'request_id' => 'req-otp-1',
+            ], 202),
+        ]);
+
+        $this->postJson('/api/v1/otp/send', [
+            'phone' => '+252633001111',
+            'purpose' => 'checkout',
+        ])->assertOk()
+            ->assertJsonPath('message', 'A confirmation code was sent to your phone.');
+
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+
+            return $request->url() === 'https://sms.mytelesom.com/index.php/smsotpapi/v1/otp'
+                && $request->hasHeader('SenderID', 'EKAADH')
+                && $request->hasHeader('X-Auth-Key')
+                && ($data['to'] ?? null) === ['252633001111']
+                && preg_match('/^\d{6}$/', (string) ($data['message'] ?? '')) === 1
+                && ($data['type'] ?? null) === 'text'
+                && ($data['client_ref'] ?? null) === 'TLS-240';
+        });
+    }
 }

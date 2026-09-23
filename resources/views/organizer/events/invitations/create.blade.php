@@ -7,7 +7,7 @@
     $remaining = $event->ticketTypes->sum(fn ($t) => $t->remaining());
 @endphp
 <a href="{{ route('organizer.events.invitations.index', $event) }}" class="text-sm font-bold text-mute hover:text-brand">&larr; Guest list</a>
-<p class="text-sm text-mute mt-2 mb-5">{{ $event->title }} · {{ $remaining }} seats left · {{ $guestSlots }}/{{ $guestLimit }} complimentary guest slots left. Guests get a private link and do not pay.</p>
+<p class="text-sm text-mute mt-2 mb-5">{{ $event->title }} · {{ $remaining }} seats left. Guests get a private link and do not pay — each seat is deducted from total capacity.</p>
 
 @if($errors->any())
     <div class="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-4">
@@ -32,7 +32,7 @@
         @csrf
         <input type="hidden" name="channel" :value="channel">
         <h3 class="text-sm font-bold">Add guests</h3>
-        <p class="text-[11px] text-mute"><span x-text="rows.length"></span>/{{ $guestSlots }} in this batch · {{ $guestLimit }} total per event</p>
+        <p class="text-[11px] text-mute"><span x-text="rows.length"></span> guests · <span x-text="seatsUsed"></span>/{{ $guestSlots }} seats in this batch</p>
         <template x-for="(row, index) in rows" :key="index">
             <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
                 <div class="flex justify-between">
@@ -52,7 +52,7 @@
             </div>
         </template>
         <div class="flex items-center gap-3">
-            <button type="button" @click="add()" class="text-xs font-bold text-brand" x-show="rows.length < maxGuests">+ Add another guest</button>
+            <button type="button" @click="add()" class="text-xs font-bold text-brand" x-show="seatsUsed < maxGuests">+ Add another guest</button>
             <button class="ml-auto px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold">Issue & send</button>
         </div>
     </form>
@@ -61,7 +61,7 @@
         @csrf
         <input type="hidden" name="channel" :value="channel">
         <h3 class="text-sm font-bold">Upload CSV</h3>
-        <p class="text-[11px] text-mute">Columns: phone, name, quantity, ticket_type. Max {{ $guestSlots }} guests in this upload.</p>
+        <p class="text-[11px] text-mute">Columns: phone, name, quantity, ticket_type. Limited by {{ $guestSlots }} seats left.</p>
         <select name="default_ticket_type_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
             @foreach($event->ticketTypes as $type)
                 <option value="{{ $type->id }}">{{ $type->name }} — {{ $type->remaining() }} left</option>
@@ -74,13 +74,16 @@
 <script>
 function inviteForm() {
     const defaultType = @json($event->ticketTypes->first()?->id);
-    const maxGuests = @json((int) $guestSlots);
+    const maxSeats = @json((int) $guestSlots);
     return {
         rows: [{ name: '', phone: '', quantity: 1, ticket_type_id: defaultType }],
         channel: @json(old('channel', 'whatsapp')),
-        maxGuests,
+        maxGuests: maxSeats,
+        get seatsUsed() {
+            return this.rows.reduce((sum, row) => sum + Math.max(1, Number(row.quantity) || 1), 0);
+        },
         add() {
-            if (this.rows.length >= this.maxGuests) return;
+            if (this.seatsUsed >= this.maxGuests) return;
             this.rows.push({ name: '', phone: '', quantity: 1, ticket_type_id: defaultType });
         },
         remove(i) { this.rows.splice(i, 1); },

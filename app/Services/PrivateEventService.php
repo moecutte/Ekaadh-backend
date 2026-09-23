@@ -22,7 +22,7 @@ class PrivateEventService
 
     public static function unitPrice(): float
     {
-        return (float) Setting::getValue('private_ticket_price', 5);
+        return (float) Setting::getValue('private_ticket_price', 0.8);
     }
 
     public static function maxTickets(): int
@@ -37,7 +37,7 @@ class PrivateEventService
 
     public static function premiumDesignSurcharge(): float
     {
-        return (float) Setting::getValue('private_premium_design_surcharge', 2);
+        return (float) Setting::getValue('private_premium_design_surcharge', 0.2);
     }
 
     /** Unit price including premium design surcharge when applicable. */

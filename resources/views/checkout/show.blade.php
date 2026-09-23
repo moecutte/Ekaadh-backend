@@ -275,7 +275,7 @@
             <p class="text-sm text-mute">{{ __('ui.choose_mobile_money') }}</p>
 
             @if(! empty($waafiSandbox) && ! empty($waafiTestWallets))
-                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
+                <div x-show="payment === 'waafipay'" x-cloak class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
                     <p class="font-extrabold mb-1">WaafiPay sandbox</p>
                     @if(! config('waafipay.has_sandbox_credentials'))
                         <p class="text-xs font-semibold text-red-700 mb-3">{{ __('ui.payment_failed_sandbox_credentials') }}</p>
@@ -295,6 +295,21 @@
                 </div>
             @endif
 
+            @if(! empty($waafiCardCheckout) && ! empty($waafiSandbox) && ! empty($waafiTestCards))
+                <div x-show="payment === 'waafipay_card'" x-cloak class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
+                    <p class="font-extrabold mb-1">WaafiPay sandbox cards</p>
+                    @if(empty($waafiHppEnabled))
+                        <p class="text-xs font-semibold text-red-700 mb-3">{{ __('ui.payment_failed_card_unavailable') }}</p>
+                    @endif
+                    <p class="text-xs text-mute mb-3">{{ __('ui.card_payment_hint') }} Use these test cards on the WaafiPay page.</p>
+                    <ul class="space-y-1 text-xs font-semibold">
+                        @foreach($waafiTestCards as $card)
+                            <li>{{ $card['network'] }} · {{ $card['number'] }} · {{ $card['expiry'] }} · CVV {{ $card['cvv'] }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4">
                 <button
                     type="button"
@@ -310,10 +325,26 @@
                     <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_waafipay') }}</p>
                 </button>
 
+                @if(! empty($waafiCardCheckout))
+                <button
+                    type="button"
+                    @click="payment = 'waafipay_card'; payNotice = ''"
+                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white min-w-0"
+                    :class="payment === 'waafipay_card' ? 'border-brand bg-brand/5' : 'border-slate-100 hover:border-brand/40'"
+                >
+                    <div x-show="payment === 'waafipay_card'" class="absolute top-3 right-3 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    @include('partials.card-network-logos', ['class' => 'mb-3 pr-6'])
+                    <p class="font-extrabold text-ink text-base sm:text-lg">{{ __('ui.card_visa_mastercard') }}</p>
+                    <p class="text-xs text-mute mt-0.5">{{ __('ui.card_payment_hint') }}</p>
+                </button>
+                @endif
+
                 <button
                     type="button"
                     @click="payNotice = i18n.edahabUnavailable"
-                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white border-slate-100 hover:border-brand/40 min-w-0"
+                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white border-slate-100 hover:border-brand/40 min-w-0 {{ empty($waafiCardCheckout) ? '' : 'min-[480px]:col-span-2' }}"
                 >
                     <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-12 sm:h-16 w-full max-w-[220px] object-contain object-left mb-3">
                     <p class="font-extrabold text-ink text-base sm:text-lg">eDahab</p>
@@ -323,19 +354,24 @@
             <p x-show="payNotice" x-cloak x-text="payNotice" class="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3"></p>
 
             <div x-show="payment" x-cloak class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
-                <p class="text-sm font-bold text-ink"
-                   x-text="(lockPhone ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', 'WaafiPay')"
-                ></p>
-                <div class="flex">
-                    <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
-                    <input
-                        type="tel"
-                        x-model="chargePhoneLocal"
-                        placeholder="611111111"
-                        @if($lockPhone) readonly @endif
-                        class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand {{ $lockPhone ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page' }}"
-                    >
-                </div>
+                <template x-if="payment === 'waafipay'">
+                    <div class="space-y-4">
+                        <p class="text-sm font-bold text-ink"
+                           x-text="(lockPhone ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', 'WaafiPay')"
+                        ></p>
+                        <div class="flex">
+                            <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
+                            <input
+                                type="tel"
+                                x-model="chargePhoneLocal"
+                                placeholder="611111111"
+                                @if($lockPhone) readonly @endif
+                                class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand {{ $lockPhone ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page' }}"
+                            >
+                        </div>
+                    </div>
+                </template>
+                <p x-show="payment === 'waafipay_card'" x-cloak class="text-sm font-bold text-ink">{{ __('ui.card_payment_hint') }}</p>
                 <div class="flex items-center justify-between bg-page rounded-xl p-4">
                     <span class="text-sm font-semibold text-mute">{{ __('ui.total_to_charge') }}</span>
                     <span class="text-xl font-extrabold text-ink" x-text="'$' + total.toFixed(0)"></span>
@@ -353,8 +389,13 @@
                     :disabled="submitting || !payment || ticketCount < 1 || (!signedIn && !otpToken)"
                     class="w-full bg-brand hover:bg-brand-dark disabled:bg-slate-100 disabled:text-mute text-white font-extrabold py-4 rounded-xl transition-colors text-base"
                 >
-                    <span x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
+                    <span x-show="!submitting && payment !== 'waafipay_card'" x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
+                    <span x-show="!submitting && payment === 'waafipay_card'" x-cloak x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', @json(__('ui.card_visa_mastercard')))"></span>
+                    <span x-show="submitting && payment !== 'waafipay_card'" x-cloak>{{ __('ui.waiting_phone_pin') }}</span>
+                    <span x-show="submitting && payment === 'waafipay_card'" x-cloak>{{ __('ui.redirecting_to_card') }}</span>
                 </button>
+                <p x-show="submitting && payment !== 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.waiting_phone_pin') }}</p>
+                <p x-show="submitting && payment === 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.redirecting_to_card') }}</p>
                 <div class="flex items-center justify-center gap-2 text-xs text-mute pt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                     {{ __('ui.encryption_sms_note') }}
@@ -418,7 +459,6 @@ function checkoutWizard() {
         namePhoneRequired: @json(__('ui.name_phone_required')),
         couldNotSendCode: @json(__('ui.could_not_send_code')),
         codeSent: @json(__('ui.code_sent')),
-        testingCode: @json(__('ui.testing_code')),
         enterConfirmationCode: @json(__('ui.enter_confirmation_code')),
         couldNotVerifyCode: @json(__('ui.could_not_verify_code')),
         invalidCode: @json(__('ui.invalid_code')),
@@ -567,9 +607,7 @@ function checkoutWizard() {
                     this.otpError = body.errors?.phone?.[0] || body.errors?.buyer_phone?.[0] || body.message || i18n.couldNotSendCode;
                     return false;
                 }
-                this.otpHint = body.debug_code
-                    ? i18n.testingCode.replace(':code', body.debug_code)
-                    : (body.message || i18n.codeSent);
+                this.otpHint = body.message || i18n.codeSent;
                 return true;
             } catch (e) {
                 this.otpError = e.message || i18n.couldNotSendCode;
@@ -655,7 +693,7 @@ function checkoutWizard() {
                 this.step = 3;
                 return;
             }
-            if (this.sandbox && !this.pinReady) {
+            if (this.sandbox && this.payment !== 'waafipay_card' && !this.pinReady) {
                 e.preventDefault();
                 this.openPinModal();
                 return;

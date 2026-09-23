@@ -13,7 +13,6 @@
     @csrf
     @if($event->exists) @method('PUT') @endif
     <input type="hidden" name="pricing_type" :value="pricingType">
-    <input type="hidden" name="package_id" :value="pricingType === 'free' ? packageId : ''">
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
         <div class="flex items-baseline justify-between gap-3">
@@ -29,7 +28,7 @@
                 class="text-left rounded-xl border px-3 py-2.5 transition disabled:opacity-60"
             >
                 <p class="text-sm font-extrabold text-ink">Free event</p>
-                <p class="text-[11px] text-mute mt-0.5">Guests claim tickets. You pay a capacity package.</p>
+                <p class="text-[11px] text-mute mt-0.5">Guests claim tickets free. After admin publishes, you pay ${{ number_format((float) $freeTicketFee, 2) }} × capacity to go live.</p>
             </button>
             <button
                 type="button"
@@ -42,38 +41,17 @@
                 <p class="text-[11px] text-mute mt-0.5">Sell tickets. Platform keeps {{ number_format((float) $commissionRate, 1) }}% commission.</p>
             </button>
         </div>
-        <p x-show="pricingLocked" x-cloak class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">Event type is locked because this event is already paid or has ticket sales.</p>
-
-        <div x-show="pricingType === 'free'" x-cloak class="pt-1 border-t border-slate-50 space-y-2">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-mute">Capacity package</p>
-            @if($freePackages->isEmpty())
-                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">No free-event packages yet. Ask an admin to create them under Packages.</p>
-            @else
-                <div class="grid sm:grid-cols-3 gap-2">
-                    <template x-for="pkg in packages" :key="pkg.id">
-                        <button
-                            type="button"
-                            @click="selectPackage(pkg)"
-                            :disabled="pricingLocked"
-                            :class="String(packageId) === String(pkg.id) ? 'border-brand bg-brand/5 ring-1 ring-brand/30' : 'border-slate-200 hover:border-brand/40'"
-                            class="text-left rounded-xl border px-3 py-2.5 transition disabled:opacity-60"
-                        >
-                            <div class="flex items-center justify-between gap-2">
-                                <p class="text-sm font-extrabold text-ink truncate" x-text="pkg.name"></p>
-                                <p class="text-sm font-black text-brand shrink-0" x-text="pkg.price_label"></p>
-                            </div>
-                            <p class="text-[11px] text-mute mt-0.5" x-text="pkg.range_label"></p>
-                        </button>
-                    </template>
-                </div>
-                <p class="text-[11px] text-mute" x-show="selectedPackage" x-cloak>
-                    Ticket quantity must be <span class="font-bold text-ink" x-text="selectedPackage?.range_label"></span>.
-                </p>
-            @endif
-            @if($event->exists && $event->needsPackagePayment())
-                <a href="{{ route('organizer.events.pay', $event) }}" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold">Pay package now</a>
-            @endif
-        </div>
+        <p x-show="pricingLocked" x-cloak class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">Event type is locked because this event already has ticket sales.</p>
+                        @if($event->exists && $event->platformChargesWaived())
+            <p class="text-[11px] text-violet-700 bg-violet-50 border border-violet-100 rounded-lg px-3 py-1.5">Platform charges waived by admin — this event is free of charge (no capacity fee).</p>
+        @elseif($event->exists && $event->needsPackagePayment())
+            <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                Approved — pay ${{ number_format($event->freeEventChargeAmount(), 2) }}
+                ({{ number_format($event->freeEventCapacity()) }} × ${{ number_format($event->freeEventFeePerTicket(), 2) }})
+                to go live.
+                <a href="{{ route('organizer.events.pay', $event) }}" class="font-bold underline">Pay now</a>
+            </p>
+        @endif
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
@@ -293,8 +271,8 @@
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
             <button type="button" @click="showInvites = !showInvites" class="w-full flex items-center justify-between gap-3 text-left">
                 <div>
-                    <h3 class="text-sm font-bold">Complimentary guests <span class="font-semibold text-mute">(optional, max 15)</span></h3>
-                    <p class="text-[11px] text-mute">Private invites send after publish. Up to 15 guests per event.</p>
+                    <h3 class="text-sm font-bold">Complimentary guests <span class="font-semibold text-mute">(optional)</span></h3>
+                    <p class="text-[11px] text-mute">Private invites send after publish. Each seat is deducted from your total ticket capacity.</p>
                 </div>
                 <span class="text-xs font-bold text-brand shrink-0" x-text="showInvites ? 'Hide' : 'Add guests'"></span>
             </button>
@@ -307,7 +285,7 @@
                     <button type="button" @click="inviteChannel = 'sms'"
                             :class="inviteChannel === 'sms' ? 'border-brand bg-brand/5 text-brand' : 'border-slate-200 bg-white'"
                             class="rounded-lg border px-3 py-1.5 text-xs font-extrabold">SMS</button>
-                    <button type="button" @click="addInvite()" class="ml-auto text-xs font-bold text-brand" x-show="inviteRows.length < 15">+ Add guest</button>
+                    <button type="button" @click="addInvite()" class="ml-auto text-xs font-bold text-brand" x-show="inviteSeatsUsed < ticketTotal">+ Add guest</button>
                 </div>
                 <template x-for="(invite, index) in inviteRows" :key="index">
                     <div class="grid grid-cols-12 gap-1.5 items-center">
@@ -322,14 +300,29 @@
                         <button type="button" class="col-span-2 sm:col-span-1 text-xs font-bold text-red-400" @click="removeInvite(index)" x-show="inviteRows.length > 1">✕</button>
                     </div>
                 </template>
-                <p class="text-[11px] text-mute"><span x-text="inviteRows.length"></span>/15 guests. Leave phones blank to skip.</p>
+                <p class="text-[11px] text-mute"><span x-text="inviteSeatsUsed"></span>/<span x-text="ticketTotal"></span> seats queued. Leave phones blank to skip.</p>
             </div>
         </div>
     @endif
 
-    <div class="flex justify-end gap-2 sticky bottom-3 bg-page/90 backdrop-blur-sm py-2">
-        <button type="submit" name="action" value="draft" class="px-4 py-2 text-sm font-bold text-mute bg-white border border-slate-200 rounded-xl">Save draft</button>
-        <button type="submit" name="action" value="publish" class="px-4 py-2 text-sm font-bold text-white bg-brand rounded-xl hover:bg-brand-dark">Submit for review</button>
+    <div class="flex flex-wrap justify-between items-center gap-2 sticky bottom-3 bg-page/90 backdrop-blur-sm py-2">
+        <div class="flex items-center gap-2">
+            @if($event->exists && $event->status === 'cancelled')
+                <form method="POST" action="{{ route('organizer.events.reactivate', $event) }}" onsubmit="return confirm('Reactivate this event as a draft?')">
+                    @csrf
+                    <button type="submit" class="px-4 py-2 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl">Reactivate</button>
+                </form>
+            @elseif($event->exists)
+                <form method="POST" action="{{ route('organizer.events.cancel', $event) }}" onsubmit="return confirm('Cancel this event? It will be removed from public listings.')">
+                    @csrf
+                    <button type="submit" class="px-4 py-2 text-sm font-bold text-amber-800 bg-amber-50 border border-amber-100 rounded-xl">Cancel event</button>
+                </form>
+            @endif
+        </div>
+        <div class="flex justify-end gap-2">
+            <button type="submit" name="action" value="draft" class="px-4 py-2 text-sm font-bold text-mute bg-white border border-slate-200 rounded-xl">Save draft</button>
+            <button type="submit" name="action" value="publish" class="px-4 py-2 text-sm font-bold text-white bg-brand rounded-xl hover:bg-brand-dark">Submit for review</button>
+        </div>
     </div>
 </form>
 
@@ -341,8 +334,6 @@ function eventForm() {
         fileName: '',
         dragOver: false,
         pricingType: @json(old('pricing_type', $event->pricing_type ?: 'paid')),
-        packageId: @json(old('package_id', $event->package_id)),
-        packages: @json($freePackages),
         pricingLocked: @json((bool) $pricingLocked),
         inviteRows: @json($pendingInvites ?: []),
         inviteChannel: @json($inviteChannel ?? 'whatsapp'),
@@ -353,11 +344,11 @@ function eventForm() {
         showSpeakers: @json(collect($speakerRows ?? [])->isNotEmpty()),
         showProgramme: @json(collect($programmeRows ?? [])->isNotEmpty()),
         showGallery: @json(($galleryImages ?? collect())->isNotEmpty()),
-        get selectedPackage() {
-            return (this.packages || []).find((p) => String(p.id) === String(this.packageId)) || null;
-        },
         get ticketTotal() {
             return (this.rows || []).reduce((sum, row) => sum + (Number(row.quantity_available) || 0), 0);
+        },
+        get inviteSeatsUsed() {
+            return (this.inviteRows || []).reduce((sum, row) => sum + Math.max(1, Number(row.quantity) || 1), 0);
         },
         setPricing(type) {
             if (this.pricingLocked) return;
@@ -366,14 +357,10 @@ function eventForm() {
                 this.rows = this.rows.map((row) => ({ ...row, price: 0 }));
             }
         },
-        selectPackage(pkg) {
-            if (this.pricingLocked) return;
-            this.packageId = pkg.id;
-        },
         add() { this.rows.push({ id: null, name: '', description: '', price: this.pricingType === 'free' ? 0 : '', quantity_available: 100, max_per_order: 5 }); },
         remove(i) { this.rows.splice(i, 1); },
         addInvite() {
-            if (this.inviteRows.length >= 15) return;
+            if (this.inviteSeatsUsed >= this.ticketTotal) return;
             this.inviteRows.push({ name: '', phone: '', quantity: 1, ticket_name: (this.rows[0] && this.rows[0].name) || '' });
         },
         removeInvite(i) { this.inviteRows.splice(i, 1); },

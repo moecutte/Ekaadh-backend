@@ -12,8 +12,13 @@ use App\Models\Setting;
 
 class InvitationDesign extends Model
 {
+    public const AUDIENCE_PRIVATE = 'private_invitation';
+
+    public const AUDIENCE_PUBLIC = 'public_event';
+
     protected $fillable = [
         'private_event_category_id',
+        'audience',
         'name',
         'slug',
         'description',
@@ -33,6 +38,7 @@ class InvitationDesign extends Model
         'muted_color',
         'border_color',
         'is_active',
+        'is_default',
         'sort_order',
     ];
 
@@ -40,6 +46,7 @@ class InvitationDesign extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_default' => 'boolean',
             'sort_order' => 'integer',
             'private_event_category_id' => 'integer',
             'ticket_price' => 'float',
@@ -51,12 +58,12 @@ class InvitationDesign extends Model
     {
         $base = $this->ticket_price !== null
             ? (float) $this->ticket_price
-            : (float) Setting::getValue('private_ticket_price', 5);
+            : (float) Setting::getValue('private_ticket_price', 0.8);
 
         if ($this->isPremium()) {
             $extra = $this->premium_surcharge !== null
                 ? (float) $this->premium_surcharge
-                : (float) Setting::getValue('private_premium_design_surcharge', 2);
+                : (float) Setting::getValue('private_premium_design_surcharge', 0.2);
 
             return round($base + $extra, 2);
         }
@@ -67,6 +74,19 @@ class InvitationDesign extends Model
     protected static function booted(): void
     {
         static::saving(function (InvitationDesign $design) {
+            if (blank($design->audience)) {
+                $design->audience = self::AUDIENCE_PRIVATE;
+            }
+
+            if ($design->isPublicAudience()) {
+                $design->private_event_category_id = null;
+                $design->tier = 'standard';
+                $design->ticket_price = null;
+                $design->premium_surcharge = null;
+                $design->blade_key = 'public';
+                $design->render_mode = 'blade';
+            }
+
             if ($design->isDirty('name') || blank($design->slug)) {
                 $base = Str::slug($design->name) ?: 'design';
                 $slug = $base;
@@ -83,6 +103,16 @@ class InvitationDesign extends Model
             }
             if (blank($design->blade_key)) {
                 $design->blade_key = $design->slug;
+            }
+        });
+
+        static::saved(function (InvitationDesign $design) {
+            if ($design->is_default) {
+                static::query()
+                    ->where('audience', $design->audience)
+                    ->where('id', '!=', $design->id)
+                    ->where('is_default', true)
+                    ->update(['is_default' => false]);
             }
         });
     }
@@ -108,7 +138,7 @@ class InvitationDesign extends Model
     public function syncDefaultBuyerFields(): void
     {
         $this->loadMissing('category');
-        $requiresCouple = (bool) $this->category?->requires_couple_names;
+        $requiresCouple = $this->isPrivateAudience() && (bool) $this->category?->requires_couple_names;
 
         $fields = $requiresCouple
             ? [
@@ -121,8 +151,8 @@ class InvitationDesign extends Model
                 ['field_key' => 'date_time', 'label' => 'Time', 'field_type' => 'date_time', 'is_required' => false, 'maps_to_couple' => false, 'sort_order' => 7],
             ]
             : [
-                ['field_key' => 'title', 'label' => 'Event title', 'field_type' => 'text', 'is_required' => true, 'maps_to_couple' => false, 'placeholder' => 'e.g. Family dinner', 'default_text' => 'Family Celebration', 'sort_order' => 1],
-                ['field_key' => 'venue', 'label' => 'Venue', 'field_type' => 'text', 'is_required' => true, 'maps_to_couple' => false, 'placeholder' => 'Venue name', 'default_text' => 'Grand Ballroom', 'sort_order' => 2],
+                ['field_key' => 'title', 'label' => 'Event title', 'field_type' => 'text', 'is_required' => true, 'maps_to_couple' => false, 'placeholder' => 'e.g. Community concert', 'default_text' => 'Public Event', 'sort_order' => 1],
+                ['field_key' => 'venue', 'label' => 'Venue', 'field_type' => 'text', 'is_required' => true, 'maps_to_couple' => false, 'placeholder' => 'Venue name', 'default_text' => 'Grand Hall', 'sort_order' => 2],
                 ['field_key' => 'date_month', 'label' => 'Month', 'field_type' => 'date_month', 'is_required' => false, 'maps_to_couple' => false, 'sort_order' => 3],
                 ['field_key' => 'date_day', 'label' => 'Day', 'field_type' => 'date_day', 'is_required' => false, 'maps_to_couple' => false, 'sort_order' => 4],
                 ['field_key' => 'date_year', 'label' => 'Year', 'field_type' => 'date_year', 'is_required' => false, 'maps_to_couple' => false, 'sort_order' => 5],
@@ -170,6 +200,31 @@ class InvitationDesign extends Model
         }
 
         return $query->where('private_event_category_id', $categoryId);
+    }
+
+    public function scopePrivateInvitations(Builder $query): Builder
+    {
+        return $query->where('audience', self::AUDIENCE_PRIVATE);
+    }
+
+    public function scopePublicEvents(Builder $query): Builder
+    {
+        return $query->where('audience', self::AUDIENCE_PUBLIC);
+    }
+
+    public function isPublicAudience(): bool
+    {
+        return $this->audience === self::AUDIENCE_PUBLIC;
+    }
+
+    public function isPrivateAudience(): bool
+    {
+        return ! $this->isPublicAudience();
+    }
+
+    public function audienceLabel(): string
+    {
+        return $this->isPublicAudience() ? 'Public events' : 'Private invitations';
     }
 
     public function isPremium(): bool
@@ -300,10 +355,14 @@ class InvitationDesign extends Model
         return [
             'id' => $this->slug,
             'invitation_design_id' => $this->id,
+            'audience' => $this->audience ?: self::AUDIENCE_PRIVATE,
+            'is_default' => (bool) $this->is_default,
             'private_event_category_id' => $this->private_event_category_id,
             'name' => $this->name ?: ($this->category?->name ? $this->category->name.' design' : 'Design'),
             'category' => $this->tier,
-            'label' => $this->isPremium() ? 'Premium' : 'Standard',
+            'label' => $this->isPublicAudience()
+                ? 'Public'
+                : ($this->isPremium() ? 'Premium' : 'Standard'),
             'description' => $this->description,
             'ticket_price' => $this->ticket_price,
             'premium_surcharge' => $this->premium_surcharge,
@@ -339,7 +398,7 @@ class InvitationDesign extends Model
      */
     public static function activeCatalog(?string $tier = null, ?int $categoryId = null): array
     {
-        $q = static::query()->active()->ordered()->with('fields');
+        $q = static::query()->active()->privateInvitations()->ordered()->with('fields');
         if ($tier) {
             $q->where('tier', $tier);
         }
@@ -352,11 +411,21 @@ class InvitationDesign extends Model
 
     public static function defaultSlug(?int $categoryId = null): string
     {
-        $q = static::query()->active()->ordered();
+        $q = static::query()->active()->privateInvitations()->ordered();
         if ($categoryId !== null) {
             $q->forCategory($categoryId);
         }
 
         return (string) ($q->value('slug') ?? '');
+    }
+
+    public static function defaultPublic(): ?self
+    {
+        return static::query()
+            ->active()
+            ->publicEvents()
+            ->orderByDesc('is_default')
+            ->ordered()
+            ->first();
     }
 }

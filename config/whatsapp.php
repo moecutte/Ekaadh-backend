@@ -27,16 +27,17 @@ return [
     |   → event title, ticket count, ticket URL
     |
     | Invite (WHATSAPP_TEMPLATE_INVITE):
-    |   Ekaadh: Hi {{1}}, you're invited to {{2}}. {{3}} ticket(s). Open {{4}} to view your invitation.
+    |   Ekaadh: Salaam {{1}}, waxaa lagugu casuumay munaasabada {{2}}. {{3}} tigidh. Fur casuumaddaada: {{4}}.
     |   → guest name, event title, qty, invitation URL
     |
     | Category: Utility (preferred). Leave names empty until templates are approved.
+    | Approve a Somali (so) language version in Meta; set WHATSAPP_TEMPLATE_LANG=so.
     |
     */
     'template_ticket' => env('WHATSAPP_TEMPLATE_TICKET'),
 
     'template_invite' => env('WHATSAPP_TEMPLATE_INVITE'),
 
-    'template_lang' => env('WHATSAPP_TEMPLATE_LANG', 'en'),
+    'template_lang' => env('WHATSAPP_TEMPLATE_LANG', 'so'),
 
 ];

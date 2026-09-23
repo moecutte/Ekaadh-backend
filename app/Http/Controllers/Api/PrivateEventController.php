@@ -162,8 +162,9 @@ class PrivateEventController extends Controller
         $user = $this->customer();
         $this->authorizeOwner($event, $user);
 
+        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
         $data = $request->validate([
-            'payment_method' => ['required', 'in:waafipay'],
+            'payment_method' => ['required', 'in:'.$allowedPay],
             'force_fail' => ['sometimes', 'boolean'],
             'wallet_pin' => ['nullable', 'string', 'max:8'],
             'buyer_phone' => ['nullable', 'string', 'max:30'],
@@ -178,15 +179,16 @@ class PrivateEventController extends Controller
             ], 404);
         }
 
+        $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && $walletPin === null) {
+        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
             throw ValidationException::withMessages([
                 'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
             ]);
         }
 
         $chargePhone = Phone::normalize($user->phone);
-        if (config('waafipay.sandbox')) {
+        if (config('waafipay.sandbox') && ! $isCard) {
             $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
             if ($chargePhone === '') {
                 throw ValidationException::withMessages([

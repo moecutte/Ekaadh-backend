@@ -45,6 +45,9 @@ class CheckoutController extends Controller
             'otpVerifyUrl' => route('otp.verify'),
             'waafiSandbox' => (bool) config('waafipay.sandbox'),
             'waafiTestWallets' => config('waafipay.test_wallets', []),
+            'waafiCardCheckout' => (bool) config('waafipay.card_checkout_enabled'),
+            'waafiHppEnabled' => (bool) config('waafipay.hpp_enabled'),
+            'waafiTestCards' => config('waafipay.test_cards', []),
         ]);
     }
 
@@ -63,11 +66,12 @@ class CheckoutController extends Controller
         $customer = $request->user();
         $customer = ($customer && $customer->isCustomer()) ? $customer : null;
 
+        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
         $data = $request->validate([
             'buyer_name' => ['required', 'string', 'max:120'],
             'buyer_email' => ['nullable', 'email', 'max:255'],
             'buyer_phone' => ['required', 'string', 'max:30'],
-            'payment_method' => [$event->isFreeEvent() ? 'nullable' : 'required', 'in:waafipay'],
+            'payment_method' => [$event->isFreeEvent() ? 'nullable' : 'required', 'in:'.$allowedPay],
             'qty' => ['required', 'array'],
             'qty.*' => ['integer', 'min:0', 'max:20'],
             'force_fail' => ['sometimes', 'boolean'],
@@ -78,8 +82,9 @@ class CheckoutController extends Controller
 
         $chargePhone = Phone::normalize($data['buyer_phone']);
         $sandboxPay = (bool) config('waafipay.sandbox');
+        $isCard = ($data['payment_method'] ?? '') === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (! $event->isFreeEvent() && $sandboxPay && $walletPin === null) {
+        if (! $event->isFreeEvent() && $sandboxPay && ! $isCard && $walletPin === null) {
             return back()->withErrors([
                 'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
             ])->withInput();
@@ -219,12 +224,18 @@ class CheckoutController extends Controller
             return $this->redirectToOrder($request, $order);
         }
 
-        return view('checkout.pending', compact('order'));
+        $cardRedirectUrl = $this->orders->cardRedirectUrl($order);
+
+        return view('checkout.pending', compact('order', 'cardRedirectUrl'));
     }
 
     private function redirectToOrder(Request $request, Order $order): RedirectResponse
     {
         $this->grantOrderAccess($request, $order);
+
+        if ($url = $this->orders->cardRedirectUrl($order)) {
+            return redirect()->away($url);
+        }
 
         $route = match ($order->status) {
             'paid' => 'checkout.confirmation',

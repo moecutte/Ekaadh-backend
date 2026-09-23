@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Event;
 use App\Models\EventGalleryImage;
 use App\Models\EventSpeaker;
-use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\TicketType;
 use Illuminate\Database\Seeder;
@@ -23,10 +22,8 @@ class SagalJetBerberaEventSeeder extends Seeder
             return;
         }
 
-        $package = OrganizerPackage::query()->active()->freeEventPlans()->ordered()->first();
-
         foreach ($this->events() as $data) {
-            $this->importEvent($profile, $package, $data);
+            $this->importEvent($profile, $data);
         }
 
         $featuredSlugs = collect($this->events())
@@ -43,7 +40,7 @@ class SagalJetBerberaEventSeeder extends Seeder
     /**
      * @param  array<string, mixed>  $data
      */
-    private function importEvent(OrganizerProfile $profile, ?OrganizerPackage $package, array $data): void
+    private function importEvent(OrganizerProfile $profile, array $data): void
     {
         $stored = $this->storeImages($data['slug'], $data['images']);
         $cover = $stored[0] ?? ($data['images'][0] ?? null);
@@ -66,8 +63,8 @@ class SagalJetBerberaEventSeeder extends Seeder
                 'is_featured' => (bool) ($data['is_featured'] ?? false),
                 'is_private' => false,
                 'pricing_type' => 'free',
-                'package_id' => $package?->id,
-                'package_paid_at' => now(),
+                'package_id' => null,
+                'package_paid_at' => null,
                 'status' => 'published',
             ]
         );

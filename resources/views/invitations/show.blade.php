@@ -81,7 +81,7 @@
                 'ticket' => $shareTicket,
                 'qrImage' => $shareTicket->qr_image ?? '',
                 'design' => $design,
-                'showQr' => false,
+                'showQr' => ! ($event?->is_private),
                 'compact' => false,
                 'withEnvelope' => true,
                 'autoOpen' => false,

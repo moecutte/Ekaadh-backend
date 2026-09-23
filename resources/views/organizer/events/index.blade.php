@@ -139,11 +139,16 @@
                         </div>
                     </td>
                     <td class="px-4 py-4">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             @if($event->needsPackagePayment())
-                                <a href="{{ route('organizer.events.pay', $event) }}" class="text-xs font-bold text-amber-700">Pay package</a>
+                                <a href="{{ route('organizer.events.pay', $event) }}" class="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600">
+                                    Pay ${{ number_format($event->freeEventChargeAmount(), 2) }}
+                                </a>
                             @endif
-                            <a href="{{ route('events.show', $event->slug) }}" target="_blank" class="text-xs font-bold text-mute hover:text-brand">View</a>
+                            <a href="{{ route('organizer.events.orders', $event) }}" class="text-xs font-bold text-brand">List</a>
+                            @if($event->isPubliclyBookable())
+                                <a href="{{ route('events.show', $event->slug) }}" target="_blank" class="text-xs font-bold text-mute hover:text-brand">View</a>
+                            @endif
                             <a href="{{ route('organizer.events.edit', $event) }}" class="text-xs font-bold text-brand">Edit</a>
                             <a href="{{ route('organizer.events.invitations.index', $event) }}" class="text-xs font-bold text-brand">
                                 Guests
@@ -151,11 +156,27 @@
                                     <span class="text-mute">({{ $event->invitations_count + $event->pendingInviteCount() }})</span>
                                 @endif
                             </a>
-                            <form method="POST" action="{{ route('organizer.events.destroy', $event) }}" onsubmit="return confirm('Delete this event?')">
-                                @csrf @method('DELETE')
-                                <button class="text-xs font-bold text-red-400">Delete</button>
-                            </form>
+                            @if($event->status === 'cancelled')
+                                <form method="POST" action="{{ route('organizer.events.reactivate', $event) }}" onsubmit="return confirm('Reactivate this event as a draft?')">
+                                    @csrf
+                                    <button class="text-xs font-bold text-emerald-600">Reactivate</button>
+                                </form>
+                            @else
+                                <form method="POST" action="{{ route('organizer.events.cancel', $event) }}" onsubmit="return confirm('Cancel this event? It will be removed from public listings.')">
+                                    @csrf
+                                    <button class="text-xs font-bold text-amber-700">Cancel</button>
+                                </form>
+                            @endif
+                            @if($event->status !== 'cancelled')
+                                <form method="POST" action="{{ route('organizer.events.destroy', $event) }}" onsubmit="return confirm('Delete this event?')">
+                                    @csrf @method('DELETE')
+                                    <button class="text-xs font-bold text-red-400">Delete</button>
+                                </form>
+                            @endif
                         </div>
+                        @if($event->needsPackagePayment())
+                            <p class="text-[11px] text-amber-700 mt-1.5">Approved — pay to go live</p>
+                        @endif
                     </td>
                 </tr>
             @empty
@@ -169,6 +190,6 @@
             @endforelse
         </tbody>
     </table>
+    @include('partials.pager', ['paginator' => $events])
 </div>
-<div class="mt-4">{{ $events->links() }}</div>
 @endsection

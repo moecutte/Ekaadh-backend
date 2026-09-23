@@ -16,12 +16,13 @@ class DatabaseSeeder extends Seeder
         }
 
         Setting::setValue('platform_name', 'Ekaadh');
-        Setting::setValue('default_commission_rate', '10');
+        Setting::setValue('default_commission_rate', '5');
         Setting::setValue('service_fee', '1');
+        Setting::setValue('free_ticket_organizer_fee', '0.25');
         Setting::setValue('payment_gateway', (string) env('PAYMENT_GATEWAY', 'waafipay'));
-        Setting::setValue('private_ticket_price', '5');
+        Setting::setValue('private_ticket_price', '0.8');
         Setting::setValue('private_ticket_max', '500');
-        Setting::setValue('private_premium_design_surcharge', '2');
+        Setting::setValue('private_premium_design_surcharge', '0.2');
         Setting::setValue('show_organizer_packages_on_front', '0');
 
         $this->call([

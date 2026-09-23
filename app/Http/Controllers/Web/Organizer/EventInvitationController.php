@@ -33,7 +33,7 @@ class EventInvitationController extends Controller
         $event->load(['ticketTypes', 'package']);
         $remaining = $event->ticketTypes->sum(fn ($t) => $t->remaining());
         $pending = is_array($event->pending_invitations) ? ($event->pending_invitations['guests'] ?? []) : [];
-        $guestLimit = Event::MAX_COMPLIMENTARY_GUESTS;
+        $guestLimit = $event->totalInvitationCapacity();
         $guestUsed = $event->activeComplimentaryGuestCount();
         $guestSlots = $event->complimentaryGuestSlotsLeft();
 
@@ -57,13 +57,13 @@ class EventInvitationController extends Controller
         if ($slots < 1) {
             return redirect()
                 ->route('organizer.events.invitations.index', $event)
-                ->with('error', 'Complimentary guests are limited to '.Event::MAX_COMPLIMENTARY_GUESTS.' per event.');
+                ->with('error', 'No invitation seats left. Complimentary invites use the same ticket capacity as sales.');
         }
 
         return view('organizer.events.invitations.create', [
             'event' => $event->load('ticketTypes'),
             'guestSlots' => $slots,
-            'guestLimit' => Event::MAX_COMPLIMENTARY_GUESTS,
+            'guestLimit' => $event->totalInvitationCapacity(),
         ]);
     }
 
@@ -74,7 +74,7 @@ class EventInvitationController extends Controller
 
         $slots = $event->complimentaryGuestSlotsLeft();
         if ($slots < 1) {
-            return back()->with('error', 'Complimentary guests are limited to '.Event::MAX_COMPLIMENTARY_GUESTS.' per event.');
+            return back()->with('error', 'No invitation seats left. Complimentary invites use the same ticket capacity as sales.');
         }
 
         try {

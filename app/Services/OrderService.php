@@ -59,6 +59,11 @@ class OrderService
 
         return DB::transaction(function () use ($event, $buyer, $items, $user) {
             $isFreeEvent = $event->isFreeEvent();
+            if ($isFreeEvent && ! $event->isPubliclyBookable()) {
+                throw ValidationException::withMessages([
+                    'event' => ['This free event is not available yet. The organizer must complete platform payment first.'],
+                ]);
+            }
             $subtotal = 0;
             $lineItems = [];
 
@@ -108,8 +113,19 @@ class OrderService
 
             $serviceFee = $isFreeEvent ? 0.0 : (float) Setting::getValue('service_fee', 1);
             $total = round($subtotal + $serviceFee, 2);
-            $commissionRate = $isFreeEvent ? 0.0 : $this->commissionRateFor($event);
-            $commission = $isFreeEvent ? 0.0 : round($subtotal * ($commissionRate / 100), 2);
+            $ticketQty = (int) collect($lineItems)->sum('quantity');
+            if ($event->platformChargesWaived()) {
+                $commission = 0.0;
+            } elseif ($isFreeEvent && $event->packageIsPaid()) {
+                // Capacity prepaid after admin publish — no per-ticket commission.
+                $commission = 0.0;
+            } elseif ($isFreeEvent) {
+                $feePerTicket = (float) Setting::getValue('free_ticket_organizer_fee', 0.25);
+                $commission = round($ticketQty * $feePerTicket, 2);
+            } else {
+                $commissionRate = $this->commissionRateFor($event);
+                $commission = round($subtotal * ($commissionRate / 100), 2);
+            }
 
             $order = Order::query()->create([
                 'user_id' => $user?->id,
@@ -157,9 +173,9 @@ class OrderService
             $forceFail = false;
         }
 
-        if ($paymentMethod !== 'waafipay') {
+        if (! in_array($paymentMethod, ['waafipay', 'waafipay_card'], true)) {
             throw ValidationException::withMessages([
-                'payment_method' => ['Pay with WaafiPay.'],
+                'payment_method' => ['Pay with WaafiPay mobile money or card.'],
             ]);
         }
 
@@ -174,9 +190,12 @@ class OrderService
         $eventTitle = $order->event?->title ?? 'tickets';
         $chargePhone = $phone ?: $order->buyer_phone;
         $reference = $prepared['reference'];
+        $card = $paymentMethod === 'waafipay_card';
 
         if ($prepared['action'] === 'inquire') {
-            $result = $this->gateway()->inquire($reference, $order->payment?->transaction_id);
+            $result = $card
+                ? $this->gateway()->inquireHpp($reference, $order->payment?->transaction_id)
+                : $this->gateway()->inquire($reference, $order->payment?->transaction_id);
             if (in_array($result['status'], ['pending', 'unknown'], true)) {
                 return $this->applyGatewayResult($order, $paymentMethod, $chargePhone, [
                     'status' => 'pending',
@@ -193,7 +212,10 @@ class OrderService
                     'phone' => $chargePhone,
                     'force_fail' => $forceFail,
                     'pin' => $walletPin,
+                    'channel' => $card ? 'card' : 'mwallet',
                     'description' => 'Ekaadh: '.$eventTitle.' '.$order->order_number,
+                    'success_url' => route('payments.waafi.hpp.success'),
+                    'failure_url' => route('payments.waafi.hpp.failure'),
                 ]
             );
         }
@@ -214,13 +236,19 @@ class OrderService
         }
 
         $reference = $this->chargeReference($order);
-        $result = $this->gateway()->inquire($reference, $order->payment->transaction_id);
+        $method = (string) ($order->payment_method ?: 'waafipay');
+        $raw = is_array($order->payment->raw_response) ? $order->payment->raw_response : [];
+        $card = $method === 'waafipay_card' || ($raw['channel'] ?? '') === 'card';
+
+        $result = $card
+            ? $this->gateway()->inquireHpp($reference, $order->payment->transaction_id)
+            : $this->gateway()->inquire($reference, $order->payment->transaction_id);
 
         if (in_array($result['status'], ['pending', 'unknown'], true)) {
             return $this->loadedOrder($order);
         }
 
-        return $this->applyGatewayResult($order, (string) ($order->payment_method ?: 'waafipay'), $order->buyer_phone, $result);
+        return $this->applyGatewayResult($order, $method, $order->buyer_phone, $result);
     }
 
     /**
@@ -284,6 +312,32 @@ class OrderService
     }
 
     /**
+     * Apply a gateway result from an external callback (e.g. WaafiPay HPP).
+     *
+     * @param  array{status: string, transaction_id: string, message: string, raw?: array}  $result
+     */
+    public function applyExternalGatewayResult(Order $order, string $paymentMethod, ?string $phone, array $result): Order
+    {
+        return $this->applyGatewayResult($order, $paymentMethod, $phone, $result);
+    }
+
+    /**
+     * Hosted card-payment redirect URL, if the customer still needs to open WaafiPay HPP.
+     */
+    public function cardRedirectUrl(Order $order): ?string
+    {
+        $order->loadMissing('payment');
+        if ($order->status !== 'pending' || $order->payment?->status !== 'initiated') {
+            return null;
+        }
+
+        $raw = is_array($order->payment->raw_response) ? $order->payment->raw_response : [];
+        $url = (string) ($raw['redirect_url'] ?? $raw['hpp_url'] ?? '');
+
+        return $url !== '' ? $url : null;
+    }
+
+    /**
      * @param  array{status: string, transaction_id: string, message: string, raw?: array}  $result
      */
     private function applyGatewayResult(Order $order, string $paymentMethod, ?string $phone, array $result): Order
@@ -299,6 +353,9 @@ class OrderService
 
             $status = (string) ($result['status'] ?? 'failed');
             if ($status === 'unknown') {
+                $status = 'pending';
+            }
+            if ($status === 'redirect') {
                 $status = 'pending';
             }
 
@@ -422,7 +479,9 @@ class OrderService
     {
         $orderId = $order->id;
         DB::afterCommit(function () use ($orderId) {
-            DeliverPaidOrderTickets::dispatch($orderId);
+            // Sync so confirmation SMS goes out even when the queue worker is idle
+            // (same reliability as invitation SMS).
+            DeliverPaidOrderTickets::dispatchSync($orderId);
         });
     }
 
@@ -569,7 +628,7 @@ class OrderService
         $organizer = OrganizerProfile::query()->with('package')->find($event->organizer_id);
 
         if (! $organizer) {
-            return (float) Setting::getValue('default_commission_rate', 10);
+            return (float) Setting::getValue('default_commission_rate', 5);
         }
 
         return $organizer->effectiveCommissionRate();

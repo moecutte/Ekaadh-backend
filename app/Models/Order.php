@@ -84,10 +84,23 @@ class Order extends Model
     {
         return match ($this->source) {
             'private_event' => 'Private event',
-            'invitation' => 'Invitation',
+            'invitation' => 'Private invitation',
             'organizer_package' => 'Free event package',
             default => 'Public tickets',
         };
+    }
+
+    public function organizerListStatusLabel(): string
+    {
+        if ($this->isInvitation()) {
+            return match ($this->status) {
+                'paid' => 'Private sent',
+                'cancelled' => 'Revoked',
+                default => ucfirst($this->status),
+            };
+        }
+
+        return ucfirst($this->status);
     }
 
     public function isPackagePurchase(): bool

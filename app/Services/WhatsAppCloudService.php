@@ -201,7 +201,7 @@ class WhatsAppCloudService
         }
 
         $candidates = [$primary];
-        foreach (['en_US', 'en', 'en_GB'] as $code) {
+        foreach (['so', 'en_US', 'en', 'en_GB'] as $code) {
             if (strcasecmp($code, $primary) !== 0) {
                 $candidates[] = $code;
             }

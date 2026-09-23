@@ -35,7 +35,7 @@ class DashboardController extends Controller
                 ->take(8)
                 ->get();
 
-        $defaultCommission = (float) Setting::getValue('default_commission_rate', 10);
+        $defaultCommission = (float) Setting::getValue('default_commission_rate', 5);
 
         return view('organizer.dashboard', compact('profile', 'stats', 'recentOrders', 'defaultCommission'));
     }

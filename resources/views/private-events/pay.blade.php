@@ -65,8 +65,9 @@
         @csrf
         <input type="hidden" name="wallet_pin" :value="walletPin">
         <input type="hidden" name="buyer_phone" :value="chargeFullPhone">
+        <input type="hidden" name="payment_method" :value="payment">
         @if(! empty($waafiSandbox) && ! empty($waafiTestWallets))
-            <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
+            <div x-show="payment === 'waafipay'" x-cloak class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
                 <p class="font-extrabold mb-1">WaafiPay sandbox</p>
                 <p class="text-xs text-mute mb-3">Charge a test wallet, then enter PIN <span class="font-bold text-ink">1212</span>. Your account phone is not a sandbox wallet.</p>
                 <div class="flex flex-wrap gap-2 mb-3">
@@ -93,29 +94,60 @@
                 <p x-show="phoneError" x-cloak class="text-sm text-red-600 font-semibold mt-2" x-text="phoneError"></p>
             </div>
         @endif
+        @if(! empty($waafiCardCheckout) && ! empty($waafiSandbox) && ! empty($waafiTestCards))
+            <div x-show="payment === 'waafipay_card'" x-cloak class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-ink">
+                <p class="font-extrabold mb-1">WaafiPay sandbox cards</p>
+                @if(empty($waafiHppEnabled))
+                    <p class="text-xs font-semibold text-red-700 mb-2">{{ __('ui.payment_failed_card_unavailable') }}</p>
+                @endif
+                <ul class="space-y-1 text-xs font-semibold">
+                    @foreach($waafiTestCards as $card)
+                        <li>{{ $card['network'] }} · {{ $card['number'] }} · {{ $card['expiry'] }} · CVV {{ $card['cvv'] }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div>
             <label class="text-xs font-bold text-mute block mb-2">{{ __('ui.payment_method') }}</label>
-            <input type="hidden" name="payment_method" value="waafipay">
-            <div class="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3">
-                <div class="flex flex-col gap-2 rounded-xl border-2 border-brand bg-brand-soft px-3 py-3 min-w-0">
+            <div class="grid grid-cols-1 {{ ! empty($waafiCardCheckout) ? 'min-[480px]:grid-cols-2' : '' }} gap-3">
+                <button
+                    type="button"
+                    @click="payment = 'waafipay'"
+                    class="flex flex-col gap-2 rounded-xl border-2 px-3 py-3 text-left min-w-0"
+                    :class="payment === 'waafipay' ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-brand/40'"
+                >
                     @include('partials.operator-logos', ['size' => 'compact'])
                     <div>
                         <p class="text-sm font-bold text-ink">WaafiPay</p>
                         <p class="text-xs text-mute">{{ __('ui.mobile_money_waafipay') }}</p>
                     </div>
-                </div>
+                </button>
+                @if(! empty($waafiCardCheckout))
                 <button
                     type="button"
-                    onclick="document.getElementById('edahab-notice').classList.remove('hidden')"
-                    class="flex flex-col gap-2 rounded-xl border border-slate-200 px-3 py-3 text-left hover:border-brand/40 min-w-0"
+                    @click="payment = 'waafipay_card'"
+                    class="flex flex-col gap-2 rounded-xl border-2 px-3 py-3 text-left min-w-0"
+                    :class="payment === 'waafipay_card' ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-brand/40'"
                 >
-                    <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-10 sm:h-12 w-full max-w-[200px] object-contain object-left">
+                    @include('partials.card-network-logos', ['size' => 'compact'])
                     <div>
-                        <p class="text-sm font-bold text-ink">eDahab</p>
-                        <p class="text-xs text-mute">{{ __('ui.mobile_money_somtel') }}</p>
+                        <p class="text-sm font-bold text-ink">{{ __('ui.card_visa_mastercard') }}</p>
+                        <p class="text-xs text-mute">{{ __('ui.card_payment_hint') }}</p>
                     </div>
                 </button>
+                @endif
             </div>
+            <button
+                type="button"
+                onclick="document.getElementById('edahab-notice').classList.remove('hidden')"
+                class="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 px-3 py-3 text-left hover:border-brand/40 w-full"
+            >
+                <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-10 sm:h-12 w-full max-w-[200px] object-contain object-left">
+                <div>
+                    <p class="text-sm font-bold text-ink">eDahab</p>
+                    <p class="text-xs text-mute">{{ __('ui.mobile_money_somtel') }}</p>
+                </div>
+            </button>
             <p id="edahab-notice" class="hidden mt-3 text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">{{ __('ui.edahab_unavailable') }}</p>
         </div>
         @if($allowForceFail)
@@ -133,6 +165,7 @@
 <script>
 function privatePayPin() {
     return {
+        payment: @json(old('payment_method', 'waafipay')),
         sandbox: {{ ! empty($waafiSandbox) ? 'true' : 'false' }},
         showPinModal: {{ $errors->has('wallet_pin') ? 'true' : 'false' }},
         walletPin: '',
@@ -146,12 +179,12 @@ function privatePayPin() {
         },
         prepareSubmit(e) {
             this.phoneError = '';
-            if (this.sandbox && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
+            if (this.sandbox && this.payment === 'waafipay' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
                 e.preventDefault();
                 this.phoneError = @json(__('ui.sandbox_charge_phone_required'));
                 return;
             }
-            if (this.sandbox && !this.pinReady) {
+            if (this.sandbox && this.payment === 'waafipay' && !this.pinReady) {
                 e.preventDefault();
                 this.showPinModal = true;
                 this.$nextTick(() => this.$refs.pinInput?.focus());

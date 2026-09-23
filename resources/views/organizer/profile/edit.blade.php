@@ -3,13 +3,14 @@
 @section('heading', 'Profile')
 
 @section('content')
+<div class="mx-auto w-full max-w-2xl">
 @if($errors->any())
     <div class="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-4">
         <ul class="list-disc pl-4">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
     </div>
 @endif
 
-<form method="POST" action="{{ route('organizer.profile.update') }}" enctype="multipart/form-data" class="max-w-2xl space-y-5" x-data="profilePhoto()">
+<form method="POST" action="{{ route('organizer.profile.update') }}" enctype="multipart/form-data" class="space-y-5" x-data="profilePhoto()">
     @csrf
     @method('PUT')
 
@@ -86,4 +87,5 @@
 </form>
 
 @include('partials.profile-photo-script', ['currentUrl' => $user->avatar])
+</div>
 @endsection

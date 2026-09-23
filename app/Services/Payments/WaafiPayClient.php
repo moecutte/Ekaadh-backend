@@ -17,6 +17,14 @@ class WaafiPayClient
             && filled(config('waafipay.api_key'));
     }
 
+    public function hppEnabled(): bool
+    {
+        return $this->purchaseEnabled()
+            && (bool) config('waafipay.hpp_enabled')
+            && filled(config('waafipay.store_id'))
+            && filled(config('waafipay.hpp_key'));
+    }
+
     /**
      * @param  array<string, mixed>  $serviceParams
      * @return array<string, mixed>

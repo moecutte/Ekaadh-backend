@@ -57,9 +57,14 @@ class PrivateEventResource extends JsonResource
             'ticket_types' => TicketTypeResource::collection($this->whenLoaded('ticketTypes')),
             'pending_order' => $this->pendingOrderPayload($request),
             'payment_sandbox' => (bool) config('waafipay.sandbox'),
+            'card_payments_enabled' => (bool) config('waafipay.card_checkout_enabled'),
             'test_wallets' => $this->when(
                 (bool) config('waafipay.sandbox'),
                 array_values(config('waafipay.test_wallets', []))
+            ),
+            'test_cards' => $this->when(
+                (bool) config('waafipay.sandbox'),
+                array_values(config('waafipay.test_cards', []))
             ),
         ];
     }

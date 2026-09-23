@@ -32,7 +32,7 @@ class OtpService
     }
 
     /**
-     * @return array{phone: string, message: string, expires_in: int, debug_code?: string}
+     * @return array{phone: string, message: string, expires_in: int}
      */
     public function send(string $phone, string $purpose): array
     {
@@ -57,7 +57,7 @@ class OtpService
             'attempts' => 0,
         ], $ttl);
 
-        // Prefer fixed/test OTP over live SMS so local/staging never hangs on Telesom.
+        // Local/CI only: skip live SMS when OTP_FIXED_CODE is set. Never returned to clients.
         if (filled(config('otp.fixed_code'))) {
             Log::info('OTP issued (fixed code — SMS skipped)', [
                 'purpose' => $purpose,
@@ -67,9 +67,8 @@ class OtpService
 
             return [
                 'phone' => $normalized,
-                'message' => 'Use confirmation code '.$code.' (testing — fixed OTP).',
+                'message' => 'A confirmation code was sent to your phone.',
                 'expires_in' => $ttl,
-                'debug_code' => $code,
             ];
         }
 
@@ -112,25 +111,14 @@ class OtpService
         Log::info('OTP issued (stub delivery — Telesom SMS not configured)', [
             'purpose' => $purpose,
             'phone' => $this->redact($normalized),
-            'code' => $code,
             'ttl' => $ttl,
         ]);
 
-        $payload = [
+        return [
             'phone' => $normalized,
             'message' => 'A confirmation code was sent to your phone.',
             'expires_in' => $ttl,
         ];
-
-        // Surface code only when explicitly enabled — never by APP_ENV=local alone.
-        $expose = filled(config('otp.fixed_code'))
-            || filter_var(config('otp.expose_debug_code'), FILTER_VALIDATE_BOOLEAN);
-        if ($expose) {
-            $payload['debug_code'] = $code;
-            $payload['message'] = 'Use confirmation code '.$code.' (testing — SMS not configured).';
-        }
-
-        return $payload;
     }
 
     public function verify(string $phone, string $purpose, string $code): string

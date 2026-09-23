@@ -17,18 +17,28 @@ $sandboxApiKey = env('WAAFIPAY_SANDBOX_API_KEY');
 
 $hasSandboxCredentials = filled($sandboxMerchant) && filled($sandboxUserId) && filled($sandboxApiKey);
 
+$liveStoreId = env('WAAFIPAY_LIVE_HPP_STORE_ID', env('WAAFIPAY_HPP_STORE_ID'));
+$liveHppKey = env('WAAFIPAY_LIVE_HPP_KEY', env('WAAFIPAY_HPP_KEY'));
+$sandboxStoreId = env('WAAFIPAY_SANDBOX_HPP_STORE_ID');
+$sandboxHppKey = env('WAAFIPAY_SANDBOX_HPP_KEY');
+
+$storeId = $sandbox ? $sandboxStoreId : $liveStoreId;
+$hppKey = $sandbox ? $sandboxHppKey : $liveHppKey;
+$hppEnabled = filled($storeId) && filled($hppKey);
+
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | WaafiPay Purchase API
+    | WaafiPay Purchase API + Hosted Payment Page (cards)
     |--------------------------------------------------------------------------
     |
     | Docs: https://docs.waafipay.com/purchase-api
+    | HPP:  https://docs.waafipay.com/hpp-api
     |
-    | Switch environments with WAAFIPAY_MODE=sandbox|live in .env.
-    | Sandbox rejects live merchant keys (error 1001 / "Authentication failed").
-    | Fill WAAFIPAY_SANDBOX_* with keys from the WaafiPay sandbox dashboard.
+    | Mobile money uses API_PURCHASE (MWALLET_ACCOUNT).
+    | Debit/credit cards (Visa, Mastercard) use HPP_PURCHASE (CREDIT_CARD).
+    | Fill WAAFIPAY_*_HPP_STORE_ID and WAAFIPAY_*_HPP_KEY from the WaafiPay dashboard.
     |
     */
 
@@ -50,6 +60,19 @@ return [
 
     'api_key' => $sandbox ? $sandboxApiKey : $liveApiKey,
 
+    'store_id' => $storeId,
+
+    'hpp_key' => $hppKey,
+
+    'hpp_enabled' => $hppEnabled,
+
+    /*
+    | Set WAAFIPAY_CARD_CHECKOUT=true to show Visa/Mastercard at checkout.
+    | Also requires HPP store ID + key (hpp_enabled).
+    */
+    'card_checkout_enabled' => filter_var(env('WAAFIPAY_CARD_CHECKOUT', false), FILTER_VALIDATE_BOOL)
+        && $hppEnabled,
+
     'currency' => env('WAAFIPAY_CURRENCY', 'USD'),
 
     'timeout' => (int) env('WAAFIPAY_TIMEOUT', 45),
@@ -68,6 +91,14 @@ return [
         ['brand' => 'EVCPlus', 'provider' => 'Hormuud', 'account' => '252611111111', 'local' => '611111111'],
         ['brand' => 'ZAAD', 'provider' => 'Telesom', 'account' => '252631111111', 'local' => '631111111'],
         ['brand' => 'SAHAL', 'provider' => 'Golis', 'account' => '252901111111', 'local' => '901111111'],
+    ],
+
+    /*
+    | Sandbox cards from https://docs.waafipay.com/quickstart
+    */
+    'test_cards' => [
+        ['network' => 'Visa', 'number' => '4111111111111111', 'expiry' => '12/26', 'cvv' => '123'],
+        ['network' => 'Mastercard', 'number' => '5555555555555599', 'expiry' => '12/34', 'cvv' => '123'],
     ],
 
 ];

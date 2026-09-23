@@ -11,7 +11,7 @@ class TelesomTestCommand extends Command
 {
     protected $signature = 'telesom:test
                             {phone : Recipient mobile (e.g. 0631234567)}
-                            {--otp : Send a verification-code SMS (standard prepaid until OTP product is enabled)}';
+                            {--otp : Send a verification code via the Telesom OTP API}';
 
     protected $description = 'Send a test SMS through the Telesom prepaid gateway to verify credentials';
 

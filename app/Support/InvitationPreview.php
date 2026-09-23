@@ -66,7 +66,8 @@ class InvitationPreview
             'city' => $meta['city'] ?? null,
             'event_date' => $date->toDateString(),
             'event_time' => $time,
-            'is_private' => true,
+            'is_private' => ! $design->isPublicAudience(),
+            'cover_image' => $meta['cover_image'] ?? ($design->isPublicAudience() ? 'images/ekaadh-logo.png' : null),
             'couple_name_1' => $couple1 !== '' ? $couple1 : null,
             'couple_name_2' => $couple2 !== '' ? $couple2 : null,
             'invitation_field_values' => $values,
@@ -74,14 +75,21 @@ class InvitationPreview
         ]);
 
         $ticket = new Ticket([
-            'holder_name' => $meta['guest_name'] ?? '',
-            'ticket_code' => 'PREVIEW',
-            'ticket_type_name' => 'Invitation',
+            'holder_name' => $meta['guest_name'] ?? ($design->isPublicAudience() ? 'Guest Name' : ''),
+            'ticket_code' => $design->isPublicAudience() ? 'EKD-PREVIEW' : 'PREVIEW',
+            'ticket_type_name' => $design->isPublicAudience() ? 'General' : 'Invitation',
             'status' => 'valid',
         ]);
         $ticket->setRelation('event', $event);
 
         $catalog['field_values'] = $values;
+        if ($design->isPublicAudience()) {
+            $catalog['blade_key'] = 'public';
+            $catalog['id'] = 'public';
+            $catalog['badge'] = $catalog['badge'] ?: 'Admit one';
+            $catalog['footer_line'] = $catalog['footer_line'] ?: 'Show your QR at the entrance';
+            $catalog['ornament'] = $catalog['ornament'] ?: '❖';
+        }
         if (($catalog['render_mode'] ?? 'blade') !== 'overlay') {
             $catalog['graphic_url'] = null;
             $catalog['graphic_path'] = null;

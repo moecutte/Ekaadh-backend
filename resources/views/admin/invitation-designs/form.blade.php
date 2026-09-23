@@ -26,8 +26,14 @@
     </div>
 @endif
 
+@php
+    $audience = old('audience', $design->audience ?: \App\Models\InvitationDesign::AUDIENCE_PRIVATE);
+    $bladeTemplates = $bladeTemplates ?? \App\Support\TicketDesigns::bladeTemplateOptions();
+@endphp
+
 <div class="mt-5"
      x-data="{
+        audience: @js($audience),
         previewSrc: @js($design->thumbnail_url ?: $design->graphic_url),
         graphicError: '',
         onGraphicPicked(e) {
@@ -49,12 +55,40 @@
       class="lg:col-span-5 space-y-5">
     @csrf
     @if($design->exists) @method('PUT') @endif
+    <input type="hidden" name="render_mode" value="blade">
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
             <h3 class="text-sm font-bold">Design details</h3>
             <div>
+                <label class="text-xs font-bold text-mute block mb-1">Invitation type *</label>
+                <select name="audience" x-model="audience" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                    <option value="private_invitation">Private invitations</option>
+                    <option value="public_event">Public events</option>
+                </select>
+                <p class="text-[11px] text-mute mt-1">Public events keep the cover + QR ticket inside a working envelope.</p>
+            </div>
+
+            <div x-show="audience === 'public_event'" x-cloak class="rounded-xl border border-brand/20 bg-brand/5 p-3 space-y-3">
+                <p class="text-xs text-ink font-semibold">Layout: classic cover image + QR, opened from an envelope.</p>
+                <div>
+                    <label class="text-xs font-bold text-mute block mb-1">Name</label>
+                    <input name="name" value="{{ old('name', $design->name ?: 'Ekaadh Classic') }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" :disabled="audience !== 'public_event'">
+                </div>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="hidden" name="is_default" value="0" :disabled="audience !== 'public_event'">
+                    <input type="checkbox" name="is_default" value="1" class="mt-0.5 rounded border-slate-300 text-brand" @checked(old('is_default', $design->is_default ?? true)) :disabled="audience !== 'public_event'">
+                    <span>
+                        <span class="font-semibold">Default design for public events</span>
+                        <span class="block text-[11px] text-mute">Public tickets will use this design.</span>
+                    </span>
+                </label>
+                <input type="hidden" name="blade_key" value="public" :disabled="audience !== 'public_event'">
+                <input type="hidden" name="tier" value="standard" :disabled="audience !== 'public_event'">
+            </div>
+
+            <div x-show="audience === 'private_invitation'" x-cloak>
                 <label class="text-xs font-bold text-mute block mb-1">Event category *</label>
-                <select name="private_event_category_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                <select name="private_event_category_id" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" :required="audience === 'private_invitation'" :disabled="audience !== 'private_invitation'">
                     <option value="">Select category…</option>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}" @selected((int) old('private_event_category_id', $design->private_event_category_id) === (int) $cat->id)>{{ $cat->name }}</option>
@@ -62,32 +96,34 @@
                 </select>
                 <p class="text-[11px] text-mute mt-1">Customers only see this design when they pick this category.</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+
+            <div class="grid grid-cols-2 gap-3" x-show="audience === 'private_invitation'" x-cloak>
                 <div>
                     <label class="text-xs font-bold text-mute block mb-1">Tier *</label>
-                    <select name="tier" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                    <select name="tier" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" :disabled="audience !== 'private_invitation'">
                         <option value="standard" @selected(old('tier', $design->tier)==='standard')>Standard</option>
                         <option value="premium" @selected(old('tier', $design->tier)==='premium')>Premium</option>
                     </select>
                 </div>
                 <div>
                     <label class="text-xs font-bold text-mute block mb-1">Web theme *</label>
-                    @php $bladeTemplates = $bladeTemplates ?? \App\Support\TicketDesigns::bladeTemplateOptions(); @endphp
-                    <select name="blade_key" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                    <select name="blade_key" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" :required="audience === 'private_invitation'" :disabled="audience !== 'private_invitation'">
                         @foreach($bladeTemplates as $key => $label)
+                            @continue($key === 'public')
                             <option value="{{ $key }}" @selected(old('blade_key', $design->blade_key) === $key)>{{ $label }}</option>
                         @endforeach
                     </select>
-                    <input type="hidden" name="render_mode" value="blade">
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+
+            <div class="grid grid-cols-2 gap-3" x-show="audience === 'private_invitation'" x-cloak>
                 <div>
                     <label class="text-xs font-bold text-mute block mb-1">Ticket price ($)</label>
                     <input type="number" step="0.01" min="0" name="ticket_price"
                            value="{{ old('ticket_price', $design->ticket_price) }}"
                            placeholder="{{ number_format(\App\Services\PrivateEventService::unitPrice(), 2) }}"
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                           :disabled="audience !== 'private_invitation'">
                     <p class="text-[10px] text-mute mt-0.5">Leave blank to use global default.</p>
                 </div>
                 <div>
@@ -95,13 +131,14 @@
                     <input type="number" step="0.01" min="0" name="premium_surcharge"
                            value="{{ old('premium_surcharge', $design->premium_surcharge) }}"
                            placeholder="{{ number_format(\App\Services\PrivateEventService::premiumDesignSurcharge(), 2) }}"
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                           :disabled="audience !== 'private_invitation'">
                     <p class="text-[10px] text-mute mt-0.5">Added when tier is Premium.</p>
                 </div>
             </div>
             <div>
                 <label class="text-xs font-bold text-mute block mb-1">Theme colors</label>
-                <p class="text-[11px] text-mute mb-2">These tint the HTML theme. Save to refresh the live preview.</p>
+                <p class="text-[11px] text-mute mb-2">These tint the card and envelope.</p>
                 <div class="grid grid-cols-4 gap-2">
                     @foreach([
                         'accent' => '#705898',
@@ -136,7 +173,7 @@
 
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
             <h3 class="text-sm font-bold">Picker thumbnail</h3>
-            <p class="text-xs text-mute">Optional. Shown in the customer design grid. The invitation itself is the HTML theme.</p>
+            <p class="text-xs text-mute">Optional. Shown in admin lists and design pickers.</p>
             <div class="flex gap-3 items-start">
                 <div class="w-20 h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center"
                      x-show="previewSrc" x-cloak>
@@ -166,5 +203,3 @@
 @endif
 </div>
 @endsection
-
-

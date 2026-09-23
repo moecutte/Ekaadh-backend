@@ -21,5 +21,5 @@ Schedule::command('payments:reconcile --minutes=2 --expire-minutes=30')
     ->withoutOverlapping();
 
 Schedule::command('events:send-reminders')
-    ->hourly()
+    ->everyFifteenMinutes()
     ->withoutOverlapping();

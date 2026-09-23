@@ -73,8 +73,9 @@ WAAFIPAY_MODE=live
 ADMIN_EMAIL=you@YOUR_DOMAIN
 ADMIN_PASSWORD=           # min 8 chars; used only on first seed
 ADMIN_PHONE=+2526...
-DEFAULT_COMMISSION_RATE=10
+DEFAULT_COMMISSION_RATE=5
 SERVICE_FEE=1
+FREE_TICKET_ORGANIZER_FEE=0.25
 TICKET_QR_SECRET=           # long random string; keep stable after tickets exist
 CORS_ALLOWED_ORIGINS=https://YOUR_DOMAIN
 SANCTUM_TOKEN_EXPIRATION=43200
@@ -95,7 +96,7 @@ WHATSAPP_API_VERSION=v21.0
 WHATSAPP_TIMEOUT=20
 WHATSAPP_TEMPLATE_TICKET=ekaadh_ticket_ready
 WHATSAPP_TEMPLATE_INVITE=ekaadh_invitation
-WHATSAPP_TEMPLATE_LANG=en
+WHATSAPP_TEMPLATE_LANG=so
 
 # Telesom Prepaid SMS Gateway (OTP + ticket/invitation SMS)
 TELESOM_BASE_URL=https://sms.mytelesom.com
@@ -202,7 +203,7 @@ Priorities wired in backend:
 | Type | When |
 |------|------|
 | `support_reply` | Admin replies in support chat |
-| `event_reminder` | ~24h before event (`events:send-reminders` hourly) |
+| `event_reminder` | ~24h push + ~2h SMS/push before event (`events:send-reminders` every 15 min) |
 | `invitation_received` | Private invitation sent (guest with matching app account) |
 | `private_event_paid` | Host paid for private invitation capacity |
 | `invite_send_failed` | SMS delivery failed for an invitation (notifies host) |
@@ -260,12 +261,18 @@ WAAFIPAY_LIVE_URL=https://api.waafipay.net/asm
 WAAFIPAY_LIVE_MERCHANT_UID=
 WAAFIPAY_LIVE_API_USER_ID=
 WAAFIPAY_LIVE_API_KEY=
+WAAFIPAY_SANDBOX_HPP_STORE_ID=
+WAAFIPAY_SANDBOX_HPP_KEY=
+WAAFIPAY_LIVE_HPP_STORE_ID=
+WAAFIPAY_LIVE_HPP_KEY=
 WAAFIPAY_CURRENCY=USD
 ```
 
 Keep both credential sets in `.env`. Switch with **`WAAFIPAY_MODE=sandbox`** or **`WAAFIPAY_MODE=live`** — do not edit PHP. After changing `.env`, run `php artisan config:clear` if config is cached.
 
 Sandbox **does not accept live merchant keys** (`params.description`: Authentication failed). Fill `WAAFIPAY_SANDBOX_MERCHANT_UID` / `API_USER_ID` / `API_KEY` from the WaafiPay sandbox dashboard.
+
+**Cards (Visa / Mastercard)** use Hosted Payment Page (`HPP_PURCHASE`). Fill the matching `WAAFIPAY_*_HPP_STORE_ID` and `WAAFIPAY_*_HPP_KEY` from the WaafiPay dashboard. Without those keys, mobile money still works; card checkout returns a clear “not configured” error.
 
 Test wallets ([quickstart](https://docs.waafipay.com/quickstart)) work **only** in sandbox. PIN is `1212`. On checkout enter the local part after `+252` (WaafiPay `accountNo` is sent as `252611111111`, no `+`):
 
@@ -286,7 +293,7 @@ Outbound ticket and invitation delivery uses Meta Graph templates (no webhook in
 | Env | Suggested name | Body |
 |-----|----------------|------|
 | `WHATSAPP_TEMPLATE_TICKET` | `ekaadh_ticket_ready` | `Your Ekaadh tickets for {{1}} ({{2}}) are ready. Open {{3}} to view them.` |
-| `WHATSAPP_TEMPLATE_INVITE` | `ekaadh_invitation` | `Ekaadh: Hi {{1}}, you're invited to {{2}}. {{3}} ticket(s). Open {{4}} to view your invitation.` |
+| `WHATSAPP_TEMPLATE_INVITE` | `ekaadh_invitation` | `Ekaadh: Salaam {{1}}, waxaa lagugu casuumay munaasabada {{2}}. {{3}} tigidh. Fur casuumaddaada: {{4}}.` (approve Somali / `so` in Meta) |
 
 2. After approval, set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and the matching template name(s). Ticket send needs the ticket template; invite send needs the invite template. Sending stays **skipped** until token, phone number ID, and that template are set.
 3. Paid public checkout → ticket template. Private invite send/resend → invite template. Capacity purchase does not send WhatsApp.
@@ -298,8 +305,8 @@ OTP verification, ticket SMS, and invitation SMS use Telesom (`sms.mytelesom.com
 
 1. Put the SenderID, username, password, HMAC secret, and registered `client_ref` from Telesom into Coolify env (`TELESOM_*` above).
 2. Signature: `X-Auth-Key = Base64(HMAC-SHA256(SenderID + Timestamp + Username + Password))` with `TELESOM_SECRET_KEY` as the HMAC key (falls back to `TELESOM_PASSWORD` if the secret is empty). Timestamp is today's date in `Africa/Mogadishu` (`YYYY-MM-DD`).
-3. This account is **standard prepaid SMS** until Telesom enables OTP prepaid. Confirmation codes currently go out on `/smsapi/v1/messages` as a normal text. Switch to `/smsotpapi/v1/messages` after the OTP product is active.
-4. Leave `OTP_FIXED_CODE` empty in production so random 6-digit codes go out as SMS. Local/staging can keep a fixed code to skip live SMS.
+3. Confirmation codes go to `POST /index.php/smsotpapi/v1/otp` with the numeric OTP in `message`. Ticket and invitation texts stay on `/index.php/smsapi/v1/messages`.
+4. Leave `OTP_FIXED_CODE` empty and `OTP_EXPOSE_DEBUG_CODE=false` in production. Codes are never returned in API or shown in the app.
 5. Smoke test from the Coolify terminal:
 
 ```bash
