@@ -391,8 +391,7 @@
                 >
                     <span x-show="!submitting && payment !== 'waafipay_card'" x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
                     <span x-show="!submitting && payment === 'waafipay_card'" x-cloak x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', @json(__('ui.card_visa_mastercard')))"></span>
-                    <span x-show="submitting && payment !== 'waafipay_card'" x-cloak>{{ __('ui.waiting_phone_pin') }}</span>
-                    <span x-show="submitting && payment === 'waafipay_card'" x-cloak>{{ __('ui.redirecting_to_card') }}</span>
+                    <span x-show="submitting" x-cloak>…</span>
                 </button>
                 <p x-show="submitting && payment !== 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.waiting_phone_pin') }}</p>
                 <p x-show="submitting && payment === 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.redirecting_to_card') }}</p>

@@ -4,7 +4,8 @@
 
 @section('content')
 @php
-    $oldBuyerPhone = old('buyer_phone');
+    $profilePhone = auth()->user()->phone ?: ($event->organizer?->business_phone ?? '');
+    $oldBuyerPhone = old('buyer_phone', $profilePhone);
     $chargePhoneLocal = $oldBuyerPhone
         ? preg_replace('/^\+?252/', '', preg_replace('/\D+/', '', (string) $oldBuyerPhone))
         : '';
@@ -16,6 +17,9 @@
     <h2 class="text-xl font-extrabold mt-3 mb-1">{{ $event->title }}</h2>
     <p class="text-sm text-mute mb-6">Admin approved this free event. Pay the platform fee to make it live for guests.</p>
 
+    @if(session('error'))
+        <div class="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-4">{{ session('error') }}</div>
+    @endif
     @if($errors->any())
         <div class="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm p-4">
             <ul class="list-disc pl-4">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -58,17 +62,6 @@
                         </button>
                     @endforeach
                 </div>
-                <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone_number') }}</label>
-                <div class="flex">
-                    <span class="flex items-center px-3 bg-white border border-r-0 border-amber-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
-                    <input
-                        type="tel"
-                        x-model="chargePhoneLocal"
-                        placeholder="611111111"
-                        class="flex-1 border border-amber-200 rounded-r-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand bg-white"
-                    >
-                </div>
-                <p x-show="phoneError" x-cloak class="text-sm text-red-600 font-semibold mt-2" x-text="phoneError"></p>
             </div>
         @endif
         @if(! empty($waafiCardCheckout) && ! empty($waafiSandbox) && ! empty($waafiTestCards))
@@ -111,6 +104,20 @@
                 @endif
             </div>
         </div>
+        <div x-show="payment === 'waafipay'" x-cloak>
+            <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone_number') }}</label>
+            <p class="text-xs text-mute mb-2">{{ __('ui.enter_number_to_charge', ['method' => 'WaafiPay']) }}</p>
+            <div class="flex">
+                <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
+                <input
+                    type="tel"
+                    x-model="chargePhoneLocal"
+                    placeholder="611111111"
+                    class="flex-1 border border-slate-200 rounded-r-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand bg-page"
+                >
+            </div>
+            <p x-show="phoneError" x-cloak class="text-sm text-red-600 font-semibold mt-2" x-text="phoneError"></p>
+        </div>
         @if($allowForceFail)
             <label class="flex items-center gap-2 text-xs text-mute">
                 <input type="checkbox" name="force_fail" value="1"> {{ __('ui.simulate_failed_payment') }}
@@ -139,7 +146,7 @@ function packagePayPin() {
         },
         prepareSubmit(e) {
             this.phoneError = '';
-            if (this.sandbox && this.payment === 'waafipay' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
+            if (this.payment === 'waafipay' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
                 e.preventDefault();
                 this.phoneError = @json(__('ui.sandbox_charge_phone_required'));
                 return;

@@ -66,7 +66,11 @@ class TelesomSmsServiceTest extends TestCase
         app(TelesomSmsService::class)->send('+252633001111', 'Ticket ready');
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://sms.mytelesom.com/index.php/smsapi/v1/messages';
+            $data = $request->data();
+
+            return $request->url() === 'https://sms.mytelesom.com/index.php/smsapi/v1/messages'
+                && ($data['to'] ?? null) === ['252633001111']
+                && ($data['message'] ?? null) === 'Ticket ready';
         });
     }
 }

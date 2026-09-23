@@ -56,7 +56,16 @@ class PaymentMessage
             return __('ui.payment_failed_cancelled');
         }
 
-        if (self::containsAny($haystack, ['INVALID_PHONE', 'INVALID PHONE', 'ACCOUNTNO', 'WAAFI-INVALID', 'INVALID ACCOUNT'])) {
+        if (self::containsAny($haystack, [
+            'INVALID_PHONE',
+            'INVALID PHONE',
+            'ACCOUNTNO',
+            'WAAFI-INVALID',
+            'INVALID ACCOUNT',
+            'SUBSCRIBER NOT FOUND',
+            'RECEIVER SUBSCRIBER',
+            'PAYER NOT FOUND',
+        ])) {
             return __('ui.payment_failed_invalid_phone');
         }
 

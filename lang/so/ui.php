@@ -343,7 +343,7 @@ return [
     'payment_failed_auth' => 'WaafiPay wuu diiday furayaasha API. Sandbox wuxuu u baahan yahay furayaal sandbox ah oo ka yimaada dashboard-ka WaafiPay — furayaasha live tallaabadaas kuma shaqeeyaan.',
     'payment_failed_sandbox_credentials' => 'Tijaabada sandbox waxay u baahan tahay furayaasha ganacsadaha sandbox. Ku dar WAAFIPAY_SANDBOX_MERCHANT_UID, WAAFIPAY_SANDBOX_API_USER_ID iyo WAAFIPAY_SANDBOX_API_KEY, ama dhig WAAFIPAY_MODE=live si aad ugu dallacdo jeeb dhab ah.',
     'payment_failed_sandbox_wallet' => 'Sandbox kaliya wuxuu dallacaa jeebabka tijaabada. Isticmaal EVC 611111111, ZAAD 631111111, ama SAHAL 901111111, ka dibna PIN 1212.',
-    'sandbox_charge_phone_required' => 'Dooro jeeb tijaabo ah oo sandbox ah.',
+    'sandbox_charge_phone_required' => 'Geli lambarka lacagta moobilka ee la dallaci doono.',
     'payment_failed_hint' => 'Lacag lama qaadin. Waad isku dayi kartaa markaad diyaar tahay.',
     'payment_pending' => 'Bixinta waa la xaqiijinayaa',
     'payment_pending_for_order' => 'Waxaan xaqiijinaynaa bixinta dalabka :order.',
