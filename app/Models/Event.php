@@ -349,8 +349,12 @@ class Event extends Model
             ->where('is_private', false)
             ->where(function ($q) {
                 $q->where('pricing_type', '!=', 'free')
-                    ->orWhereNotNull('package_paid_at')
-                    ->orWhere('platform_charges_waived', true);
+                    ->orWhereNotNull('package_paid_at');
+
+                // Free events waived by admin (column added 2026-09-22).
+                if (\Illuminate\Support\Facades\Schema::hasColumn('events', 'platform_charges_waived')) {
+                    $q->orWhere('platform_charges_waived', true);
+                }
             });
     }
 
