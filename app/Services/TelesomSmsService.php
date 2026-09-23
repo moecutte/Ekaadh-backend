@@ -26,7 +26,11 @@ class TelesomSmsService
      */
     public function send(string|array $recipients, string $message): array
     {
-        $to = $this->normalizeRecipients($recipients);
+        // Telesom expects MSISDN digits only (252…), never a leading +.
+        $to = array_map(
+            static fn (string $phone) => ltrim($phone, '+'),
+            $this->normalizeRecipients($recipients)
+        );
         $payload = [
             'to' => $to,
             'message' => $message,

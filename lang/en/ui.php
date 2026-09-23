@@ -343,7 +343,7 @@ return [
     'payment_failed_auth' => 'WaafiPay rejected these API credentials. Sandbox needs its own merchant keys from the WaafiPay dashboard — live keys do not work there.',
     'payment_failed_sandbox_credentials' => 'Sandbox testing needs WaafiPay sandbox merchant keys. Add WAAFIPAY_SANDBOX_MERCHANT_UID, WAAFIPAY_SANDBOX_API_USER_ID and WAAFIPAY_SANDBOX_API_KEY, or set WAAFIPAY_MODE=live to charge a real wallet.',
     'payment_failed_sandbox_wallet' => 'Sandbox can only charge test wallets. Use EVC 611111111, ZAAD 631111111, or SAHAL 901111111, then PIN 1212.',
-    'sandbox_charge_phone_required' => 'Pick a sandbox test wallet to charge.',
+    'sandbox_charge_phone_required' => 'Enter the mobile-money number to charge.',
     'payment_failed_hint' => 'No money was taken. You can try again whenever you are ready.',
     'payment_pending' => 'Confirming payment',
     'payment_pending_for_order' => 'We are confirming payment for order :order.',

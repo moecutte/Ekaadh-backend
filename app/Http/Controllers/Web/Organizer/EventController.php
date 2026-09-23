@@ -394,14 +394,17 @@ class EventController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        $chargePhone = Phone::normalize(auth()->user()->phone ?: $event->organizer?->business_phone);
-        if (config('waafipay.sandbox') && ! $isCard) {
-            $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
-            if ($chargePhone === '') {
-                return back()->withErrors([
-                    'buyer_phone' => __('ui.sandbox_charge_phone_required'),
-                ]);
-            }
+        // Prefer the wallet number submitted on the pay form (EVC/Zaad/Sahal).
+        // Profile phone is only a fallback — Waafi rejects non-wallet numbers with
+        // "Receiver Subscriber not found".
+        $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
+        if ($chargePhone === '') {
+            $chargePhone = Phone::normalize(auth()->user()->phone ?: $event->organizer?->business_phone);
+        }
+        if (! $isCard && $chargePhone === '') {
+            return back()->withErrors([
+                'buyer_phone' => __('ui.sandbox_charge_phone_required'),
+            ]);
         }
 
         try {
