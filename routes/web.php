@@ -176,8 +176,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/organizers/{organizer}/reject', [AdminOrganizerController::class, 'reject'])->name('organizers.reject');
         Route::post('/organizers/{organizer}/package', [AdminOrganizerController::class, 'updatePackage'])->name('organizers.package');
         Route::post('/organizers/{organizer}/commission', [AdminOrganizerController::class, 'updateCommission'])->name('organizers.commission');
+        Route::delete('/organizers/{organizer}', [AdminOrganizerController::class, 'destroy'])->name('organizers.destroy');
 
         Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::delete('/customers/{user}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
         Route::get('/invitees', [AdminInviteeController::class, 'index'])->name('invitees.index');
 
         Route::get('/events', [AdminEventController::class, 'index'])->name('events.index');

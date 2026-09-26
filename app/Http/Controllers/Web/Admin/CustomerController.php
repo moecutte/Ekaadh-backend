@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\Concerns\PaginatesFilteredLists;
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -63,6 +65,26 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function destroy(User $user): RedirectResponse
+    {
+        if ($user->role !== User::ROLE_CUSTOMER) {
+            return back()->with('error', 'Only customer accounts can be deleted from this list.');
+        }
+
+        if ((int) $user->id === (int) auth()->id()) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
+
+        $label = $user->name ?: ($user->phone ?: 'Customer #'.$user->id);
+
+        DB::transaction(function () use ($user) {
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        return back()->with('success', "Deleted customer {$label}. Past orders stay in the system as guest records.");
+    }
+
     /**
      * @return Collection<int, object>
      */
@@ -83,6 +105,7 @@ class CustomerController extends Controller
 
         return $query->get()->map(fn (User $user) => (object) [
             'type' => 'user',
+            'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
@@ -130,6 +153,7 @@ class CustomerController extends Controller
 
                 return (object) [
                     'type' => 'guest',
+                    'id' => null,
                     'name' => $latest->buyer_name,
                     'email' => $latest->buyer_email,
                     'phone' => $latest->buyer_phone,

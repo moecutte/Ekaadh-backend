@@ -115,6 +115,10 @@
                                     <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold">Reject</button>
                                 </form>
                             @endif
+                            <form method="POST" action="{{ route('admin.organizers.destroy', $org) }}" onsubmit="return confirm(@json('Delete organizer '.$org->business_name.' and their login account? This only works if they have no events.'))">
+                                @csrf @method('DELETE')
+                                <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100">Delete</button>
+                            </form>
                         </div>
                     </td>
                 </tr>

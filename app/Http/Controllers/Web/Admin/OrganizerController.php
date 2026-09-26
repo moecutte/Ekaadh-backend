@@ -8,9 +8,12 @@ use App\Models\Order;
 use App\Models\OrganizerPackage;
 use App\Models\OrganizerProfile;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\PanelNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -171,5 +174,48 @@ class OrganizerController extends Controller
         ]);
 
         return back()->with('success', 'Commission override updated.');
+    }
+
+    public function destroy(OrganizerProfile $organizer): RedirectResponse
+    {
+        $organizer->loadMissing('user');
+
+        if ((int) $organizer->user_id === (int) auth()->id()) {
+            return back()->with('error', 'You cannot delete your own organizer account.');
+        }
+
+        $eventsCount = $organizer->events()->count();
+        if ($eventsCount > 0) {
+            return back()->with(
+                'error',
+                "Cannot delete \"{$organizer->business_name}\" — {$eventsCount} event(s) still belong to this organizer. Remove or reassign those events first."
+            );
+        }
+
+        $label = $organizer->business_name;
+        $docs = is_array($organizer->documents) ? $organizer->documents : [];
+        $user = $organizer->user;
+
+        DB::transaction(function () use ($organizer, $user) {
+            $organizer->payouts()->delete();
+            $organizer->delete();
+
+            if ($user && $user->role === User::ROLE_ORGANIZER) {
+                $user->tokens()->delete();
+                $user->delete();
+            }
+        });
+
+        $disk = Storage::disk('public');
+        foreach (['id_front', 'id_back', 'business_license'] as $key) {
+            $path = is_string($docs[$key] ?? null) ? $docs[$key] : null;
+            if ($path && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+
+        return redirect()
+            ->route('admin.organizers.index')
+            ->with('success', "Deleted organizer {$label}.");
     }
 }

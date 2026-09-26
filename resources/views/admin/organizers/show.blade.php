@@ -245,6 +245,12 @@
                     </div>
                     <p class="text-[11px] text-mute">Leave blank to use package rate, then platform default ({{ number_format($defaultRate, 1) }}%). Effective rate: {{ number_format($effectiveRate, 1) }}%.</p>
                 </form>
+
+                <form method="POST" action="{{ route('admin.organizers.destroy', $organizer) }}" class="pt-3 border-t border-slate-50" onsubmit="return confirm(@json('Delete organizer '.$organizer->business_name.' and their login account? Only allowed when they have no events.'))">
+                    @csrf @method('DELETE')
+                    <button class="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100">Delete organizer</button>
+                    <p class="text-[11px] text-mute mt-2">Removes the organizer profile and login. Blocked if they still have events.</p>
+                </form>
             </div>
         </div>
 
