@@ -44,6 +44,7 @@
                 <th class="text-left px-4 py-3">Status</th>
                 <th class="text-left px-4 py-3">Orders</th>
                 <th class="text-left px-4 py-3">Since</th>
+                <th class="text-left px-4 py-3">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -75,9 +76,19 @@
                     </td>
                     <td class="px-4 py-3 font-semibold">{{ number_format($customer->orders_count) }}</td>
                     <td class="px-4 py-3 text-mute text-xs">{{ $customer->joined_label }}</td>
+                    <td class="px-4 py-3">
+                        @if($customer->type === 'user' && $customer->id)
+                            <form method="POST" action="{{ route('admin.customers.destroy', $customer->id) }}" onsubmit="return confirm('Delete this customer account? Past orders will remain as guest records.')">
+                                @csrf @method('DELETE')
+                                <button class="px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100">Delete</button>
+                            </form>
+                        @else
+                            <span class="text-xs text-mute">—</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="px-4 py-10 text-center text-mute">No customers found.</td></tr>
+                <tr><td colspan="7" class="px-4 py-10 text-center text-mute">No customers found.</td></tr>
             @endforelse
         </tbody>
     </table>
