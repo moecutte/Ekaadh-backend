@@ -9,11 +9,12 @@
     </div>
 @endif
 
-<form method="POST" action="{{ $event->exists ? route('organizer.events.update', $event) : route('organizer.events.store') }}" enctype="multipart/form-data" class="max-w-3xl mx-auto space-y-3" x-data="eventForm()" x-init="if (!inviteRows.length) addInvite()">
+<form method="POST" action="{{ $event->exists ? route('organizer.events.update', $event) : route('organizer.events.store') }}" enctype="multipart/form-data" class="max-w-3xl mx-auto space-y-3" x-data="eventForm()" x-init="if (!inviteRows.length) addInvite()" @submit="guardUploads($event)">
     @csrf
     @if($event->exists) @method('PUT') @endif
     <input type="hidden" name="pricing_type" :value="pricingType">
 
+    <div x-show="uploadError" x-cloak class="rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm font-semibold px-4 py-3" x-text="uploadError"></div>
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
         <div class="flex items-baseline justify-between gap-3">
             <h3 class="text-sm font-bold">Event type</h3>
@@ -105,9 +106,11 @@
                         class="flex flex-col items-center justify-center w-full h-full px-3 text-center"
                     >
                         <span class="text-sm font-semibold text-ink">Upload cover</span>
-                        <span class="text-[11px] text-mute mt-0.5">PNG, JPG, WEBP · 5 MB</span>
+                        <span class="text-[11px] text-mute mt-0.5">PNG, JPG, WEBP · max 5 MB</span>
+                        <span class="text-[10px] text-mute mt-1">Compress large photos before uploading.</span>
                     </button>
                 </div>
+                <p x-show="uploadError && uploadErrorTarget === 'cover'" x-cloak class="text-xs text-red-600 font-semibold mt-1" x-text="uploadError"></p>
             </div>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -225,8 +228,8 @@
                     <input type="hidden" name="gallery_remove[]" :value="id">
                 </template>
             @endif
-            <input type="file" name="gallery_images[]" accept="image/png,image/jpeg,image/jpg,image/webp" multiple class="block w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-brand/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-brand">
-            <p class="text-[11px] text-mute">PNG, JPG, WEBP · up to 5 MB each.</p>
+            <input type="file" name="gallery_images[]" accept="image/png,image/jpeg,image/jpg,image/webp" multiple class="block w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-brand/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-brand" @change="onGallerySelect($event)">
+            <p class="text-[11px] text-mute">PNG, JPG, WEBP · max 5 MB each. Compress large photos before uploading.</p>
         </div>
     </div>
 
@@ -344,11 +347,57 @@ function eventForm() {
         showSpeakers: @json(collect($speakerRows ?? [])->isNotEmpty()),
         showProgramme: @json(collect($programmeRows ?? [])->isNotEmpty()),
         showGallery: @json(($galleryImages ?? collect())->isNotEmpty()),
+        uploadError: '',
+        uploadErrorTarget: '',
+        maxCoverMb: 5,
+        maxSpeakerMb: 4,
+        maxGalleryMb: 5,
         get ticketTotal() {
             return (this.rows || []).reduce((sum, row) => sum + (Number(row.quantity_available) || 0), 0);
         },
         get inviteSeatsUsed() {
             return (this.inviteRows || []).reduce((sum, row) => sum + Math.max(1, Number(row.quantity) || 1), 0);
+        },
+        fileTooLarge(file, maxMb) {
+            return file && file.size > maxMb * 1024 * 1024;
+        },
+        sizeLabel(file) {
+            return (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        },
+        setUploadError(message, target = '') {
+            this.uploadError = message;
+            this.uploadErrorTarget = target;
+        },
+        clearUploadError() {
+            this.uploadError = '';
+            this.uploadErrorTarget = '';
+        },
+        guardUploads(e) {
+            this.clearUploadError();
+            const cover = this.$refs.coverInput?.files?.[0];
+            if (this.fileTooLarge(cover, this.maxCoverMb)) {
+                e.preventDefault();
+                this.setUploadError('Cover image is too large (' + this.sizeLabel(cover) + '). Please use a photo under 5 MB.', 'cover');
+                return;
+            }
+            const speakerInputs = this.$el.querySelectorAll('input[type="file"][name*="[photo]"]');
+            for (const input of speakerInputs) {
+                const file = input.files && input.files[0];
+                if (this.fileTooLarge(file, this.maxSpeakerMb)) {
+                    e.preventDefault();
+                    this.setUploadError('A speaker photo is too large (' + this.sizeLabel(file) + '). Please use a photo under 4 MB.');
+                    return;
+                }
+            }
+            const gallery = this.$el.querySelector('input[name="gallery_images[]"]');
+            const galleryFiles = gallery?.files ? Array.from(gallery.files) : [];
+            for (const file of galleryFiles) {
+                if (this.fileTooLarge(file, this.maxGalleryMb)) {
+                    e.preventDefault();
+                    this.setUploadError('A gallery photo is too large (' + this.sizeLabel(file) + '). Please use photos under 5 MB each.');
+                    return;
+                }
+            }
         },
         setPricing(type) {
             if (this.pricingLocked) return;
@@ -372,9 +421,25 @@ function eventForm() {
         onSpeakerPhoto(e, index) {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
+            if (this.fileTooLarge(file, this.maxSpeakerMb)) {
+                e.target.value = '';
+                this.setUploadError('Speaker photo is too large (' + this.sizeLabel(file) + '). Please use a photo under 4 MB.');
+                return;
+            }
+            this.clearUploadError();
             const prev = this.speakerRows[index].photo_url;
             if (prev && String(prev).startsWith('blob:')) URL.revokeObjectURL(prev);
             this.speakerRows[index].photo_url = URL.createObjectURL(file);
+        },
+        onGallerySelect(e) {
+            const files = e.target.files ? Array.from(e.target.files) : [];
+            const oversized = files.find((file) => this.fileTooLarge(file, this.maxGalleryMb));
+            if (oversized) {
+                e.target.value = '';
+                this.setUploadError('Gallery photo is too large (' + this.sizeLabel(oversized) + '). Please use photos under 5 MB each.');
+                return;
+            }
+            this.clearUploadError();
         },
         addMinutes(time, minutes) {
             const parts = String(time || '08:00').split(':');
@@ -401,12 +466,23 @@ function eventForm() {
         onFileSelect(e) {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
+            if (this.fileTooLarge(file, this.maxCoverMb)) {
+                e.target.value = '';
+                this.setUploadError('Cover image is too large (' + this.sizeLabel(file) + '). Please use a photo under 5 MB.', 'cover');
+                return;
+            }
+            this.clearUploadError();
             this.setPreview(file);
         },
         onDrop(e) {
             this.dragOver = false;
             const file = e.dataTransfer.files && e.dataTransfer.files[0];
             if (!file || !file.type.startsWith('image/')) return;
+            if (this.fileTooLarge(file, this.maxCoverMb)) {
+                this.setUploadError('Cover image is too large (' + this.sizeLabel(file) + '). Please use a photo under 5 MB.', 'cover');
+                return;
+            }
+            this.clearUploadError();
             const dt = new DataTransfer();
             dt.items.add(file);
             this.$refs.coverInput.files = dt.files;

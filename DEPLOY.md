@@ -19,27 +19,47 @@ GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
 4. Attach a **MySQL** resource and link it (or paste DB env vars manually).
 5. Persistent storage for uploads: mount a volume on `storage/app` (and keep `storage/logs` writable).
 6. Set the domain + enable HTTPS (Let’s Encrypt).
-7. Raise upload limit (invitation graphics are often 2–10MB). Coolify’s proxy defaults to ~1MB and returns **413 Request Entity Too Large**.
+7. Raise upload limit (cover/gallery images are often 2–10MB). Without this, you get **413 Request Entity Too Large**.
 
-   **Traefik (Coolify default):** Application → **Settings** → **Custom Traefik / Labels** (or the domain’s middlewares) add:
+   There are **two** limits: Coolify’s Traefik proxy **and** nginx/PHP inside the Nixpacks container.
+   This repo includes `nixpacks.toml` with `client_max_body_size 35M` and PHP upload `30M`/`35M`.
 
-   ```text
-   traefik.http.middlewares.ekaadh-upload.buffering.maxRequestBodyBytes=20971520
-   traefik.http.middlewares.ekaadh-upload.buffering.memRequestBodyBytes=20971520
-   ```
+   **A) Traefik (Coolify proxy) — Coolify v4.1**
 
-   Attach that middleware to the HTTPS router (Coolify UI: Domain → Middlewares → `ekaadh-upload`), or paste both labels so they apply to this service.
+   1. Open **Servers** → your server → **Proxy** → **Dynamic Configurations**.
+   2. Add file `upload-limit.yaml`:
 
-   **Nginx proxy:** in the server proxy config add `client_max_body_size 20m;`
+      ```yaml
+      http:
+        middlewares:
+          ekaadh-upload:
+            buffering:
+              maxRequestBodyBytes: 20971520
+              memRequestBodyBytes: 20971520
+      ```
 
-   Also set PHP env on the app:
+   3. Open the app → **Configuration** → **General** → scroll to **Container Labels**.
+   4. Uncheck **Readonly labels**.
+   5. Find the HTTPS router middleware line (looks like
+      `traefik.http.routers.https-0-….middlewares=gzip`) and change it to:
+
+      ```text
+      traefik.http.routers.https-0-….middlewares=gzip,ekaadh-upload@file
+      ```
+
+      Keep every existing middleware name; only append `,ekaadh-upload@file`.
+   6. Save → **Redeploy** (full rebuild so `nixpacks.toml` applies).
+
+   **B) Optional env**
 
    ```env
    PHP_UPLOAD_MAX_FILESIZE=20M
    PHP_POST_MAX_SIZE=20M
    ```
 
-   Redeploy after changing labels/env. Until then, compress the PNG under ~1MB and save again.
+   Until Traefik + redeploy are done, compress photos under ~1MB.
+
+   **If still 413:** orange-cloud Cloudflare Free allows large enough images, but a WAF rule can still block — try pausing the proxy (grey cloud) for a test.
 
 ## 2. Environment variables
 
