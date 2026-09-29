@@ -444,6 +444,8 @@ return [
     'venue_name_placeholder' => 'Venue name',
     'cover_image' => 'Cover image',
     'cover_image_hint' => 'PNG, JPG or WebP · max 5MB',
+    'cover_image_mobile' => 'Mobile cover',
+    'cover_image_mobile_hint' => 'Shown on phone app and mobile web · optional',
     'create_step2_hint' => 'Choose an invitation design for your category. Premium adds $:amount/ticket.',
     'no_designs_for_category' => 'No invitation designs for this category yet. Go back and pick another category, or ask an admin to upload designs.',
     'standard' => 'Standard',

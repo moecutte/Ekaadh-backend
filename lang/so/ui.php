@@ -444,6 +444,8 @@ return [
     'venue_name_placeholder' => 'Magaca goobta',
     'cover_image' => 'Sawirka daboolka',
     'cover_image_hint' => 'PNG, JPG ama WebP · ugu badnaan 5MB',
+    'cover_image_mobile' => 'Daboolka moobilka',
+    'cover_image_mobile_hint' => 'Waxaa lagu muujiyaa app-ka iyo browser-ka moobilka · ikhtiyaari',
     'create_step2_hint' => 'Dooro naqshad casumaadeed oo qaybtaada ah. Premium waxay ku dartaa $:amount/tigidh.',
     'no_designs_for_category' => 'Weli ma jiraan naqshado casumaadeed oo qaybtan ah. Dib u noqo oo dooro qayb kale, ama weydiiso maamulaha inuu soo geliyo naqshado.',
     'standard' => 'Caadi',
