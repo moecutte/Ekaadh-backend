@@ -27,6 +27,18 @@ NIXPACKS_PHP_ROOT_DIR = '/app/public'
 # Transform the nginx configuration
 node /assets/scripts/prestart.mjs /assets/nginx.template.conf /etc/nginx.conf
 
+# Uploads live on a Coolify volume at storage/app. public/ is rebuilt every
+# redeploy, so recreate the storage symlink on every container start.
+mkdir -p /app/storage/app/public \
+  /app/storage/framework/cache \
+  /app/storage/framework/sessions \
+  /app/storage/framework/views \
+  /app/storage/logs
+rm -rf /app/public/storage
+ln -sfn /app/storage/app/public /app/public/storage
+chown -R www-data:www-data /app/storage/app/public 2>/dev/null || true
+chmod -R 775 /app/storage/app/public 2>/dev/null || true
+
 # Start supervisor
 supervisord -c /etc/supervisord.conf -n
 '''

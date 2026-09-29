@@ -17,7 +17,18 @@ GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
 2. Build pack: **Nixpacks** (leave Dockerfile unused).
 3. Base directory: `/` (repo root is the Laravel app).
 4. Attach a **MySQL** resource and link it (or paste DB env vars manually).
-5. Persistent storage for uploads: mount a volume on `storage/app` (and keep `storage/logs` writable).
+5. Persistent storage for uploads: mount a volume on `/app/storage/app` (and keep `storage/logs` writable).
+   - Coolify destination path must be exactly `/app/storage/app` (Nixpacks app root is `/app`).
+   - Use a **separate** volume for staging/dev vs production.
+   - On every container start, `nixpacks.toml` recreates `public/storage` → `storage/app/public`. Without the volume, uploads still vanish on redeploy even though the symlink is fine.
+   - After adding the volume: full **Redeploy**, upload a test image, redeploy again, confirm the image URL still loads.
+   - Diagnose in Coolify Terminal:
+     ```bash
+     ls -la /app/public/storage
+     ls -la /app/storage/app/public/images/events | head
+     echo "APP_ENV=$APP_ENV"
+     ```
+     You want `public/storage` to be a symlink, and files under `storage/app/public/...`. If files only exist under `/app/public/images`, they were written to the wiped tree (fix `APP_ENV` / redeploy this release).
 6. Set the domain + enable HTTPS (Let’s Encrypt).
 7. Raise upload limit (cover/gallery images are often 2–10MB). Without this, you get **413 Request Entity Too Large**.
 
