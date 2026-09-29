@@ -15,9 +15,11 @@
 @endphp
 <a href="{{ route('events.show', $event->slug) }}" class="group block bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-200">
     <div class="relative h-44 overflow-hidden bg-slate-200">
-        @if($event->cover_image)
-            <img src="{{ $event->cover_image }}" alt="{{ $event->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-        @endif
+        @include('partials.event-cover', [
+            'event' => $event,
+            'imgClass' => 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300',
+            'lazy' => true,
+        ])
         @if($event->category)
             <div class="absolute top-3 left-3">
                 <span class="inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full {{ $catBadge[$event->category] ?? 'bg-white text-ink' }}">{{ $event->category }}</span>

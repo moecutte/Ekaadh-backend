@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <base href="{{ rtrim(url('/'), '/') }}/">
     <title>Invitation preview</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @include('partials.vite-panel')
     @include('invitations.partials.invitation-fonts')
     <style>
         html, body { margin: 0; background: transparent; }

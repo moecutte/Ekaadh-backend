@@ -411,7 +411,6 @@
 </div>
 
 <style>[x-cloak] { display: none !important; }</style>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
 function checkoutWizard() {
     const prices = {

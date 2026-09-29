@@ -6,7 +6,6 @@
     <title>@yield('title', 'Admin') — Ekaadh</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     @include('partials.panel-theme')
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="panel-app antialiased min-h-screen font-sans text-[15px]">
 @php

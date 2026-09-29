@@ -7,41 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { DEFAULT: '#323891', soft: '#eef0f8', dark: '#262a6d' },
-                        ink: '#0f1a2e',
-                        mute: '#64748b',
-                        page: '#f2f4f8',
-                    },
-                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
-                }
-            }
-        }
-    </script>
-    <style>
-        html, body { overflow-x: hidden; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        img, video, svg { max-width: 100%; }
-        [x-cloak] { display: none !important; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #create-menu-dropdown { visibility: hidden; opacity: 0; pointer-events: none; }
-        #create-menu:hover #create-menu-dropdown,
-        #create-menu.create-open #create-menu-dropdown {
-            visibility: visible;
-            opacity: 1;
-            pointer-events: auto;
-        }
-        #create-menu:hover #create-menu-chevron,
-        #create-menu.create-open #create-menu-chevron { transform: rotate(180deg); }
-    </style>
+    @include('partials.vite-assets')
     @livewireStyles
     @stack('head')
     <script src="{{ asset('js/locale-switch.js') }}"></script>
