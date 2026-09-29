@@ -13,8 +13,10 @@ class PublicUpload
     /**
      * Store an uploaded file so it is reachable from the site root.
      *
-     * Production (Coolify): always write to storage/app/public (persistent volume)
-     * via the public/storage symlink. public/ is often read-only or wiped on deploy.
+     * Coolify / staging / production: always write to storage/app/public (persistent
+     * volume) via the public/storage symlink. public/ is wiped on each Nixpacks deploy.
+     *
+     * Local XAMPP only: may write directly under public/ when that folder is writable.
      *
      * @return string path relative to the site root, usable with asset()
      */
@@ -22,7 +24,8 @@ class PublicUpload
     {
         $directory = trim($directory, '/');
 
-        if (! app()->environment('production') && self::isWritableDirectory(public_path($directory))) {
+        // Never write under public/ on Coolify/Nixpacks — that tree is wiped on redeploy.
+        if (self::shouldWriteUnderPublic() && self::isWritableDirectory(public_path($directory))) {
             $file->move(public_path($directory), $filename);
 
             return $directory.'/'.$filename;
@@ -61,6 +64,27 @@ class PublicUpload
         } catch (Throwable) {
             // ignore missing files
         }
+    }
+
+    /**
+     * Local XAMPP convenience only. Any container / Coolify / Nixpacks host
+     * must use storage/app/public (+ symlink), which can sit on a volume.
+     */
+    private static function shouldWriteUnderPublic(): bool
+    {
+        if (! app()->environment('local')) {
+            return false;
+        }
+
+        if (env('COOLIFY_RESOURCE_UUID') || env('COOLIFY_CONTAINER_NAME') || env('NIXPACKS_METADATA')) {
+            return false;
+        }
+
+        if (is_file('/.dockerenv')) {
+            return false;
+        }
+
+        return true;
     }
 
     private static function isWritableDirectory(string $path): bool
