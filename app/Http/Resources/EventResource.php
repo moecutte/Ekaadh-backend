@@ -30,6 +30,7 @@ class EventResource extends JsonResource
             'event_time' => $this->event_time ? substr((string) $this->event_time, 0, 5) : null,
             'event_time_label' => $this->formatTimeLabel(),
             'cover_image' => $this->cover_image,
+            'cover_image_mobile' => $this->cover_image_mobile,
             'is_featured' => (bool) $this->is_featured,
             'is_private' => (bool) $this->is_private,
             'is_free' => $this->isFreeEvent(),

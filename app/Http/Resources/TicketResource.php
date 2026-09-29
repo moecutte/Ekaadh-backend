@@ -59,6 +59,7 @@ class TicketResource extends JsonResource
                 'slug' => $event->slug,
                 'is_private' => (bool) $event->is_private,
                 'cover_image' => $event->cover_image,
+                'cover_image_mobile' => $event->cover_image_mobile,
                 'venue' => $event->venue,
                 'city' => $event->city,
                 'event_date' => $event->event_date?->format('Y-m-d'),

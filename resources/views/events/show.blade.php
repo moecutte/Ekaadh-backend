@@ -42,9 +42,18 @@
 @endphp
 
 {{-- Full-bleed hero --}}
+@php
+    $desktopCover = $event->cover_image;
+    $mobileCover = $event->cover_image_mobile ?: $desktopCover;
+@endphp
 <div class="relative h-72 sm:h-96 bg-[#0a1220]">
-    @if($event->cover_image)
-        <img src="{{ $event->cover_image }}" alt="{{ $event->title }}" class="w-full h-full object-cover opacity-80">
+    @if($desktopCover || $mobileCover)
+        <picture class="absolute inset-0 block w-full h-full">
+            @if($mobileCover)
+                <source media="(max-width: 639px)" srcset="{{ $mobileCover }}">
+            @endif
+            <img src="{{ $desktopCover ?: $mobileCover }}" alt="{{ $event->title }}" class="w-full h-full object-cover opacity-80">
+        </picture>
     @endif
     <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
     <div class="absolute bottom-0 left-0 right-0 p-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

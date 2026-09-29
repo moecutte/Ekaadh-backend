@@ -24,7 +24,6 @@ use App\Support\PublicUpload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -159,6 +158,7 @@ class EventController extends Controller
             'event_date' => $data['event_date'],
             'event_time' => $data['event_time'],
             'cover_image' => $this->storeCoverImage($request->file('cover_image')),
+            'cover_image_mobile' => $this->storeCoverImage($request->file('cover_image_mobile')),
             'is_featured' => false,
             'is_private' => false,
             'pricing_type' => $pricingType,
@@ -230,6 +230,12 @@ class EventController extends Controller
             $coverImage = $this->storeCoverImage($request->file('cover_image'));
         }
 
+        $coverImageMobile = $event->getRawOriginal('cover_image_mobile');
+        if ($request->hasFile('cover_image_mobile')) {
+            $this->deleteLocalCoverImage($coverImageMobile);
+            $coverImageMobile = $this->storeCoverImage($request->file('cover_image_mobile'));
+        }
+
         $event->update([
             'title' => $data['title'],
             'description' => $data['description'],
@@ -240,6 +246,7 @@ class EventController extends Controller
             'event_date' => $data['event_date'],
             'event_time' => $data['event_time'],
             'cover_image' => $coverImage,
+            'cover_image_mobile' => $coverImageMobile,
             'is_private' => false,
             'pricing_type' => $pricingType,
             'package_id' => null,
@@ -559,6 +566,7 @@ class EventController extends Controller
             'event_date' => ['required', 'date'],
             'event_time' => ['required'],
             'cover_image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'cover_image_mobile' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ]);
     }
 
@@ -756,14 +764,7 @@ class EventController extends Controller
 
     private function deleteLocalCoverImage(?string $path): void
     {
-        if (! $path || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return;
-        }
-
-        $fullPath = public_path(ltrim($path, '/'));
-        if (File::isFile($fullPath)) {
-            File::delete($fullPath);
-        }
+        PublicUpload::delete($path);
     }
 
     /**

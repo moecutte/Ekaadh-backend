@@ -31,6 +31,7 @@ class CheckInController extends Controller
                 'venue' => $event->venue,
                 'city' => $event->city,
                 'cover_image' => $event->cover_image,
+                'cover_image_mobile' => $event->cover_image_mobile,
                 'is_private' => (bool) $event->is_private,
                 'event_date' => $event->event_date?->format('Y-m-d'),
                 'event_date_label' => $event->event_date?->format('M j, Y'),

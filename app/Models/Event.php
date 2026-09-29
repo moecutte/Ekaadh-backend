@@ -23,6 +23,7 @@ class Event extends Model
         'event_date',
         'event_time',
         'cover_image',
+        'cover_image_mobile',
         'is_featured',
         'is_private',
         'pricing_type',
@@ -67,18 +68,28 @@ class Event extends Model
     protected function coverImage(): Attribute
     {
         return Attribute::make(
-            get: function (?string $value) {
-                if (! $value) {
-                    return null;
-                }
-
-                if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
-                    return $value;
-                }
-
-                return asset(ltrim($value, '/'));
-            },
+            get: fn (?string $value) => self::resolvePublicAssetUrl($value),
         );
+    }
+
+    protected function coverImageMobile(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => self::resolvePublicAssetUrl($value),
+        );
+    }
+
+    private static function resolvePublicAssetUrl(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        return asset(ltrim($value, '/'));
     }
 
     public function organizer(): BelongsTo

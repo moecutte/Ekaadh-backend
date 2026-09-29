@@ -76,41 +76,77 @@
                 <label class="text-[11px] font-bold text-mute block mb-1">Description *</label>
                 <textarea name="description" rows="4" required class="w-full h-[148px] rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:border-brand resize-none">{{ old('description', $event->description) }}</textarea>
             </div>
-            <div class="sm:col-span-2">
-                <label class="text-[11px] font-bold text-mute block mb-1">Cover image</label>
-                <input
-                    type="file"
-                    name="cover_image"
-                    x-ref="coverInput"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    class="hidden"
-                    @change="onFileSelect($event)"
-                >
-                <div
-                    class="relative h-[148px] rounded-lg border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50/50 hover:border-brand/40 transition-colors"
-                    @dragover.prevent="dragOver = true"
-                    @dragleave.prevent="dragOver = false"
-                    @drop.prevent="onDrop($event)"
-                    :class="dragOver && 'border-brand bg-brand/5'"
-                >
-                    <div x-show="previewUrl" x-cloak class="relative group h-full">
-                        <img :src="previewUrl" alt="Cover preview" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <button type="button" @click="$refs.coverInput.click()" class="px-3 py-1.5 rounded-lg bg-white text-xs font-bold text-ink shadow">Change</button>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        x-show="!previewUrl"
-                        @click="$refs.coverInput.click()"
-                        class="flex flex-col items-center justify-center w-full h-full px-3 text-center"
+            <div class="sm:col-span-2 space-y-2.5">
+                <div>
+                    <label class="text-[11px] font-bold text-mute block mb-1">Cover image</label>
+                    <input
+                        type="file"
+                        name="cover_image"
+                        x-ref="coverInput"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        class="hidden"
+                        @change="onFileSelect($event)"
                     >
-                        <span class="text-sm font-semibold text-ink">Upload cover</span>
-                        <span class="text-[11px] text-mute mt-0.5">PNG, JPG, WEBP · max 5 MB</span>
-                        <span class="text-[10px] text-mute mt-1">Compress large photos before uploading.</span>
-                    </button>
+                    <div
+                        class="relative h-[120px] rounded-lg border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50/50 hover:border-brand/40 transition-colors"
+                        @dragover.prevent="dragOver = true"
+                        @dragleave.prevent="dragOver = false"
+                        @drop.prevent="onDrop($event)"
+                        :class="dragOver && 'border-brand bg-brand/5'"
+                    >
+                        <div x-show="previewUrl" x-cloak class="relative group h-full">
+                            <img :src="previewUrl" alt="Cover preview" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <button type="button" @click="$refs.coverInput.click()" class="px-3 py-1.5 rounded-lg bg-white text-xs font-bold text-ink shadow">Change</button>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            x-show="!previewUrl"
+                            @click="$refs.coverInput.click()"
+                            class="flex flex-col items-center justify-center w-full h-full px-3 text-center"
+                        >
+                            <span class="text-sm font-semibold text-ink">Upload cover</span>
+                            <span class="text-[11px] text-mute mt-0.5">Desktop · PNG, JPG, WEBP · max 5 MB</span>
+                        </button>
+                    </div>
+                    <p x-show="uploadError && uploadErrorTarget === 'cover'" x-cloak class="text-xs text-red-600 font-semibold mt-1" x-text="uploadError"></p>
                 </div>
-                <p x-show="uploadError && uploadErrorTarget === 'cover'" x-cloak class="text-xs text-red-600 font-semibold mt-1" x-text="uploadError"></p>
+                <div>
+                    <label class="text-[11px] font-bold text-mute block mb-1">Mobile cover</label>
+                    <input
+                        type="file"
+                        name="cover_image_mobile"
+                        x-ref="coverMobileInput"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        class="hidden"
+                        @change="onMobileFileSelect($event)"
+                    >
+                    <div
+                        class="relative h-[120px] rounded-lg border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50/50 hover:border-brand/40 transition-colors"
+                        @dragover.prevent="mobileDragOver = true"
+                        @dragleave.prevent="mobileDragOver = false"
+                        @drop.prevent="onMobileDrop($event)"
+                        :class="mobileDragOver && 'border-brand bg-brand/5'"
+                    >
+                        <div x-show="previewUrlMobile" x-cloak class="relative group h-full">
+                            <img :src="previewUrlMobile" alt="Mobile cover preview" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <button type="button" @click="$refs.coverMobileInput.click()" class="px-3 py-1.5 rounded-lg bg-white text-xs font-bold text-ink shadow">Change</button>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            x-show="!previewUrlMobile"
+                            @click="$refs.coverMobileInput.click()"
+                            class="flex flex-col items-center justify-center w-full h-full px-3 text-center"
+                        >
+                            <span class="text-sm font-semibold text-ink">Upload mobile cover</span>
+                            <span class="text-[11px] text-mute mt-0.5">Phone app &amp; mobile web · optional</span>
+                        </button>
+                    </div>
+                    <p x-show="uploadError && uploadErrorTarget === 'cover_mobile'" x-cloak class="text-xs text-red-600 font-semibold mt-1" x-text="uploadError"></p>
+                </div>
             </div>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -334,8 +370,10 @@ function eventForm() {
     return {
         rows: @json(old('tickets', $ticketTypes->values())),
         previewUrl: @json($event->cover_image),
+        previewUrlMobile: @json($event->cover_image_mobile),
         fileName: '',
         dragOver: false,
+        mobileDragOver: false,
         pricingType: @json(old('pricing_type', $event->pricing_type ?: 'paid')),
         pricingLocked: @json((bool) $pricingLocked),
         inviteRows: @json($pendingInvites ?: []),
@@ -378,6 +416,12 @@ function eventForm() {
             if (this.fileTooLarge(cover, this.maxCoverMb)) {
                 e.preventDefault();
                 this.setUploadError('Cover image is too large (' + this.sizeLabel(cover) + '). Please use a photo under 5 MB.', 'cover');
+                return;
+            }
+            const coverMobile = this.$refs.coverMobileInput?.files?.[0];
+            if (this.fileTooLarge(coverMobile, this.maxCoverMb)) {
+                e.preventDefault();
+                this.setUploadError('Mobile cover is too large (' + this.sizeLabel(coverMobile) + '). Please use a photo under 5 MB.', 'cover_mobile');
                 return;
             }
             const speakerInputs = this.$el.querySelectorAll('input[type="file"][name*="[photo]"]');
@@ -494,6 +538,37 @@ function eventForm() {
                 URL.revokeObjectURL(this.previewUrl);
             }
             this.previewUrl = URL.createObjectURL(file);
+        },
+        onMobileFileSelect(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (this.fileTooLarge(file, this.maxCoverMb)) {
+                e.target.value = '';
+                this.setUploadError('Mobile cover is too large (' + this.sizeLabel(file) + '). Please use a photo under 5 MB.', 'cover_mobile');
+                return;
+            }
+            this.clearUploadError();
+            this.setMobilePreview(file);
+        },
+        onMobileDrop(e) {
+            this.mobileDragOver = false;
+            const file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            if (this.fileTooLarge(file, this.maxCoverMb)) {
+                this.setUploadError('Mobile cover is too large (' + this.sizeLabel(file) + '). Please use a photo under 5 MB.', 'cover_mobile');
+                return;
+            }
+            this.clearUploadError();
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            this.$refs.coverMobileInput.files = dt.files;
+            this.setMobilePreview(file);
+        },
+        setMobilePreview(file) {
+            if (this.previewUrlMobile && this.previewUrlMobile.startsWith('blob:')) {
+                URL.revokeObjectURL(this.previewUrlMobile);
+            }
+            this.previewUrlMobile = URL.createObjectURL(file);
         },
     }
 }
