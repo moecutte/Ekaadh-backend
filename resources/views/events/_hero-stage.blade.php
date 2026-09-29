@@ -134,9 +134,9 @@
     .hero-title-2 {
         display: block;
         margin-top: 4px;
-        font-family: Fraunces, Georgia, serif;
+        font-family: inherit;
         font-style: italic;
-        font-weight: 500;
+        font-weight: 600;
         font-size: clamp(30px, 5.2vw, 52px);
         color: #9aa4e8;
         letter-spacing: -0.03em;

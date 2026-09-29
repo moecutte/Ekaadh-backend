@@ -4,7 +4,6 @@
 
 @push('head')
     <link rel="preload" as="image" href="{{ asset('images/hero-curtain.webp') }}" type="image/webp" fetchpriority="high">
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
     <style>
         .featured-track { scroll-padding-inline: 1rem; -webkit-overflow-scrolling: touch; }
         [data-featured-dot].is-on { width: 1.5rem; background: #323891; }
@@ -50,9 +49,12 @@
                 <a href="{{ route('events.show', $event->slug) }}"
                    class="featured-slide relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all group border border-slate-100 snap-center shrink-0 w-[85%] sm:w-[70%] md:w-auto md:max-w-none md:shrink {{ $i === 0 ? 'md:col-span-2' : '' }}">
                     <div class="relative overflow-hidden bg-slate-200 h-52 {{ $i === 0 ? 'md:h-72' : 'md:h-52' }}">
-                        @if($event->cover_image)
-                            <img src="{{ $event->cover_image }}" alt="{{ $event->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                        @endif
+                        @include('partials.event-cover', [
+                            'event' => $event,
+                            'imgClass' => 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300',
+                            'lazy' => $i !== 0,
+                            'fetchpriority' => $i === 0 ? 'high' : null,
+                        ])
                         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/10"></div>
                         <div class="absolute top-3 left-3 bg-brand text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-md shadow-black/25">{{ __('ui.featured') }}</div>
                         @if($event->isExpired())

@@ -47,14 +47,15 @@
     $mobileCover = $event->cover_image_mobile ?: $desktopCover;
 @endphp
 <div class="relative h-72 sm:h-96 bg-[#0a1220]">
-    @if($desktopCover || $mobileCover)
-        <picture class="absolute inset-0 block w-full h-full">
-            @if($mobileCover)
-                <source media="(max-width: 639px)" srcset="{{ $mobileCover }}">
-            @endif
-            <img src="{{ $desktopCover ?: $mobileCover }}" alt="{{ $event->title }}" class="w-full h-full object-cover opacity-80">
-        </picture>
-    @endif
+    @include('partials.event-cover', [
+        'event' => $event,
+        'desktopCover' => $desktopCover,
+        'mobileCover' => $mobileCover,
+        'pictureClass' => 'absolute inset-0 block w-full h-full',
+        'imgClass' => 'w-full h-full object-cover opacity-80',
+        'lazy' => false,
+        'fetchpriority' => 'high',
+    ])
     <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
     <div class="absolute bottom-0 left-0 right-0 p-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         @if($event->category)
@@ -94,7 +95,7 @@
                     @foreach($event->speakers as $speaker)
                         <div class="flex items-start gap-3">
                             @if($speaker->photo)
-                                <img src="{{ $speaker->photo }}" alt="{{ $speaker->name }}" class="w-14 h-14 rounded-full object-cover shrink-0">
+                                <img src="{{ $speaker->photo }}" alt="{{ $speaker->name }}" class="w-14 h-14 rounded-full object-cover shrink-0" loading="lazy" decoding="async">
                             @else
                                 <div class="w-14 h-14 rounded-full bg-brand/10 text-brand font-extrabold flex items-center justify-center shrink-0 text-sm">
                                     {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($speaker->name, 0, 1)) }}
@@ -140,7 +141,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     @foreach($event->galleryImages as $image)
                         <button type="button" @click="open = @js($image->path)" class="aspect-square rounded-xl overflow-hidden bg-slate-100">
-                            <img src="{{ $image->path }}" alt="{{ $event->title }}" class="w-full h-full object-cover hover:scale-105 transition">
+                            <img src="{{ $image->path }}" alt="{{ $event->title }}" class="w-full h-full object-cover hover:scale-105 transition" loading="lazy" decoding="async">
                         </button>
                     @endforeach
                 </div>
@@ -319,7 +320,6 @@
 <div class="h-20 lg:hidden"></div>
 
 <style>[x-cloak] { display: none !important; }</style>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
 function eventShare(url, text, copiedLabel) {
     return {

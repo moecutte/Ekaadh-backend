@@ -128,7 +128,6 @@
 @unless($isOverlayDesign)
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 @endunless
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 @include('invitations.partials.share-image-script')
 @endif
 @endsection

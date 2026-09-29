@@ -4,7 +4,6 @@
 
 @section('content')
 @include('invitations.partials.invitation-fonts')
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>[x-cloak]{display:none!important}</style>
 
 <a href="{{ route('admin.invitation-designs.index') }}" class="text-sm font-bold text-mute hover:text-brand">&larr; Designs</a>

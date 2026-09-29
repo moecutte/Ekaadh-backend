@@ -16,8 +16,9 @@ GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
 1. New **Application** → connect `moecutte/Ekaadh-backend`.
 2. Build pack: **Nixpacks** (leave Dockerfile unused).
 3. Base directory: `/` (repo root is the Laravel app).
-4. Attach a **MySQL** resource and link it (or paste DB env vars manually).
-5. Persistent storage for uploads: mount a volume on `/app/storage/app` (and keep `storage/logs` writable).
+4. **Frontend assets:** `nixpacks.toml` runs `npm ci` + `npm run build` so Vite outputs `public/build` (CSS/JS/fonts). Without that, Tailwind/Alpine will be missing and the site looks unstyled. Confirm the Coolify build log shows `vite build` succeeding. Do not rely on `cdn.tailwindcss.com` in production.
+5. Attach a **MySQL** resource and link it (or paste DB env vars manually).
+6. Persistent storage for uploads: mount a volume on `/app/storage/app` (and keep `storage/logs` writable).
    - Coolify destination path must be exactly `/app/storage/app` (Nixpacks app root is `/app`).
    - Use a **separate** volume for staging/dev vs production.
    - On every container start, `nixpacks.toml` recreates `public/storage` → `storage/app/public`. Without the volume, uploads still vanish on redeploy even though the symlink is fine.
@@ -29,8 +30,8 @@ GitHub: `https://github.com/moecutte/Ekaadh-backend.git`
      echo "APP_ENV=$APP_ENV"
      ```
      You want `public/storage` to be a symlink, and files under `storage/app/public/...`. If files only exist under `/app/public/images`, they were written to the wiped tree (fix `APP_ENV` / redeploy this release).
-6. Set the domain + enable HTTPS (Let’s Encrypt).
-7. Raise upload limit (cover/gallery images are often 2–10MB). Without this, you get **413 Request Entity Too Large**.
+7. Set the domain + enable HTTPS (Let’s Encrypt).
+8. Raise upload limit (cover/gallery images are often 2–10MB). Without this, you get **413 Request Entity Too Large**.
 
    There are **two** limits: Coolify’s Traefik proxy **and** nginx/PHP inside the Nixpacks container.
    This repo includes `nixpacks.toml` with `client_max_body_size 35M` and PHP upload `30M`/`35M`.
