@@ -65,10 +65,11 @@
         position: absolute;
         top: -2%;
         bottom: -12%;
-        width: clamp(150px, 26vw, 400px);
+        width: clamp(160px, 28vw, 420px);
         pointer-events: none;
         z-index: 1;
         overflow: hidden;
+        opacity: .92;
     }
     .hero-curtain::after {
         content: "";
@@ -80,17 +81,25 @@
     }
     .hero-curtain--left {
         left: 0;
-        -webkit-mask-image: linear-gradient(to right, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
-        mask-image: linear-gradient(to right, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, #000 58%, rgba(0,0,0,.65) 82%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 58%, rgba(0,0,0,.65) 82%, transparent 100%);
     }
     .hero-curtain--right {
         right: 0;
-        -webkit-mask-image: linear-gradient(to left, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
-        mask-image: linear-gradient(to left, #000 52%, rgba(0,0,0,.55) 78%, transparent 100%);
+        opacity: 1;
+        -webkit-mask-image: linear-gradient(to left, #000 58%, rgba(0,0,0,.65) 82%, transparent 100%);
+        mask-image: linear-gradient(to left, #000 58%, rgba(0,0,0,.65) 82%, transparent 100%);
     }
+    /* Old scaleX(-1) + origin:left flipped the asset outside overflow:hidden (invisible). */
     .hero-curtain--right::after {
+        position: absolute;
+        inset: 0;
+        width: auto;
+        height: auto;
+        background-position: center;
+        background-size: cover;
         transform: scaleX(-1);
-        transform-origin: left center;
+        transform-origin: center center;
     }
     .hero-mock {
         background-color: #e2e8f0;
