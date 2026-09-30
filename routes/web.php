@@ -176,6 +176,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/organizers/{organizer}/reject', [AdminOrganizerController::class, 'reject'])->name('organizers.reject');
         Route::post('/organizers/{organizer}/package', [AdminOrganizerController::class, 'updatePackage'])->name('organizers.package');
         Route::post('/organizers/{organizer}/commission', [AdminOrganizerController::class, 'updateCommission'])->name('organizers.commission');
+        Route::post('/organizers/{organizer}/publish-permission', [AdminOrganizerController::class, 'updatePublishPermission'])->name('organizers.publish-permission');
         Route::delete('/organizers/{organizer}', [AdminOrganizerController::class, 'destroy'])->name('organizers.destroy');
 
         Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');

@@ -24,6 +24,7 @@ class OrganizerProfile extends Model
         'commission_rate',
         'package_id',
         'approval_status',
+        'can_publish_without_review',
         'documents',
         'approved_by',
         'approved_at',
@@ -36,6 +37,7 @@ class OrganizerProfile extends Model
             'commission_rate' => 'decimal:2',
             'approved_at' => 'datetime',
             'documents' => 'array',
+            'can_publish_without_review' => 'boolean',
         ];
     }
 
@@ -67,6 +69,11 @@ class OrganizerProfile extends Model
     public function isApproved(): bool
     {
         return $this->approval_status === 'approved';
+    }
+
+    public function canPublishWithoutReview(): bool
+    {
+        return (bool) $this->can_publish_without_review;
     }
 
     public function idTypeLabel(): ?string

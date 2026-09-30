@@ -360,7 +360,9 @@
         </div>
         <div class="flex justify-end gap-2">
             <button type="submit" name="action" value="draft" class="px-4 py-2 text-sm font-bold text-mute bg-white border border-slate-200 rounded-xl">Save draft</button>
-            <button type="submit" name="action" value="publish" class="px-4 py-2 text-sm font-bold text-white bg-brand rounded-xl hover:bg-brand-dark">Submit for review</button>
+            <button type="submit" name="action" value="publish" class="px-4 py-2 text-sm font-bold text-white bg-brand rounded-xl hover:bg-brand-dark">
+                {{ !empty($canPublishWithoutReview) ? 'Publish' : 'Submit for review' }}
+            </button>
         </div>
     </div>
 </form>

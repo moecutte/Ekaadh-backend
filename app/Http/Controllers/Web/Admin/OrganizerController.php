@@ -176,6 +176,23 @@ class OrganizerController extends Controller
         return back()->with('success', 'Commission override updated.');
     }
 
+    public function updatePublishPermission(Request $request, OrganizerProfile $organizer): RedirectResponse
+    {
+        $data = $request->validate([
+            'can_publish_without_review' => ['nullable', 'boolean'],
+        ]);
+
+        $organizer->update([
+            'can_publish_without_review' => $request->boolean('can_publish_without_review'),
+        ]);
+
+        $label = $organizer->can_publish_without_review
+            ? 'can publish events without admin review'
+            : 'must submit events for admin review';
+
+        return back()->with('success', "{$organizer->business_name} {$label}.");
+    }
+
     public function destroy(OrganizerProfile $organizer): RedirectResponse
     {
         $organizer->loadMissing('user');
