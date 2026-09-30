@@ -73,6 +73,16 @@
                     <dt class="text-xs font-bold text-mute mb-1">Pricing package</dt>
                     <dd class="font-semibold">{{ $organizer->package?->name ?: '—' }}</dd>
                 </div>
+                <div>
+                    <dt class="text-xs font-bold text-mute mb-1">Publish without review</dt>
+                    <dd>
+                        @if($organizer->can_publish_without_review)
+                            <span class="inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Enabled</span>
+                        @else
+                            <span class="inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-50 text-mute border border-slate-100">Requires review</span>
+                        @endif
+                    </dd>
+                </div>
                 <div class="sm:col-span-2">
                     <dt class="text-xs font-bold text-mute mb-1">About the business</dt>
                     <dd class="text-sm leading-relaxed whitespace-pre-line">{{ $organizer->business_description ?: '—' }}</dd>
@@ -198,7 +208,7 @@
     <div class="space-y-5">
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <h3 class="text-sm font-bold mb-1">Actions</h3>
-            <p class="text-xs text-mute mb-4">Approve, assign a package, or set a commission override.</p>
+            <p class="text-xs text-mute mb-4">Approve, assign a package, set commission, or allow publish without review.</p>
 
             <div class="space-y-3">
                 @if($organizer->approval_status !== 'approved')
@@ -244,6 +254,19 @@
                         <button class="px-3 py-2.5 rounded-xl bg-slate-100 text-sm font-bold hover:bg-slate-200">Save</button>
                     </div>
                     <p class="text-[11px] text-mute">Leave blank to use package rate, then platform default ({{ number_format($defaultRate, 1) }}%). Effective rate: {{ number_format($effectiveRate, 1) }}%.</p>
+                </form>
+
+                <form method="POST" action="{{ route('admin.organizers.publish-permission', $organizer) }}" class="pt-2 border-t border-slate-50 space-y-2">
+                    @csrf
+                    <label class="text-xs font-bold text-mute block">Event publishing</label>
+                    <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 cursor-pointer">
+                        <input type="checkbox" name="can_publish_without_review" value="1" class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand" @checked($organizer->can_publish_without_review)>
+                        <span>
+                            <span class="block text-sm font-semibold text-ink">Publish without admin review</span>
+                            <span class="block text-[11px] text-mute mt-0.5 leading-snug">Trusted organizers go live immediately on Publish. Free events still pay the capacity fee unless you waive it later.</span>
+                        </span>
+                    </label>
+                    <button class="w-full py-2.5 rounded-xl bg-slate-100 text-sm font-bold hover:bg-slate-200">Save publish permission</button>
                 </form>
 
                 <form method="POST" action="{{ route('admin.organizers.destroy', $organizer) }}" class="pt-3 border-t border-slate-50" onsubmit="return confirm(@json('Delete organizer '.$organizer->business_name.' and their login account? Only allowed when they have no events.'))">

@@ -143,8 +143,8 @@ class EventController extends Controller
             return back()->withInput()->with('error', $error);
         }
 
-        $wantsReview = $request->input('action') === 'publish';
-        $status = $wantsReview ? 'pending_review' : 'draft';
+        $wantsPublish = $request->input('action') === 'publish';
+        $status = $this->resolvePublishStatus($profile, $wantsPublish);
 
         $event = Event::query()->create([
             'organizer_id' => $profile->id,
@@ -172,7 +172,7 @@ class EventController extends Controller
         $this->syncProgramme($event, $request);
         $this->syncGallery($event, $request);
 
-        return $this->afterSave($event->fresh(['ticketTypes']), $wantsReview, created: true);
+        return $this->afterSave($event->fresh(['ticketTypes']), $wantsPublish, created: true);
     }
 
     public function edit(Event $event): View
@@ -217,11 +217,11 @@ class EventController extends Controller
         }
 
         $status = $event->status;
-        $wantsReview = $request->input('action') === 'publish';
+        $wantsPublish = $request->input('action') === 'publish';
         if ($request->input('action') === 'draft') {
             $status = 'draft';
-        } elseif ($wantsReview) {
-            $status = 'pending_review';
+        } elseif ($wantsPublish) {
+            $status = $this->resolvePublishStatus($profile, true);
         }
 
         $coverImage = $event->getRawOriginal('cover_image');
@@ -263,7 +263,7 @@ class EventController extends Controller
         $this->syncProgramme($event, $request, true);
         $this->syncGallery($event, $request, true);
 
-        return $this->afterSave($event->fresh(['ticketTypes']), $wantsReview, created: false, previousStatus: $previousStatus);
+        return $this->afterSave($event->fresh(['ticketTypes']), $wantsPublish, created: false, previousStatus: $previousStatus);
     }
 
     public function orders(Request $request, Event $event): View
@@ -639,16 +639,28 @@ class EventController extends Controller
             'speakerRows' => $this->speakerRowsForForm($event),
             'programmeRows' => $this->programmeRowsForForm($event),
             'galleryImages' => $event->exists ? $event->galleryImages : collect(),
+            'canPublishWithoutReview' => $profile->canPublishWithoutReview(),
         ];
     }
 
-    private function afterSave(Event $event, bool $wantsReview, bool $created, ?string $previousStatus = null): RedirectResponse
+    private function resolvePublishStatus(OrganizerProfile $profile, bool $wantsPublish): string
     {
-        if ($wantsReview && $event->status !== 'pending_review' && $event->status !== 'published') {
-            $event->update(['status' => 'pending_review']);
+        if (! $wantsPublish) {
+            return 'draft';
         }
 
-        $event = $event->fresh(['ticketTypes']);
+        return $profile->canPublishWithoutReview() ? 'published' : 'pending_review';
+    }
+
+    private function afterSave(Event $event, bool $wantsPublish, bool $created, ?string $previousStatus = null): RedirectResponse
+    {
+        if ($wantsPublish && ! in_array($event->status, ['pending_review', 'published'], true)) {
+            $event->update([
+                'status' => $this->resolvePublishStatus($event->organizer ?? $this->organizerProfile(), true),
+            ]);
+        }
+
+        $event = $event->fresh(['ticketTypes', 'organizer']);
         $inviteNote = '';
         if ($event->status === 'published' && $event->hasPendingInvitations()) {
             $flushed = $this->invitations->flushPending($event);
@@ -670,6 +682,9 @@ class EventController extends Controller
         $message = match ($status) {
             'draft' => 'Event saved as draft.',
             'pending_review' => 'Event submitted for admin review.',
+            'published' => $event->needsPackagePayment()
+                ? 'Event published. Complete the capacity fee payment to make it publicly bookable.'
+                : 'Event published.',
             default => $created ? 'Event created.' : 'Event updated.',
         };
 
