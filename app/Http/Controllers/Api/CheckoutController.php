@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\OtpService;
 use App\Services\Payments\WaafiPayGateway;
+use App\Support\CheckoutPayments;
 use App\Support\PaymentMessage;
 use App\Support\Phone;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,7 @@ class CheckoutController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
+        $allowedPay = CheckoutPayments::rule();
         $data = $request->validate([
             'event_id' => ['required', 'integer', 'exists:events,id'],
             'buyer_name' => ['required', 'string', 'max:120'],
@@ -49,23 +50,23 @@ class CheckoutController extends Controller
             ? $customer
             : null;
         $sandboxPay = (bool) config('waafipay.sandbox');
-        $isCard = ($data['payment_method'] ?? '') === 'waafipay_card';
+        $isEdahab = ($data['payment_method'] ?? '') === 'edahab';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (! $event->isFreeEvent() && $sandboxPay && ! $isCard && $walletPin === null) {
+        if (! $event->isFreeEvent() && ($pinError = CheckoutPayments::walletPinError($data['payment_method'] ?? null, $data['wallet_pin'] ?? null))) {
             throw ValidationException::withMessages([
-                'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
+                'wallet_pin' => [$pinError],
             ]);
         }
 
         $identityPhone = $chargePhone;
         if ($customer) {
             $identityPhone = Phone::normalize($customer->phone ?: $chargePhone);
-            if (! $sandboxPay) {
+            if (! $sandboxPay && ! $isEdahab) {
                 $chargePhone = $identityPhone;
             }
         } elseif (! $customer) {
             $otpPhone = Phone::normalize($data['otp_phone'] ?? $chargePhone);
-            if (! $sandboxPay && $otpPhone !== $chargePhone) {
+            if (! $sandboxPay && ! $isEdahab && $otpPhone !== $chargePhone) {
                 throw ValidationException::withMessages([
                     'otp_token' => ['Phone confirmation expired or invalid. Request a new code.'],
                 ]);
@@ -95,7 +96,7 @@ class CheckoutController extends Controller
             if (empty($data['payment_method'])) {
                 return response()->json([
                     'message' => 'Payment method is required.',
-                    'errors' => ['payment_method' => ['Pay with WaafiPay mobile money or card.']],
+                    'errors' => ['payment_method' => ['Choose WaafiPay or eDahab.']],
                 ], 422);
             }
 
@@ -139,7 +140,7 @@ class CheckoutController extends Controller
 
     public function pay(Request $request, string $orderNumber): JsonResponse
     {
-        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
+        $allowedPay = CheckoutPayments::rule();
         $data = $request->validate([
             'payment_method' => ['required', 'in:'.$allowedPay],
             'phone' => ['required', 'string', 'max:30'],
@@ -154,11 +155,10 @@ class CheckoutController extends Controller
                 'phone' => ['Enter the checkout phone number for this order.'],
             ]);
         }
-        $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
+        if ($pinError = CheckoutPayments::walletPinError($data['payment_method'], $data['wallet_pin'] ?? null)) {
             throw ValidationException::withMessages([
-                'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
+                'wallet_pin' => [$pinError],
             ]);
         }
 

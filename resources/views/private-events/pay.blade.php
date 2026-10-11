@@ -137,6 +137,33 @@
                 </button>
                 @endif
             </div>
+            @if(config('edahab.ready'))
+            <button
+                type="button"
+                @click="payment = 'edahab'; document.getElementById('edahab-notice')?.classList.add('hidden')"
+                class="mt-3 flex flex-col gap-2 rounded-xl border-2 px-3 py-3 text-left w-full"
+                :class="payment === 'edahab' ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-brand/40'"
+            >
+                <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-10 sm:h-12 w-full max-w-[200px] object-contain object-left">
+                <div>
+                    <p class="text-sm font-bold text-ink">eDahab</p>
+                    <p class="text-xs text-mute">{{ __('ui.mobile_money_somtel') }}</p>
+                </div>
+            </button>
+            <div x-show="payment === 'edahab'" x-cloak class="mt-3 space-y-2">
+                <p class="text-xs text-mute">{{ __('ui.edahab_push_hint') }}</p>
+                <label class="text-xs font-bold text-mute block">{{ __('ui.phone_number') }}</label>
+                <div class="flex">
+                    <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
+                    <input
+                        type="tel"
+                        x-model="chargePhoneLocal"
+                        placeholder="65XXXXXXX"
+                        class="flex-1 border border-slate-200 rounded-r-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand bg-page"
+                    >
+                </div>
+            </div>
+            @else
             <button
                 type="button"
                 onclick="document.getElementById('edahab-notice').classList.remove('hidden')"
@@ -149,6 +176,7 @@
                 </div>
             </button>
             <p id="edahab-notice" class="hidden mt-3 text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">{{ __('ui.edahab_unavailable') }}</p>
+            @endif
         </div>
         @if($allowForceFail)
             <label class="flex items-center gap-2 text-xs text-mute">
@@ -178,6 +206,11 @@ function privatePayPin() {
         },
         prepareSubmit(e) {
             this.phoneError = '';
+            if (this.payment === 'edahab' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
+                e.preventDefault();
+                this.phoneError = @json(__('ui.edahab_number_required'));
+                return;
+            }
             if (this.sandbox && this.payment === 'waafipay' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
                 e.preventDefault();
                 this.phoneError = @json(__('ui.sandbox_charge_phone_required'));

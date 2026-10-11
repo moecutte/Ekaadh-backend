@@ -302,6 +302,8 @@ return [
     'choose_mobile_money' => 'Dooro habka bixinta',
     'pay_with_waafipay_note' => 'Ku bixi WaafiPay — Zaad, Sahal, ama EVC Plus.',
     'edahab_unavailable' => 'eDahab hadda lama heli karo.',
+    'edahab_push_hint' => 'eDahab wuxuu fariin u diri doonaa lambarkan. Ku ansixi PIN-kaaga eDahab telefoonkaaga.',
+    'edahab_number_required' => 'Geli lambarka eDahab ee la dallacayo.',
     'charge_account_phone' => 'Ka dallac :method telefoonka akoonkaaga',
     'enter_number_to_charge' => 'Geli lambarkaaga :method si loo dallaco',
     'simulate_failed_payment' => 'Jil bixin fashilantay (tijaabinta maxalliga ah oo keliya)',

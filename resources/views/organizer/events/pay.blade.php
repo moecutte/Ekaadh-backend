@@ -103,10 +103,22 @@
                 </button>
                 @endif
             </div>
+            @if(config('edahab.ready'))
+            <button
+                type="button"
+                @click="payment = 'edahab'"
+                class="rounded-xl border-2 px-3 py-3 text-left"
+                :class="payment === 'edahab' ? 'border-brand bg-brand-soft' : 'border-slate-200 hover:border-brand/40'"
+            >
+                <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-10 w-full max-w-[180px] object-contain object-left">
+                <p class="text-sm font-bold text-ink mt-2">eDahab</p>
+                <p class="text-xs text-mute">{{ __('ui.mobile_money_somtel') }}</p>
+            </button>
+            @endif
         </div>
-        <div x-show="payment === 'waafipay'" x-cloak>
+        <div x-show="payment === 'waafipay' || payment === 'edahab'" x-cloak>
             <label class="text-xs font-bold text-mute block mb-1.5">{{ __('ui.phone_number') }}</label>
-            <p class="text-xs text-mute mb-2">{{ __('ui.enter_number_to_charge', ['method' => 'WaafiPay']) }}</p>
+            <p class="text-xs text-mute mb-2" x-text="payment === 'edahab' ? @json(__('ui.edahab_push_hint')) : @json(__('ui.enter_number_to_charge', ['method' => 'WaafiPay']))"></p>
             <div class="flex">
                 <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
                 <input
@@ -146,9 +158,11 @@ function packagePayPin() {
         },
         prepareSubmit(e) {
             this.phoneError = '';
-            if (this.payment === 'waafipay' && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
+            if ((this.payment === 'waafipay' || this.payment === 'edahab') && !String(this.chargePhoneLocal || '').replace(/\D/g, '')) {
                 e.preventDefault();
-                this.phoneError = @json(__('ui.sandbox_charge_phone_required'));
+                this.phoneError = this.payment === 'edahab'
+                    ? @json(__('ui.edahab_number_required'))
+                    : @json(__('ui.sandbox_charge_phone_required'));
                 return;
             }
             if (this.sandbox && this.payment === 'waafipay' && !this.pinReady) {

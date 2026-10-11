@@ -341,6 +341,21 @@
                 </button>
                 @endif
 
+                @if(config('edahab.ready'))
+                <button
+                    type="button"
+                    @click="payment = 'edahab'; payNotice = ''"
+                    class="relative border-2 rounded-2xl p-4 sm:p-5 text-left transition-all bg-white min-w-0 {{ empty($waafiCardCheckout) ? '' : 'min-[480px]:col-span-2' }}"
+                    :class="payment === 'edahab' ? 'border-brand bg-brand/5' : 'border-slate-100 hover:border-brand/40'"
+                >
+                    <div x-show="payment === 'edahab'" class="absolute top-3 right-3 w-5 h-5 bg-brand rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <img src="{{ asset('images/somtel-logo.png') }}" alt="Somtel eDahab" class="h-12 sm:h-16 w-full max-w-[220px] object-contain object-left mb-3">
+                    <p class="font-extrabold text-ink text-base sm:text-lg">eDahab</p>
+                    <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_somtel') }}</p>
+                </button>
+                @else
                 <button
                     type="button"
                     @click="payNotice = i18n.edahabUnavailable"
@@ -350,23 +365,26 @@
                     <p class="font-extrabold text-ink text-base sm:text-lg">eDahab</p>
                     <p class="text-xs text-mute mt-0.5">{{ __('ui.mobile_money_somtel') }}</p>
                 </button>
+                @endif
             </div>
             <p x-show="payNotice" x-cloak x-text="payNotice" class="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3"></p>
 
             <div x-show="payment" x-cloak class="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
-                <template x-if="payment === 'waafipay'">
+                <template x-if="payment === 'waafipay' || payment === 'edahab'">
                     <div class="space-y-4">
                         <p class="text-sm font-bold text-ink"
-                           x-text="(lockPhone ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', 'WaafiPay')"
+                           x-text="((lockPhone && payment !== 'edahab') ? i18n.chargeAccountPhone : i18n.enterNumberToCharge).replace(':method', payment === 'edahab' ? 'eDahab' : 'WaafiPay')"
                         ></p>
+                        <p x-show="payment === 'edahab'" class="text-xs text-mute">{{ __('ui.edahab_push_hint') }}</p>
                         <div class="flex">
                             <span class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-mute shrink-0">+252</span>
                             <input
                                 type="tel"
                                 x-model="chargePhoneLocal"
                                 placeholder="611111111"
-                                @if($lockPhone) readonly @endif
-                                class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand {{ $lockPhone ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page' }}"
+                                :readonly="lockPhone && payment !== 'edahab'"
+                                class="flex-1 border border-slate-200 rounded-r-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                :class="lockPhone && payment !== 'edahab' ? 'bg-slate-50 text-mute cursor-not-allowed' : 'bg-page'"
                             >
                         </div>
                     </div>
@@ -389,11 +407,12 @@
                     :disabled="submitting || !payment || ticketCount < 1 || (!signedIn && !otpToken)"
                     class="w-full bg-brand hover:bg-brand-dark disabled:bg-slate-100 disabled:text-mute text-white font-extrabold py-4 rounded-xl transition-colors text-base"
                 >
-                    <span x-show="!submitting && payment !== 'waafipay_card'" x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
+                    <span x-show="!submitting && payment === 'waafipay'" x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'WaafiPay')"></span>
+                    <span x-show="!submitting && payment === 'edahab'" x-cloak x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', 'eDahab')"></span>
                     <span x-show="!submitting && payment === 'waafipay_card'" x-cloak x-text="i18n.payWithMethod.replace(':amount', total.toFixed(0)).replace(':method', @json(__('ui.card_visa_mastercard')))"></span>
                     <span x-show="submitting" x-cloak>…</span>
                 </button>
-                <p x-show="submitting && payment !== 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.waiting_phone_pin') }}</p>
+                <p x-show="submitting && (payment === 'waafipay' || payment === 'edahab')" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.waiting_phone_pin') }}</p>
                 <p x-show="submitting && payment === 'waafipay_card'" x-cloak class="text-center text-sm font-semibold text-brand">{{ __('ui.redirecting_to_card') }}</p>
                 <div class="flex items-center justify-center gap-2 text-xs text-mute pt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-brand shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -691,7 +710,7 @@ function checkoutWizard() {
                 this.step = 3;
                 return;
             }
-            if (this.sandbox && this.payment !== 'waafipay_card' && !this.pinReady) {
+            if (this.sandbox && this.payment === 'waafipay' && !this.pinReady) {
                 e.preventDefault();
                 this.openPinModal();
                 return;
