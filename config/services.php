@@ -50,9 +50,10 @@ return [
 
     'edahab' => [
         'enabled' => env('EDAHAB_ENABLED', false),
-        'merchant_id' => env('EDAHAB_MERCHANT_ID'),
+        'merchant_id' => env('EDAHAB_AGENT_CODE', env('EDAHAB_MERCHANT_ID')),
         'api_key' => env('EDAHAB_API_KEY'),
-        'api_url' => env('EDAHAB_API_URL'),
+        'api_secret' => env('EDAHAB_API_SECRET'),
+        'api_url' => env('EDAHAB_API_URL', 'https://edahab.net/api/api/'),
     ],
 
     'ticket_qr' => [

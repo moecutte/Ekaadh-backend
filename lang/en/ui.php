@@ -302,6 +302,8 @@ return [
     'choose_mobile_money' => 'Choose your payment method',
     'pay_with_waafipay_note' => 'Pay with WaafiPay using Zaad, Sahal, or EVC Plus.',
     'edahab_unavailable' => 'eDahab is not available now.',
+    'edahab_push_hint' => 'eDahab will send a prompt to this number. Approve it on your phone with your eDahab PIN.',
+    'edahab_number_required' => 'Enter the eDahab number to charge.',
     'charge_account_phone' => 'Charge :method on your account phone',
     'enter_number_to_charge' => 'Enter your :method number to charge',
     'simulate_failed_payment' => 'Simulate failed payment (local testing only)',

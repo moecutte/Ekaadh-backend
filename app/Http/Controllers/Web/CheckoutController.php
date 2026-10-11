@@ -9,6 +9,7 @@ use App\Services\OrderService;
 use App\Services\OtpService;
 use App\Services\Payments\WaafiPayGateway;
 use App\Services\TicketQrService;
+use App\Support\CheckoutPayments;
 use App\Support\PaymentMessage;
 use App\Support\Phone;
 use Illuminate\Http\RedirectResponse;
@@ -66,7 +67,7 @@ class CheckoutController extends Controller
         $customer = $request->user();
         $customer = ($customer && $customer->isCustomer()) ? $customer : null;
 
-        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
+        $allowedPay = CheckoutPayments::rule();
         $data = $request->validate([
             'buyer_name' => ['required', 'string', 'max:120'],
             'buyer_email' => ['nullable', 'email', 'max:255'],
@@ -82,11 +83,11 @@ class CheckoutController extends Controller
 
         $chargePhone = Phone::normalize($data['buyer_phone']);
         $sandboxPay = (bool) config('waafipay.sandbox');
-        $isCard = ($data['payment_method'] ?? '') === 'waafipay_card';
+        $isEdahab = ($data['payment_method'] ?? '') === 'edahab';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (! $event->isFreeEvent() && $sandboxPay && ! $isCard && $walletPin === null) {
+        if (! $event->isFreeEvent() && ($pinError = CheckoutPayments::walletPinError($data['payment_method'] ?? null, $data['wallet_pin'] ?? null))) {
             return back()->withErrors([
-                'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
+                'wallet_pin' => $pinError,
             ])->withInput();
         }
 
@@ -94,7 +95,7 @@ class CheckoutController extends Controller
         if ($customer) {
             $data['buyer_name'] = $customer->name;
             $identityPhone = Phone::normalize($customer->phone ?: $chargePhone);
-            if (! $sandboxPay) {
+            if (! $sandboxPay && ! $isEdahab) {
                 $chargePhone = $identityPhone;
             }
             $email = $customer->email;
@@ -103,7 +104,7 @@ class CheckoutController extends Controller
             }
         } else {
             $otpPhone = Phone::normalize($data['otp_phone'] ?? $chargePhone);
-            if (! $sandboxPay && $otpPhone !== $chargePhone) {
+            if (! $sandboxPay && ! $isEdahab && $otpPhone !== $chargePhone) {
                 return back()->withErrors([
                     'otp_token' => 'Phone confirmation expired or invalid. Request a new code.',
                 ])->withInput();

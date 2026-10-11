@@ -16,6 +16,7 @@ use App\Services\InvitationService;
 use App\Services\OrderService;
 use App\Services\PrivateEventService;
 use App\Services\Payments\WaafiPayGateway;
+use App\Support\CheckoutPayments;
 use App\Support\PaymentMessage;
 use App\Support\Phone;
 use Illuminate\Http\JsonResponse;
@@ -162,7 +163,7 @@ class PrivateEventController extends Controller
         $user = $this->customer();
         $this->authorizeOwner($event, $user);
 
-        $allowedPay = config('waafipay.card_checkout_enabled') ? 'waafipay,waafipay_card' : 'waafipay';
+        $allowedPay = CheckoutPayments::rule();
         $data = $request->validate([
             'payment_method' => ['required', 'in:'.$allowedPay],
             'force_fail' => ['sometimes', 'boolean'],
@@ -180,15 +181,23 @@ class PrivateEventController extends Controller
         }
 
         $isCard = $data['payment_method'] === 'waafipay_card';
+        $isEdahab = $data['payment_method'] === 'edahab';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
+        if ($pinError = CheckoutPayments::walletPinError($data['payment_method'], $data['wallet_pin'] ?? null)) {
             throw ValidationException::withMessages([
-                'wallet_pin' => [WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null)],
+                'wallet_pin' => [$pinError],
             ]);
         }
 
         $chargePhone = Phone::normalize($user->phone);
-        if (config('waafipay.sandbox') && ! $isCard) {
+        if ($isEdahab) {
+            $chargePhone = Phone::normalize($data['buyer_phone'] ?? $user->phone);
+            if ($chargePhone === '') {
+                throw ValidationException::withMessages([
+                    'buyer_phone' => [__('ui.edahab_number_required')],
+                ]);
+            }
+        } elseif (config('waafipay.sandbox') && ! $isCard) {
             $chargePhone = Phone::normalize($data['buyer_phone'] ?? '');
             if ($chargePhone === '') {
                 throw ValidationException::withMessages([

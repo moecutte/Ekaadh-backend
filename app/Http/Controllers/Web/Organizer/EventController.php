@@ -18,6 +18,7 @@ use App\Services\InvitationService;
 use App\Services\OrderService;
 use App\Services\OrganizerEventPackageService;
 use App\Services\Payments\WaafiPayGateway;
+use App\Support\CheckoutPayments;
 use App\Support\PaymentMessage;
 use App\Support\Phone;
 use App\Support\PublicUpload;
@@ -377,9 +378,7 @@ class EventController extends Controller
         $this->authorizeEvent($event);
         $event->load(['package', 'ticketTypes', 'organizer']);
 
-        $allowedMethods = config('waafipay.card_checkout_enabled')
-            ? 'waafipay,waafipay_card'
-            : 'waafipay';
+        $allowedMethods = CheckoutPayments::rule();
         $data = $request->validate([
             'payment_method' => ['required', 'in:'.$allowedMethods],
             'force_fail' => ['sometimes', 'boolean'],
@@ -389,9 +388,9 @@ class EventController extends Controller
 
         $isCard = $data['payment_method'] === 'waafipay_card';
         $walletPin = WaafiPayGateway::sandboxPin($data['wallet_pin'] ?? null);
-        if (config('waafipay.sandbox') && ! $isCard && $walletPin === null) {
+        if ($pinError = CheckoutPayments::walletPinError($data['payment_method'], $data['wallet_pin'] ?? null)) {
             return back()->withErrors([
-                'wallet_pin' => WaafiPayGateway::sandboxPinError($data['wallet_pin'] ?? null),
+                'wallet_pin' => $pinError,
             ]);
         }
 

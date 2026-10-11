@@ -12,7 +12,9 @@ use App\Models\Setting;
 use App\Models\Ticket;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Payments\EDahabGateway;
 use App\Services\Payments\PaymentGatewayInterface;
+use App\Support\CheckoutPayments;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -173,9 +175,9 @@ class OrderService
             $forceFail = false;
         }
 
-        if (! in_array($paymentMethod, ['waafipay', 'waafipay_card'], true)) {
+        if (! in_array($paymentMethod, CheckoutPayments::methods(), true)) {
             throw ValidationException::withMessages([
-                'payment_method' => ['Pay with WaafiPay mobile money or card.'],
+                'payment_method' => ['Choose WaafiPay or eDahab.'],
             ]);
         }
 
@@ -192,10 +194,11 @@ class OrderService
         $reference = $prepared['reference'];
         $card = $paymentMethod === 'waafipay_card';
 
+        $gateway = $this->gatewayFor($paymentMethod);
         if ($prepared['action'] === 'inquire') {
             $result = $card
                 ? $this->gateway()->inquireHpp($reference, $order->payment?->transaction_id)
-                : $this->gateway()->inquire($reference, $order->payment?->transaction_id);
+                : $gateway->inquire($reference, $order->payment?->transaction_id);
             if (in_array($result['status'], ['pending', 'unknown'], true)) {
                 return $this->applyGatewayResult($order, $paymentMethod, $chargePhone, [
                     'status' => 'pending',
@@ -205,7 +208,7 @@ class OrderService
                 ]);
             }
         } else {
-            $result = $this->gateway()->initiate(
+            $result = $gateway->initiate(
                 (float) $order->total_amount,
                 $reference,
                 [
@@ -242,7 +245,7 @@ class OrderService
 
         $result = $card
             ? $this->gateway()->inquireHpp($reference, $order->payment->transaction_id)
-            : $this->gateway()->inquire($reference, $order->payment->transaction_id);
+            : $this->gatewayFor($method)->inquire($reference, $order->payment->transaction_id);
 
         if (in_array($result['status'], ['pending', 'unknown'], true)) {
             return $this->loadedOrder($order);
@@ -295,7 +298,7 @@ class OrderService
                 'result' => 'INITIATED',
             ];
 
-            $this->upsertPayment($order, 'initiated', $reference, $phone, $raw);
+            $this->upsertPayment($order, 'initiated', $reference, $phone, $raw, $this->paymentProvider($paymentMethod));
 
             $order->update([
                 'payment_method' => $paymentMethod,
@@ -381,7 +384,7 @@ class OrderService
                 $raw['user_message'] = (string) $result['message'];
             }
 
-            $this->upsertPayment($order, $paymentStatus, $result['transaction_id'] ?? null, $phone, $raw);
+            $this->upsertPayment($order, $paymentStatus, $result['transaction_id'] ?? null, $phone, $raw, $this->paymentProvider($paymentMethod));
 
             $order->update([
                 'payment_method' => $paymentMethod,
@@ -499,7 +502,21 @@ class OrderService
     /**
      * @param  array<string, mixed>  $raw
      */
-    private function upsertPayment(Order $order, string $status, ?string $transactionId, ?string $phone, array $raw): void
+    private function paymentProvider(string $paymentMethod): string
+    {
+        return $paymentMethod === 'edahab' ? 'edahab' : $this->gateway()->name();
+    }
+
+    private function gatewayFor(string $paymentMethod): PaymentGatewayInterface
+    {
+        if ($paymentMethod === 'edahab') {
+            return app(EDahabGateway::class);
+        }
+
+        return $this->gateway();
+    }
+
+    private function upsertPayment(Order $order, string $status, ?string $transactionId, ?string $phone, array $raw, ?string $provider = null): void
     {
         $order->loadMissing('payment');
         $attrs = [
@@ -509,6 +526,9 @@ class OrderService
             'status' => $status,
             'raw_response' => $raw,
         ];
+        if ($provider !== null) {
+            $attrs['provider'] = $provider;
+        }
 
         if ($order->payment) {
             $order->payment->update($attrs);
@@ -518,7 +538,7 @@ class OrderService
 
         Payment::query()->create([
             'order_id' => $order->id,
-            'provider' => $this->gateway()->name(),
+            'provider' => $provider ?? $this->gateway()->name(),
             ...$attrs,
         ]);
     }

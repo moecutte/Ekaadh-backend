@@ -68,6 +68,7 @@ class EventResource extends JsonResource
             ])->values()),
             'payment_sandbox' => (bool) config('waafipay.sandbox'),
             'card_payments_enabled' => (bool) config('waafipay.card_checkout_enabled'),
+            'edahab_payments_enabled' => (bool) config('edahab.ready'),
             'service_fee' => $this->isFreeEvent()
                 ? 0.0
                 : (float) \App\Models\Setting::getValue('service_fee', 1),

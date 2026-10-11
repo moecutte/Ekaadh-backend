@@ -58,6 +58,7 @@ class PrivateEventResource extends JsonResource
             'pending_order' => $this->pendingOrderPayload($request),
             'payment_sandbox' => (bool) config('waafipay.sandbox'),
             'card_payments_enabled' => (bool) config('waafipay.card_checkout_enabled'),
+            'edahab_payments_enabled' => (bool) config('edahab.ready'),
             'test_wallets' => $this->when(
                 (bool) config('waafipay.sandbox'),
                 array_values(config('waafipay.test_wallets', []))
